@@ -21,4 +21,18 @@ build-backend = "hatchling.build"
 
 # [tool.uv]
 # virtualenvs.in-project = true
+[bumpver]
+current_version = "0.1.0"
+version_pattern = "MAJOR.MINOR.PATCH"
+commit = true
+tag = true
+push = true  # Set to true if you want to push automatically
+
+[bumpver.file_patterns]
+"pyproject.toml" = [
+    'version = "{version}"',
+]
+"src/opentripplan/__init__.py" = [
+    '__version__ = "{version}"',
+]
 
