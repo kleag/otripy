@@ -1,7 +1,7 @@
 [project]
 name = "opentripplan"
 version = "0.1.0"
-description = "Add your description here"
+description = "A tool to plan your next trip"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
@@ -9,3 +9,16 @@ dependencies = [
     "pyqt6-webengine>=6.8.0",
     "pyqt6>=6.8.1",
 ]
+authors = [{ name = "Gaël de Chalendar (aka Kleag)", email = "kleagg@gmail.com" }]
+license = { text = "AGPL" }
+
+[project.scripts]
+opentripplan = "opentripplan.main:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+# [tool.uv]
+# virtualenvs.in-project = true
+
