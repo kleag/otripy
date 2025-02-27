@@ -1,0 +1,14 @@
+[bumpver]
+current_version = "0.1.0"
+version_pattern = "MAJOR.MINOR.PATCH"
+commit = true
+tag = true
+push = true  # Set to true if you want to push automatically
+
+[files]
+"pyproject.toml" = [
+    'version = "{version}"',
+]
+"src/opentripplan/__init__.py" = [
+    '__version__ = "{version}"',
+]
