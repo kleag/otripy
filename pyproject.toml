@@ -1,0 +1,11 @@
+[project]
+name = "opentripplan"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "folium>=0.19.4",
+    "pyqt6-webengine>=6.8.0",
+    "pyqt6>=6.8.1",
+]
