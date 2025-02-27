@@ -3,7 +3,7 @@ name = "opentripplan"
 version = "0.1.4"
 description = "A tool to plan your next trip"
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.9"
 dependencies = [
     "folium>=0.19.4",
     "pyqt6-webengine>=6.8.0",
