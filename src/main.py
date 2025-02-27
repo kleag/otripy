@@ -169,7 +169,10 @@ class MapApp(QMainWindow):
 
     def update_map(self):
         # Default location (Paris)
-        m = folium.Map(location=[48.8566, 2.3522], zoom_start=12)
+        location = [48.8566, 2.3522]
+        if self.locations:
+            location = [self.locations[-1]["lat"], self.locations[-1]["lon"]]
+        m = folium.Map(location=location, zoom_start=12)
         m.get_root().html.add_child(
             JavascriptLink('qrc:///qtwebchannel/qwebchannel.js'))
 
@@ -195,6 +198,14 @@ class MapApp(QMainWindow):
         # m.get_root().script.add_child(JavascriptLink(script_url))
 
         script = """
+        function moveMap(lat, lng, zoom) {
+            let mapElement = document.querySelector("div[id^='map_']");
+            if (mapElement) {
+                let mapId = mapElement.id; // Get the actual map ID
+                let map = window[mapId]; // Folium stores the map as a global variable with its ID
+                map.setView([lat, lng], zoom);
+            }
+        }
 
         pywebchannel = new QWebChannel(qt.webChannelTransport, function(channel) {
             var pyObj = channel.objects.pyObj;
@@ -291,19 +302,26 @@ class MapApp(QMainWindow):
             lat = float(self.lat_input.text())
             lon = float(self.lon_input.text())
             note = self.note_input.toPlainText()
-            self.locations.append({
+            new_location = {
                 'lat': lat,
                 'lon': lon,
                 'note': note,
-                'id': str(uuid.uuid4())})
+                'id': str(uuid.uuid4())}
+            self.locations.append(new_location)
             self.update_list()
             self.update_map()
+            self.highlight_marker(new_location["id"])
+            self.handle_marker_click(new_location["id"])
         except ValueError:
             print("Invalid latitude or longitude")
 
     def createMenu(self):
         menu_bar = self.menuBar()
         file_menu = menu_bar.addMenu("File")
+
+        new_action = QAction("New", self)
+        new_action.setShortcut(QKeySequence("Ctrl+N"))
+        new_action.triggered.connect(self.new)
 
         load_action = QAction("Open…", self)
         load_action.setShortcut(QKeySequence("Ctrl+O"))
@@ -313,7 +331,7 @@ class MapApp(QMainWindow):
         save_action.setShortcut(QKeySequence("Ctrl+S"))
         save_action.triggered.connect(self.save_file)
 
-        save_as_action = QAction("Save As", self)
+        save_as_action = QAction("Save As…", self)
         save_as_action.setShortcut(QKeySequence("Ctrl+Shift+S"))
         save_as_action.triggered.connect(self.save_file_as)
 
@@ -321,11 +339,18 @@ class MapApp(QMainWindow):
         quit_action.setShortcut(QKeySequence("Ctrl+Q"))
         quit_action.triggered.connect(self.close)
 
+        file_menu.addAction(new_action)
         file_menu.addAction(load_action)
         file_menu.addAction(save_action)
         file_menu.addAction(save_as_action)
         file_menu.addSeparator()
         file_menu.addAction(quit_action)
+
+    def new(self):
+        self.current_file = None
+        self.locations = []
+        self.update_list()
+        self.update_map()
 
     def load_file(self):
         file_name, _ = QFileDialog.getOpenFileName(
@@ -400,6 +425,7 @@ class MapApp(QMainWindow):
     def on_item_selected(self, item):
         logger.info(f"MapApp.on_item_selected {item}")
         index = self.list_widget.row(item)
+        loc = self.locations[index]
         self.lat_input.setText(str(self.locations[index]["lat"]))
         self.lon_input.setText(str(self.locations[index]["lon"]))
         self.note_input.setText(str(self.locations[index]["note"]))
@@ -408,6 +434,8 @@ class MapApp(QMainWindow):
                 self.highlight_marker(self.locations[i]["id"])
             else:
                 self.downplay_marker(self.locations[i]["id"])
+        js_code = f"moveMap({loc['lat']}, {loc['lon']}, 10);"
+        self.map_page.runJavaScript(js_code)
 
     def close(self):
         QApplication.quit()
