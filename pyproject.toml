@@ -1,6 +1,6 @@
 [project]
 name = "opentripplan"
-version = "0.1.0"
+version = "0.1.4"
 description = "A tool to plan your next trip"
 readme = "README.md"
 requires-python = ">=3.13"
@@ -22,7 +22,7 @@ build-backend = "hatchling.build"
 # [tool.uv]
 # virtualenvs.in-project = true
 [bumpver]
-current_version = "0.1.0"
+current_version = "0.1.4"
 version_pattern = "MAJOR.MINOR.PATCH"
 commit = true
 tag = true
