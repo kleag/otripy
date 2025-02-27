@@ -4,7 +4,6 @@ import json
 import logging
 import os
 import sys
-import uuid
 
 from PyQt6.QtCore import QUrl, pyqtSlot, QObject, QVariant, pyqtSignal
 from PyQt6.QtGui import QAction, QDoubleValidator, QKeySequence
@@ -28,6 +27,8 @@ from PyQt6.QtWebEngineWidgets import QWebEngineView
 from branca.element import Element
 from folium.elements import *
 from pathlib import Path
+
+from location import Location
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.DEBUG)
@@ -145,7 +146,7 @@ class MapApp(QMainWindow):
         if isinstance(data, QVariant):
             data = data.toVariant()  # Convert QVariant to Python object
         logger.debug(f"MapApp.receiveData Received from JS: {data}")
-        data['note'] = ''
+        data["note"] = ""
         try:
             self.lat_input.setText(str(data["lat"]))
             self.lon_input.setText(str(data["lon"]))
@@ -156,14 +157,14 @@ class MapApp(QMainWindow):
 
     @pyqtSlot()
     def note_changed(self):
-        logger.debug(f"MapApp.text_changed")
+        # logger.info(f"MapApp.text_changed")
         selected_item = self.list_widget.currentItem()
         if selected_item:
             index = self.list_widget.row(selected_item)
-            self.locations[index]["note"] = self.note_input.toPlainText()
-            lat = str(self.locations[index]['lat'])
-            lon = str(self.locations[index]['lon'])
-            label = self.locations[index]["note"].split('\n')[0]
+            self.locations[index].note = self.note_input.toPlainText()
+            lat = str(self.locations[index].lat)
+            lon = str(self.locations[index].lon)
+            label = self.locations[index].label()
             selected_item.setText(f"{label}: {lat}, {lon}")
 
 
@@ -171,7 +172,7 @@ class MapApp(QMainWindow):
         # Default location (Paris)
         location = [48.8566, 2.3522]
         if self.locations:
-            location = [self.locations[-1]["lat"], self.locations[-1]["lon"]]
+            location = self.locations[-1].location()
         m = folium.Map(location=location, zoom_start=12)
         m.get_root().html.add_child(
             JavascriptLink('qrc:///qtwebchannel/qwebchannel.js'))
@@ -236,15 +237,14 @@ class MapApp(QMainWindow):
                 });
                 """
         for loc in self.locations:
-            tooltip = loc["note"].split("\n")[0]
-            popup = loc["note"].replace("\n", "<br>")
-            logger.debug(f"tooltip: '{tooltip}'")
+            tooltip = loc.label()
+            popup = loc.to_html()
             script += f"""
-            var marker = L.marker([{loc["lat"]}, {loc["lon"]}]).addTo(map).bindTooltip("{tooltip}", {{permanent: false}}).bindPopup("{popup}");
-            window.markerMap["{loc['id']}"] = marker;
+            var marker = L.marker([{loc.lat}, {loc.lon}]).addTo(map).bindTooltip("{tooltip}", {{permanent: false}}).bindPopup("{popup}");
+            window.markerMap["{loc.id}"] = marker;
             marker.on("click", function() {{
                 if (pywebchannel.objects.markerHandler) {{
-                    pywebchannel.objects.markerHandler.on_marker_clicked("{loc["id"]}");
+                    pywebchannel.objects.markerHandler.on_marker_clicked("{loc.id}");
                 }}
             }});
             """
@@ -265,7 +265,7 @@ class MapApp(QMainWindow):
         """ Handle marker click events in Python. """
         logger.info(f"Python received marker click event for: {marker_id}")
         for i, loc in enumerate(self.locations):
-            if loc["id"] == marker_id:
+            if loc.id == marker_id:
                 item = self.list_widget.item(i)
                 self.list_widget.setCurrentItem(item)
                 self.on_item_selected(item)
@@ -302,16 +302,12 @@ class MapApp(QMainWindow):
             lat = float(self.lat_input.text())
             lon = float(self.lon_input.text())
             note = self.note_input.toPlainText()
-            new_location = {
-                'lat': lat,
-                'lon': lon,
-                'note': note,
-                'id': str(uuid.uuid4())}
+            new_location = Location(lat=lat, lon=lon, note=note)
             self.locations.append(new_location)
             self.update_list()
             self.update_map()
-            self.highlight_marker(new_location["id"])
-            self.handle_marker_click(new_location["id"])
+            self.highlight_marker(new_location.id)
+            self.handle_marker_click(new_location.id)
         except ValueError:
             print("Invalid latitude or longitude")
 
@@ -361,11 +357,9 @@ class MapApp(QMainWindow):
         if file_name:
             try:
                 with open(file_name, "r") as file:
-                    self.locations = json.load(file)
+                    locations = json.load(file)
                     # Complete missing data
-                    for loc in self.locations:
-                        if "id" not in loc:
-                            loc["id"] = str(uuid.uuid4())
+                    self.locations = [Location.from_data(loc) for loc in locations]
                     self.current_file = file_name
                     self.update_list()
                     self.update_map()
@@ -391,8 +385,9 @@ class MapApp(QMainWindow):
 
     def write_to_file(self, file_name):
         try:
+            locations = [loc.to_dict() for loc in self.locations]
             with open(file_name, "w") as file:
-                json.dump(self.locations, file, indent=4)
+                json.dump(locations, file, indent=4)
         except Exception as e:
             QMessageBox.critical(self,
                                  "Error",
@@ -401,16 +396,16 @@ class MapApp(QMainWindow):
     def update_list(self):
         self.list_widget.clear()
         for item in self.locations:
-            lat = str(item['lat'])
+            lat = str(item.lat)
             lat_val = QDoubleValidator(-90, 90, 3)
             lat_val.setNotation(QDoubleValidator.Notation.StandardNotation)
             lat_val.fixup(lat)
 
             lon_val = QDoubleValidator(-180, 180, 3)
             lon_val.setNotation(QDoubleValidator.Notation.StandardNotation)
-            lon = str(item['lon'])
+            lon = str(item.lon)
             lon_val.fixup(lon)
-            label = item['note'].split('\n')[0]
+            label = item.label()
             self.list_widget.addItem(f"{label}: {lat}, {lon}")
 
     def delete_item(self):
@@ -426,15 +421,15 @@ class MapApp(QMainWindow):
         logger.info(f"MapApp.on_item_selected {item}")
         index = self.list_widget.row(item)
         loc = self.locations[index]
-        self.lat_input.setText(str(self.locations[index]["lat"]))
-        self.lon_input.setText(str(self.locations[index]["lon"]))
-        self.note_input.setText(str(self.locations[index]["note"]))
+        self.lat_input.setText(str(loc.lat))
+        self.lon_input.setText(str(loc.lon))
+        self.note_input.setText(str(loc.note))
         for i in range(len(self.list_widget)):
             if i == index:
-                self.highlight_marker(self.locations[i]["id"])
+                self.highlight_marker(self.locations[i].id)
             else:
-                self.downplay_marker(self.locations[i]["id"])
-        js_code = f"moveMap({loc['lat']}, {loc['lon']});"
+                self.downplay_marker(self.locations[i].id)
+        js_code = f"moveMap({loc.lat}, {loc.lon});"
         self.map_page.runJavaScript(js_code)
 
     def close(self):
