@@ -98,12 +98,14 @@ class MapApp(QMainWindow):
         self.lat_input = QLineEdit()
         self.lat_input.setPlaceholderText("Enter Latitude")
         self.lat_input.setValidator(lat_val)
+        self.lat_input.setReadOnly(True)
 
         lon_val = QDoubleValidator(-180, 180, 3)
         lon_val.setNotation(QDoubleValidator.Notation.StandardNotation)
         self.lon_input = QLineEdit()
         self.lon_input.setPlaceholderText("Enter Longitude")
         self.lon_input.setValidator(lon_val)
+        self.lon_input.setReadOnly(True)
 
         btn_layout.addWidget(self.lat_input)
         btn_layout.addWidget(self.lon_input)
@@ -111,9 +113,9 @@ class MapApp(QMainWindow):
         self.note_input = QTextEdit(self)
         self.note_input.setMaximumHeight(200)
         self.note_input.setPlaceholderText("Enter Note")
-
-        self.add_button = QPushButton("Add Location", self)
-        self.add_button.clicked.connect(self.add_location)
+        self.note_input.textChanged.connect(self.note_changed)
+        # self.add_button = QPushButton("Save Location", self)
+        # self.add_button.clicked.connect(self.add_location)
 
         self.del_btn = QPushButton("Delete Location")
         self.del_btn.clicked.connect(self.delete_item)
@@ -122,7 +124,7 @@ class MapApp(QMainWindow):
         ctrl_layout.addWidget(self.map_view)
         ctrl_layout.addLayout(btn_layout)
         ctrl_layout.addWidget(self.note_input)
-        ctrl_layout.addWidget(self.add_button)
+        # ctrl_layout.addWidget(self.add_button)
 
         list_layout = QVBoxLayout()
         list_layout.addWidget(self.list_widget)
@@ -148,8 +150,22 @@ class MapApp(QMainWindow):
             self.lat_input.setText(str(data["lat"]))
             self.lon_input.setText(str(data["lon"]))
             self.note_input.setText("")
+            self.add_location()
         except json.JSONDecodeError as e:
             pass
+
+    @pyqtSlot()
+    def note_changed(self):
+        logger.debug(f"MapApp.text_changed")
+        selected_item = self.list_widget.currentItem()
+        if selected_item:
+            index = self.list_widget.row(selected_item)
+            self.locations[index]["note"] = self.note_input.toPlainText()
+            lat = str(self.locations[index]['lat'])
+            lon = str(self.locations[index]['lon'])
+            label = self.locations[index]["note"].split('\n')[0]
+            selected_item.setText(f"{label}: {lat}, {lon}")
+
 
     def update_map(self):
         # Default location (Paris)
@@ -232,10 +248,7 @@ class MapApp(QMainWindow):
         data = io.BytesIO()
         m.save(data, close_file=False)
         html = data.getvalue().decode()
-        logger.debug(f"html:\n{html}")
-        self.map_page.setHtml(
-            html,)
-            # baseUrl=QUrl.fromLocalFile(str(Path(__file__).resolve().parent)))
+        self.map_page.setHtml(html)
 
     def handle_marker_click(self, marker_id):
         """ Handle marker click events in Python. """
@@ -372,7 +385,8 @@ class MapApp(QMainWindow):
             lon_val.setNotation(QDoubleValidator.Notation.StandardNotation)
             lon = str(item['lon'])
             lon_val.fixup(lon)
-            self.list_widget.addItem(f"{str(lat)}, {lon}: {item['note'].split('\n')[0]}")
+            label = item['note'].split('\n')[0]
+            self.list_widget.addItem(f"{label}: {lat}, {lon}")
 
     def delete_item(self):
         pass
