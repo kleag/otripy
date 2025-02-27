@@ -434,7 +434,7 @@ class MapApp(QMainWindow):
                 self.highlight_marker(self.locations[i]["id"])
             else:
                 self.downplay_marker(self.locations[i]["id"])
-        js_code = f"moveMap({loc['lat']}, {loc['lon']}, 10);"
+        js_code = f"moveMap({loc['lat']}, {loc['lon']});"
         self.map_page.runJavaScript(js_code)
 
     def close(self):
