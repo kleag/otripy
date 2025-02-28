@@ -5,9 +5,9 @@ import logging
 import os
 import sys
 
-from PyQt6.QtCore import QUrl, pyqtSlot, QObject, QVariant, pyqtSignal
-from PyQt6.QtGui import QAction, QDoubleValidator, QKeySequence
-from PyQt6.QtWidgets import (
+from PySide6.QtCore import QUrl, QObject, Signal, Slot
+from PySide6.QtGui import QAction, QDoubleValidator, QKeySequence
+from PySide6.QtWidgets import (
     QApplication,
     QFileDialog,
     QHBoxLayout,
@@ -20,15 +20,15 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QWidget,
     )
-from PyQt6.QtWebChannel import QWebChannel
-from PyQt6.QtWebEngineCore import QWebEnginePage
-from PyQt6.QtWebEngineWidgets import QWebEngineView
+from PySide6.QtWebChannel import QWebChannel
+from PySide6.QtWebEngineCore import QWebEnginePage
+from PySide6.QtWebEngineWidgets import QWebEngineView
 
 from branca.element import Element
 from folium.elements import *
 from pathlib import Path
 
-from .location import Location
+from location import Location
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.DEBUG)
@@ -37,9 +37,9 @@ logging.root.setLevel(logging.DEBUG)
 
 class MarkerHandler(QObject):
     """ Exposes a slot to receive marker click events from JavaScript. """
-    markerClicked = pyqtSignal(str)  # Signal to send marker ID when clicked
+    markerClicked = Signal(str)  # Signal to send marker ID when clicked
 
-    @pyqtSlot(str)
+    @Slot(str)
     def on_marker_clicked(self, marker_id):
         logger.info(f"Marker clicked: {marker_id}")  # Handle click event in Python
         self.markerClicked.emit(marker_id)  # Emit the signal for further handling
@@ -141,10 +141,8 @@ class MapApp(QMainWindow):
 
         central_widget.setLayout(layout)
 
-    @pyqtSlot(QVariant)
+    @Slot(dict)
     def receiveData(self, data):
-        if isinstance(data, QVariant):
-            data = data.toVariant()  # Convert QVariant to Python object
         logger.debug(f"MapApp.receiveData Received from JS: {data}")
         data["note"] = ""
         try:
@@ -155,7 +153,7 @@ class MapApp(QMainWindow):
         except json.JSONDecodeError as e:
             pass
 
-    @pyqtSlot()
+    @Slot()
     def note_changed(self):
         # logger.info(f"MapApp.text_changed")
         selected_item = self.list_widget.currentItem()
@@ -424,7 +422,7 @@ class MapApp(QMainWindow):
         self.lat_input.setText(str(loc.lat))
         self.lon_input.setText(str(loc.lon))
         self.note_input.setText(str(loc.note))
-        for i in range(len(self.list_widget)):
+        for i in range(self.list_widget.count()):
             if i == index:
                 self.highlight_marker(self.locations[i].id)
             else:

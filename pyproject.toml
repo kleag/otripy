@@ -3,11 +3,12 @@ name = "opentripplan"
 version = "0.1.7"
 description = "A tool to plan your next trip"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 dependencies = [
-    "folium>=0.19.4",
-    "pyqt6-webengine>=6.8.0",
-    "pyqt6>=6.8.1",
+    "folium>=0.19.5",
+    "lxml>=5.3.1",
+    "numpy>=2.2.3",
+    "pyside6>=6.8.2.1",
 ]
 authors = [{ name = "Gaël de Chalendar (aka Kleag)", email = "kleagg@gmail.com" }]
 license = { text = "AGPL" }
