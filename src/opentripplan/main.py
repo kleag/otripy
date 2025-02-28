@@ -26,9 +26,14 @@ from PySide6.QtWebEngineWidgets import QWebEngineView
 
 from branca.element import Element
 from folium.elements import *
+from geopy.geocoders import Nominatim
 from pathlib import Path
-
-from .location import Location
+try:
+    from .location import Location
+    from .search_popup import SearchPopup
+except ImportError:
+    from location import Location
+    from search_popup import SearchPopup
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.DEBUG)
@@ -67,6 +72,8 @@ class MapApp(QMainWindow):
         self.setWindowTitle("Open Trip Planner")
         self.setGeometry(100, 100, 800, 600)
 
+        self.geolocator = Nominatim(user_agent="OpenTripPlan")
+
         self.current_file = None
         self.locations = []
 
@@ -90,6 +97,19 @@ class MapApp(QMainWindow):
         self.map_page.setWebChannel(self.channel)
         self.map_view = QWebEngineView()
         self.map_view.setPage(self.map_page)
+
+
+        # Search interface : line edit + button at its right
+        self.search_entry = QLineEdit()
+        self.search_entry.setPlaceholderText("Search…")
+        self.search_btn = QPushButton("Search")
+        self.search_btn.clicked.connect(self.search_location)
+        search_layout = QHBoxLayout()
+        search_layout.addWidget(self.search_entry)
+        search_layout.addWidget(self.search_btn)
+
+        # Search popup (floating list)
+        self.search_popup = SearchPopup(self)
 
         # Buttons
         btn_layout = QHBoxLayout()
@@ -122,6 +142,7 @@ class MapApp(QMainWindow):
         self.del_btn.clicked.connect(self.delete_item)
 
         ctrl_layout = QVBoxLayout()
+        ctrl_layout.addLayout(search_layout)
         ctrl_layout.addWidget(self.map_view)
         ctrl_layout.addLayout(btn_layout)
         ctrl_layout.addWidget(self.note_input)
@@ -148,7 +169,10 @@ class MapApp(QMainWindow):
         try:
             self.lat_input.setText(str(data["lat"]))
             self.lon_input.setText(str(data["lon"]))
-            self.note_input.setText("")
+            location = self.geolocator.reverse(f"{data["lat"]}, {data["lon"]}")
+            address = location.address.replace(", ", "\n", 1)
+
+            self.note_input.setText(address)
             self.add_location()
         except json.JSONDecodeError as e:
             pass
@@ -433,6 +457,26 @@ class MapApp(QMainWindow):
     def close(self):
         QApplication.quit()
 
+    def search_location(self):
+        logger.info(f"MapApp.search_location {self.search_entry.text()}")
+        query = self.search_entry.text().strip()
+        if not query:
+            self.search_popup.hide()
+            return
+        locations = self.geolocator.geocode(query, exactly_one=False)
+
+        logger.info(f"Found: {locations}")
+
+        # Show popup if results exist
+        if locations:
+            self.search_popup.show_popup(locations, self.search_entry)
+        else:
+            self.search_popup.hide()
+
+    def handle_selected_location(self, location):
+        """Handle the selected location"""
+        logger.info(f"Selected: {location}")
+        self.receiveData({"lat": location.latitude, "lon": location.longitude})
 
 def main():
     # sys.argv.append("--disable-web-security")
