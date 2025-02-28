@@ -28,7 +28,7 @@ from branca.element import Element
 from folium.elements import *
 from pathlib import Path
 
-from location import Location
+from .location import Location
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.DEBUG)
