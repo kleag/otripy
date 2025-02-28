@@ -1,20 +1,94 @@
-import sys
+import logging
 import os
-from PyQt6.QtCore import Qt, QDir
-from PyQt6.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QPushButton, QDialog, QLineEdit, QHBoxLayout, QFileDialog, QLabel, QListView, QAbstractItemView, QWidget
-from PyQt6.QtGui import QIcon, QStandardItemModel, QStandardItem
-from requests.auth import HTTPBasicAuth
 import requests
+import sys
+
+from lxml import etree
+from PySide6.QtWidgets import (QApplication, QMainWindow, QVBoxLayout,
+    QPushButton, QDialog, QLineEdit, QFileDialog, QLabel, QListView,
+    QMessageBox, QAbstractItemView, QWidget)
+from PySide6.QtGui import QStandardItemModel, QStandardItem
+from requests.auth import HTTPBasicAuth
+
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.DEBUG)
+logging.root.setLevel(logging.DEBUG)
 
 class NextcloudWebDAV:
     def __init__(self, base_url, username, password):
-        self.base_url = f"{base_url}/remote.php/dav/files/{username}"
+        # cn=gael,ou=users,dc=myrga,dc=nsupdate,dc=info
+        # 73803212-9023-1037-8d45-ed185e33f3ef
+        uuid = self.get_user_uuid(base_url, username, password)
+        self.uuid = uuid
+        self.base_url = f"{base_url}/remote.php/dav/files/{uuid}"
         self.auth = HTTPBasicAuth(username, password)
+
+    def get_user_uuid(self, nextcloud_url, username, password):
+        api_url = f"{nextcloud_url}/ocs/v1.php/cloud/user"
+        headers = {"OCS-APIRequest": "true"}
+
+        response = requests.get(api_url, auth=(username, password), headers=headers)
+
+        if response.status_code == 200:
+            try:
+                # Parse the XML response
+                root = etree.fromstring(response.content)
+                user_id = root.xpath('//ocs/data/id/text()')
+
+                if user_id:
+                    return user_id[0]
+                else:
+                    print("UUID not found in response.")
+                    return None
+            except Exception as e:
+                print(f"Error parsing XML: {e}")
+                return None
+        else:
+            print(f"Error: {response.status_code} - {response.text}")
+            return None
+
+    def parse_webdav_xml_file_list(self, xml_content):
+        root = etree.fromstring(xml_content)
+        namespace = {'d': 'DAV:'}
+        entries = []
+
+        for response in root.findall('d:response', namespace):
+            href = response.find('d:href', namespace).text
+            prop = response.find('d:propstat/d:prop', namespace)
+            resource_type = prop.find('d:resourcetype', namespace)
+
+            entry = {
+                "type": "directory" if resource_type is not None and resource_type.find('d:collection', namespace) is not None else "file",
+                "path": "/".join(href.split('/')[5:]),
+                "hidden": href.split('/')[-1].startswith('.')
+            }
+            entries.append(entry)
+
+        return entries
 
     def list_files(self, path=""):
         url = f"{self.base_url}/{path}"
         response = requests.request("PROPFIND", url, auth=self.auth)
-        return response.text  # Process XML response
+        if response.status_code == 207:  # 207 means directory exists (WebDAV specific)
+            QMessageBox.critical(
+                None,
+                "Error",
+                f"response: {response.text}")
+            content = self.parse_webdav_xml_file_list(response.text)
+            return content
+        elif response.status_code == 404:
+            QMessageBox.critical(
+                None,
+                "Error",
+                f"Directory '{path}' does not exist.")
+            return []
+        else:
+            QMessageBox.critical(
+                None,
+                "Error",
+                f"Unexpected response: {response.status_code} - {response.text}")
+            return []
+        return []
 
     def download_file(self, remote_path, local_path):
         url = f"{self.base_url}/{remote_path}"
@@ -25,6 +99,7 @@ class NextcloudWebDAV:
                     file.write(chunk)
 
     def upload_file(self, local_path, remote_path):
+        logger.info(f"upload_file {local_path}, {remote_path}")
         url = f"{self.base_url}/{remote_path}"
         with open(local_path, "rb") as file:
             response = requests.put(url, data=file, auth=self.auth)
@@ -44,13 +119,15 @@ class NextcloudFilePicker(QDialog):
         layout = QVBoxLayout()
 
         self.path_line_edit = QLineEdit()
-        self.path_line_edit.setPlaceholderText("Enter directory on Nextcloud (e.g., /folder1/)")
+        self.path_line_edit.setPlaceholderText(
+            "Enter directory on Nextcloud (e.g., /folder1/)")
         layout.addWidget(self.path_line_edit)
 
         self.list_view = QListView()
         self.list_model = QStandardItemModel(self.list_view)
         self.list_view.setModel(self.list_model)
-        self.list_view.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
+        self.list_view.setSelectionMode(
+            QAbstractItemView.SelectionMode.SingleSelection)
         self.list_view.clicked.connect(self.on_file_selected)
         layout.addWidget(self.list_view)
 
@@ -71,8 +148,13 @@ class NextcloudFilePicker(QDialog):
 
         self.list_model.clear()  # Clear previous entries
         for file in files:
-            item = QStandardItem(file)
-            self.list_model.appendRow(item)
+            if file["type"] == "directory" and not file["hidden"]:
+                item = QStandardItem(f"[{file['path']}]")
+                self.list_model.appendRow(item)
+        for file in files:
+            if file["type"] == "file" and not file["hidden"]:
+                item = QStandardItem(file["path"])
+                self.list_model.appendRow(item)
 
     def on_file_selected(self, index):
         self.selected_file = self.list_model.itemFromIndex(index).text()
@@ -92,7 +174,7 @@ class MainWindow(QMainWindow):
         self.nextcloud = NextcloudWebDAV(
             base_url="https://myrga.nsupdate.info",
             username="xxx",
-            password="xxx"
+            password="yyy"
         )
 
         self.init_ui()
@@ -121,13 +203,20 @@ class MainWindow(QMainWindow):
         if file_picker.exec() == QDialog.DialogCode.Accepted:
             selected_file = file_picker.get_selected_file()
             if selected_file:
-                local_path = os.path.join(os.getcwd(), os.path.basename(selected_file))
+                local_path = os.path.join(os.getcwd(),
+                                          os.path.basename(selected_file))
                 self.nextcloud.download_file(selected_file, local_path)
-                self.info_label.setText(f"Downloaded {selected_file} to local path {local_path}")
+                self.info_label.setText(
+                    f"Downloaded {selected_file} to local path {local_path}")
 
     def save_file_to_nextcloud(self):
         # Show file dialog to select file to save
-        local_file, _ = QFileDialog.getSaveFileName(self, "Save File", "", "Text Files (*.txt);;All Files (*)")
+        local_file, _ = QFileDialog.getSaveFileName(
+            self,
+            "Save File",
+            "",
+            "Json Files (*.json);;All Files (*)",
+            options=QFileDialog.DontConfirmOverwrite)
         if local_file:
             # If file selected, upload to Nextcloud
             remote_path = os.path.basename(local_file)
