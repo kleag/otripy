@@ -1,6 +1,6 @@
 [project]
 name = "opentripplan"
-version = "0.2.1"
+version = "0.2.2"
 description = "A tool to plan your next trip"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -23,7 +23,7 @@ build = ["bumpver"]                   # For packaging and uploading
 deploy = ["uv"]                               # Add tools needed for deployment
 
 [bumpver]
-current_version = "0.2.1"
+current_version = "0.2.2"
 version_pattern = "MAJOR.MINOR.PATCH"
 commit = true
 tag = true
