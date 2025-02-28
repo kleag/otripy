@@ -29,9 +29,11 @@ from folium.elements import *
 from geopy.geocoders import Nominatim
 from pathlib import Path
 try:
+    from .journey import Journey
     from .location import Location
     from .search_popup import SearchPopup
 except ImportError:
+    from journey import Journey
     from location import Location
     from search_popup import SearchPopup
 
@@ -75,7 +77,7 @@ class MapApp(QMainWindow):
         self.geolocator = Nominatim(user_agent="OpenTripPlan")
 
         self.current_file = None
-        self.locations = []
+        self.locations = Journey()
 
         self.initUI()
         self.createMenu()
@@ -167,6 +169,11 @@ class MapApp(QMainWindow):
         logger.debug(f"MapApp.receiveData Received from JS: {data}")
         data["note"] = ""
         try:
+            if self.list_widget.currentItem() is not None:
+                current_item = self.list_widget.currentItem()
+                index = self.list_widget.row(current_item)
+                self.downplay_marker(self.locations[index])
+            self.list_widget.setCurrentItem(None)
             self.lat_input.setText(str(data["lat"]))
             self.lon_input.setText(str(data["lon"]))
             location = self.geolocator.reverse(f"{data["lat"]}, {data["lon"]}")
@@ -179,7 +186,7 @@ class MapApp(QMainWindow):
 
     @Slot()
     def note_changed(self):
-        # logger.info(f"MapApp.text_changed")
+        logger.info(f"MapApp.note_changed")
         selected_item = self.list_widget.currentItem()
         if selected_item:
             index = self.list_widget.row(selected_item)
@@ -285,7 +292,7 @@ class MapApp(QMainWindow):
 
     def handle_marker_click(self, marker_id):
         """ Handle marker click events in Python. """
-        logger.info(f"Python received marker click event for: {marker_id}")
+        logger.info(f"MapApp.handle_marker_click {marker_id}")
         for i, loc in enumerate(self.locations):
             if loc.id == marker_id:
                 item = self.list_widget.item(i)
@@ -294,6 +301,7 @@ class MapApp(QMainWindow):
 
     def highlight_marker(self, marker_id):
         """ Change marker color dynamically without modifying tooltip """
+        logger.info(f"MapApp.highlight_marker {marker_id}")
         js_code = f"""
         if (window.markerMap["{marker_id}"]) {{
             window.markerMap["{marker_id}"].setIcon(
@@ -320,16 +328,25 @@ class MapApp(QMainWindow):
         self.map_page.runJavaScript(js_code)
 
     def add_location(self):
+        logger.info(f"MapApp.add_location")
         try:
             lat = float(self.lat_input.text())
             lon = float(self.lon_input.text())
             note = self.note_input.toPlainText()
             new_location = Location(lat=lat, lon=lon, note=note)
             self.locations.append(new_location)
-            self.update_list()
+
+            label = new_location.label()
+            self.list_widget.addItem(f"{label}: {lat}, {lon}")
             self.update_map()
-            self.highlight_marker(new_location.id)
+            # Get the last added item
+            new_item = self.list_widget.item(self.list_widget.count() - 1)
+            self.list_widget.setCurrentItem(new_item)  # Select it
+            new_item.setSelected(True)
+
+            # self.update_list()
             self.handle_marker_click(new_location.id)
+            self.highlight_marker(new_location.id)
         except ValueError:
             print("Invalid latitude or longitude")
 
@@ -366,7 +383,7 @@ class MapApp(QMainWindow):
 
     def new(self):
         self.current_file = None
-        self.locations = []
+        self.locations = Journey()
         self.update_list()
         self.update_map()
 
@@ -381,7 +398,7 @@ class MapApp(QMainWindow):
                 with open(file_name, "r") as file:
                     locations = json.load(file)
                     # Complete missing data
-                    self.locations = [Location.from_data(loc) for loc in locations]
+                    self.locations = Journey([Location.from_data(loc) for loc in locations])
                     self.current_file = file_name
                     self.update_list()
                     self.update_map()
