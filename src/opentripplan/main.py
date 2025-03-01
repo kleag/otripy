@@ -510,7 +510,7 @@ class MapApp(QMainWindow):
                 else:
                     return
             else:
-                self.nc.files.upload(self.current_file, data)
+                self.current_file = self.nc.files.upload(self.current_file, data)
         else:
             self.write_to_file(self.current_file)
 

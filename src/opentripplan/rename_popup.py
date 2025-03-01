@@ -15,7 +15,7 @@ class RenamePopup(QDialog):
         self.line_edit.setText(old_name)
         layout.addWidget(self.line_edit)
 
-        self.try_button = QPushButton("Try a new name")
+        self.try_button = QPushButton("Try this new name")
         self.try_button.setEnabled(False)  # Disabled until input is given
         layout.addWidget(self.try_button)
 
