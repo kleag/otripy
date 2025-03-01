@@ -99,7 +99,7 @@ Contributions are welcome! Please follow these steps:
 5. Open a pull request.
 
 ## License
-This project is licensed under the AGPL License. See the [LICENSE](https://github.com/kleag/opentripplan/blob/main/LICENSE.md) file for details.
+This project is Free Software, licensed under the AGPL License. See the [AGPL](https://github.com/kleag/opentripplan/blob/main/AGPL.md) file for details. In summary: you can use it, share it, change it, redistribute your changes, but any version you offer, with or without changes must be under the same (or a compatible) license.
 
 ## Credits
 OpenTripPlan is developed and maintained by [Kleag](https://github.com/kleag). Special thanks to all contributors!
