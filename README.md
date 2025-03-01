@@ -1,7 +1,8 @@
 # Open Trip Plan
 
-[![PyPI Version](https://img.shields.io/pypi/v/opentripplan)](https://pypi.org/project/opentripplan/)
-[![License](https://img.shields.io/pypi/l/opentripplan)](AGPL.md)
+
+![PyPI Version](https://img.shields.io/pypi/v/opentripplan?link=https%3A%2F%2Fpypi.org%2Fproject%2Fopentripplan%2F)
+![License](https://img.shields.io/pypi/l/opentripplan)
 
 <!--
 ![Python Versions](https://img.shields.io/pypi/pyversions/opentripplan)
