@@ -2,10 +2,10 @@
 
 
 [![PyPI Version](https://img.shields.io/pypi/v/opentripplan)](https://pypi.org/project/opentripplan)
-![License](https://img.shields.io/pypi/l/opentripplan)
+[![License](https://img.shields.io/pypi/l/opentripplan)](https://github.com/kleag/opentripplan/blob/main/AGPL.md)
 [![Downloads](https://static.pepy.tech/badge/opentripplan/month)](https://pepy.tech/project/opentripplan)
 [![Supported Versions](https://img.shields.io/pypi/pyversions/opentripplan.svg)](https://pypi.org/project/opentripplan)
-[![Contributors](https://img.shields.io/github/contributors/psf/opentripplan.svg)](https://github.com/psf/opentripplan/graphs/contributors)
+[![Contributors](https://img.shields.io/github/contributors/kleag/opentripplan.svg)](https://github.com/kleag/opentripplan/graphs/contributors)
 
 <!--
 ![Python Versions](https://img.shields.io/pypi/pyversions/opentripplan)
