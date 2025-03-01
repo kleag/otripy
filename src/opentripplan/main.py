@@ -455,8 +455,6 @@ class MapApp(QMainWindow):
             selected_file = file_picker.get_selected_file()
             if selected_file:
                 logger.info(f"MapApp.load_nc_file got {selected_file}")
-                local_path = os.path.join(os.getcwd(),
-                                          os.path.basename(selected_file))
                 json_bytes = self.nc.files.download(selected_file)
                 # Convert bytes to a string
                 json_str = json_bytes.decode('utf-8')
