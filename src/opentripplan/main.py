@@ -447,9 +447,23 @@ class MapApp(QMainWindow):
             base_url = self.settings.value("nextcloud/url", "")
             username = self.settings.value("nextcloud/username", "")
             password = self.settings.value("nextcloud/password", "")
-            self.nc = nc_py_api.Nextcloud(nextcloud_url=base_url,
-                                          nc_auth_user=username,
-                                          nc_auth_pass=password)
+            if not base_url or not username or not password:
+                QMessageBox.critical(
+                    self,
+                    "Error",
+                    f"Please set Nextcloud data in settings before connecting.")
+                return
+            try:
+                self.nc = nc_py_api.Nextcloud(nextcloud_url=base_url,
+                                            nc_auth_user=username,
+                                            nc_auth_pass=password)
+                logger.info(f"nc capabilities: {self.nc.capabilities}")
+            except nc_py_api.NextcloudException as e:
+                QMessageBox.critical(
+                    self,
+                    "Error",
+                    f"Error connecting to Nextcloud:\n\n{e}")
+                return
         file_picker = NextcloudFilePicker(self.nc, self)
         if file_picker.exec() == QDialog.DialogCode.Accepted:
             selected_file = file_picker.get_selected_file()
