@@ -37,12 +37,15 @@ try:
     from .search_popup import SearchPopup
     from .config import ConfigDialog
     from .nextcloud_with_api import NextcloudFilePicker
+    from .nextcloud_with_api import NextcloudFilePicker
+    from .rename_popup import RenamePopup
 except ImportError:
     from journey import Journey
     from location import Location
     from search_popup import SearchPopup
     from config import ConfigDialog
     from nextcloud_with_api import NextcloudFilePicker
+    from rename_popup import RenamePopup
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.DEBUG)
@@ -469,6 +472,7 @@ class MapApp(QMainWindow):
             selected_file = file_picker.get_selected_file()
             if selected_file:
                 logger.info(f"MapApp.load_nc_file got {selected_file}")
+                node = self.nc.files.by_path(selected_file)
                 json_bytes = self.nc.files.download(selected_file)
                 # Convert bytes to a string
                 json_str = json_bytes.decode('utf-8')
@@ -478,19 +482,35 @@ class MapApp(QMainWindow):
 
                 # Complete missing data
                 self.locations = Journey([Location.from_data(loc) for loc in locations])
-                self.current_file = f"nc:{selected_file}"
+                self.current_file = node  # keep nc_py_api FsNode instead of string
                 self.update_list()
                 self.update_map()
 
     def save_file(self):
         if not self.current_file:
             self.save_file_as()
-        elif self.current_file.startswith("nc:"):
-            remote_path = self.current_file.split(":", 1)[1]
+        elif type(self.current_file) == nc_py_api.FsNode:
             locations = [loc.to_dict() for loc in self.locations]
             data = json.dumps(locations, indent=4)
-            self.nc.files.upload(remote_path, data)
+            file_id  = self.current_file.file_id
+            current_remote_node = self.nc.files.by_id(file_id)
+            if current_remote_node.etag != self.current_file.etag:
+                popup = RenamePopup(self, self.current_file.user_path)
+                if popup.exec():
+                    new_name = popup.line_edit.text().strip()
 
+                    #  by_path will raise an exception if the file does not already exist as we wan
+                    try:
+                        self.nc.files.by_path(new_name)
+                        QMessageBox.critical(self, "Error", f"File {new_name} already exist. Abort.")
+                        return
+                    except nc_py_api.NextcloudException as e:
+                        self.current_file = self.nc.files.upload(new_name, data)
+                        return
+                else:
+                    return
+            else:
+                self.nc.files.upload(self.current_file, data)
         else:
             self.write_to_file(self.current_file)
 
