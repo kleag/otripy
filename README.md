@@ -1,8 +1,11 @@
 # Open Trip Plan
 
-<img alt="PyPI - Version" src="https://img.shields.io/pypi/v/opentripplan?link=https%3A%2F%2Fpypi.org%2Fproject%2Fopentripplan%2F">
 
+[![PyPI Version](https://img.shields.io/pypi/v/opentripplan)](https://pypi.org/project/opentripplan)
 ![License](https://img.shields.io/pypi/l/opentripplan)
+[![Downloads](https://static.pepy.tech/badge/opentripplan/month)](https://pepy.tech/project/opentripplan)
+[![Supported Versions](https://img.shields.io/pypi/pyversions/opentripplan.svg)](https://pypi.org/project/opentripplan)
+[![Contributors](https://img.shields.io/github/contributors/psf/opentripplan.svg)](https://github.com/psf/opentripplan/graphs/contributors)
 
 <!--
 ![Python Versions](https://img.shields.io/pypi/pyversions/opentripplan)
