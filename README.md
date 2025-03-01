@@ -1,7 +1,7 @@
 # Open Trip Plan
 
+<img alt="PyPI - Version" src="https://img.shields.io/pypi/v/opentripplan?link=https%3A%2F%2Fpypi.org%2Fproject%2Fopentripplan%2F">
 
-![PyPI Version](https://img.shields.io/pypi/v/opentripplan?link=https%3A%2F%2Fpypi.org%2Fproject%2Fopentripplan%2F)
 ![License](https://img.shields.io/pypi/l/opentripplan)
 
 <!--
