@@ -3,7 +3,10 @@
 ![PyPI Version](https://img.shields.io/pypi/v/opentripplan)
 ![License](https://img.shields.io/pypi/l/opentripplan)
 
-[//]: # (![Python Versions](https://img.shields.io/pypi/pyversions/opentripplan), ![Build Status](https://img.shields.io/github/actions/workflow/status/kleag/opentripplan/ci.yml))
+<!--
+![Python Versions](https://img.shields.io/pypi/pyversions/opentripplan)
+![Build Status](https://img.shields.io/github/actions/workflow/status/kleag/opentripplan/ci.yml)
+-->
 
 ## Description
 
