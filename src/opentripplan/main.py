@@ -2,13 +2,15 @@ import folium
 import io
 import json
 import logging
+import nc_py_api
 import os
 import sys
 
-from PySide6.QtCore import QUrl, QObject, Signal, Slot
+from PySide6.QtCore import QSettings, QUrl, QObject, Signal, Slot
 from PySide6.QtGui import QAction, QDoubleValidator, QKeySequence
 from PySide6.QtWidgets import (
     QApplication,
+    QDialog,
     QFileDialog,
     QHBoxLayout,
     QLineEdit,
@@ -32,10 +34,14 @@ try:
     from .journey import Journey
     from .location import Location
     from .search_popup import SearchPopup
+    from .config import ConfigDialog
+    from .nextcloud_with_api import NextcloudFilePicker
 except ImportError:
     from journey import Journey
     from location import Location
     from search_popup import SearchPopup
+    from config import ConfigDialog
+    from nextcloud_with_api import NextcloudFilePicker
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.DEBUG)
@@ -63,6 +69,9 @@ class MapViewPage(QWebEnginePage):
 class MapApp(QMainWindow):
     def __init__(self):
         super().__init__()
+        # QSettings initialization
+        self.settings = QSettings("Kleag", "OpenTripPlan")
+
         self.channel = QWebChannel()
         self.marker_handler = MarkerHandler()
         self.channel.registerObject("markerHandler", self.marker_handler)
@@ -78,6 +87,7 @@ class MapApp(QMainWindow):
 
         self.current_file = None
         self.locations = Journey()
+        self.nc = None
 
         self.initUI()
         self.createMenu()
@@ -362,6 +372,10 @@ class MapApp(QMainWindow):
         load_action.setShortcut(QKeySequence("Ctrl+O"))
         load_action.triggered.connect(self.load_file)
 
+        load_nc_action = QAction("Open Nextcloud…", self)
+        load_nc_action.setShortcut(QKeySequence("Ctrl+Alt+O"))
+        load_nc_action.triggered.connect(self.load_nc_file)
+
         save_action = QAction("Save", self)
         save_action.setShortcut(QKeySequence("Ctrl+S"))
         save_action.triggered.connect(self.save_file)
@@ -370,16 +384,36 @@ class MapApp(QMainWindow):
         save_as_action.setShortcut(QKeySequence("Ctrl+Shift+S"))
         save_as_action.triggered.connect(self.save_file_as)
 
+        save_as_nc_action = QAction("Save As Nextcloud…", self)
+        save_as_nc_action.setShortcut(QKeySequence("Ctrl+Alt+S"))
+        save_as_nc_action.triggered.connect(self.save_file_as_nc)
+
         quit_action = QAction("Quit", self)
         quit_action.setShortcut(QKeySequence("Ctrl+Q"))
         quit_action.triggered.connect(self.close)
 
         file_menu.addAction(new_action)
+        file_menu.addSeparator()
         file_menu.addAction(load_action)
+        file_menu.addAction(load_nc_action)
+        file_menu.addSeparator()
         file_menu.addAction(save_action)
         file_menu.addAction(save_as_action)
+        file_menu.addAction(save_as_nc_action)
         file_menu.addSeparator()
         file_menu.addAction(quit_action)
+
+        config_menu = menu_bar.addMenu("Settings")
+
+        # Configuration action
+        config_action = QAction("Configure OpenTripPlan", self)
+        config_action.triggered.connect(self.open_config_dialog)
+        config_menu.addAction(config_action)
+
+    def open_config_dialog(self):
+        """Open the configuration dialog"""
+        dialog = ConfigDialog(self.settings, self)
+        dialog.exec()
 
     def new(self):
         self.current_file = None
@@ -407,9 +441,43 @@ class MapApp(QMainWindow):
                                      "Error",
                                      f"Failed to load file: {str(e)}")
 
+    def load_nc_file(self):
+        if self.nc is None:
+            base_url = self.settings.value("nextcloud/url", "")
+            username = self.settings.value("nextcloud/username", "")
+            password = self.settings.value("nextcloud/password", "")
+            self.nc = nc_py_api.Nextcloud(nextcloud_url=base_url,
+                                          nc_auth_user=username,
+                                          nc_auth_pass=password)
+        file_picker = NextcloudFilePicker(self.nc, self)
+        if file_picker.exec() == QDialog.DialogCode.Accepted:
+            selected_file = file_picker.get_selected_file()
+            if selected_file:
+                logger.info(f"MapApp.load_nc_file got {selected_file}")
+                local_path = os.path.join(os.getcwd(),
+                                          os.path.basename(selected_file))
+                json_bytes = self.nc.files.download(selected_file)
+                # Convert bytes to a string
+                json_str = json_bytes.decode('utf-8')
+
+                # Parse JSON string into a Python object (dictionary in this case)
+                locations = json.loads(json_str)
+
+                # Complete missing data
+                self.locations = Journey([Location.from_data(loc) for loc in locations])
+                self.current_file = f"nc:{selected_file}"
+                self.update_list()
+                self.update_map()
+
     def save_file(self):
         if not self.current_file:
             self.save_file_as()
+        elif self.current_file.startswith("nc:"):
+            remote_path = self.current_file.split(":", 1)[1]
+            locations = [loc.to_dict() for loc in self.locations]
+            data = json.dumps(locations, indent=4)
+            self.nc.files.upload(remote_path, data)
+
         else:
             self.write_to_file(self.current_file)
 
@@ -421,6 +489,10 @@ class MapApp(QMainWindow):
         if file_name:
             self.current_file = file_name
             self.write_to_file(file_name)
+
+    def save_file_as_nc(self):
+        logger.error(f"MapApp.save_file_as_nc NOT IMPLEMENTED")
+        pass
 
     def write_to_file(self, file_name):
         try:
