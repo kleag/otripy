@@ -1,5 +1,4 @@
 from typing import List, Iterator
-from location import Location  # Assuming Location is defined in location.py
 
 try:
     from .location import Location

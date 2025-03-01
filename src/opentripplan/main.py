@@ -30,6 +30,7 @@ from branca.element import Element
 from folium.elements import *
 from geopy.geocoders import Nominatim
 from pathlib import Path
+
 try:
     from .journey import Journey
     from .location import Location

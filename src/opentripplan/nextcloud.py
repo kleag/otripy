@@ -16,8 +16,6 @@ logging.root.setLevel(logging.DEBUG)
 
 class NextcloudWebDAV:
     def __init__(self, base_url, username, password):
-        # cn=gael,ou=users,dc=myrga,dc=nsupdate,dc=info
-        # 73803212-9023-1037-8d45-ed185e33f3ef
         uuid = self.get_user_uuid(base_url, username, password)
         self.uuid = uuid
         self.base_url = f"{base_url}/remote.php/dav/files/{uuid}"
