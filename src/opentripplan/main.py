@@ -7,7 +7,7 @@ import os
 import sys
 
 from PySide6.QtCore import QSettings, QUrl, QObject, Signal, Slot
-from PySide6.QtGui import QAction, QDoubleValidator, QKeySequence, QTextCursor
+from PySide6.QtGui import QAction, QDoubleValidator, QKeySequence, QTextCursor, QFont, QTextCharFormat, QTextFormat
 from PySide6.QtWidgets import (
     QApplication,
     QDialog,
@@ -40,6 +40,7 @@ try:
     from .nextcloud_with_api import NextcloudFilePicker
     from .rename_popup import RenamePopup
     from .toolbar import ToolBar
+    from .note_widget import NoteWidget
 except ImportError:
     from journey import Journey
     from location import Location
@@ -48,6 +49,7 @@ except ImportError:
     from nextcloud_with_api import NextcloudFilePicker
     from rename_popup import RenamePopup
     from toolbar import ToolBar
+    from note_widget import NoteWidget
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.DEBUG)
@@ -149,10 +151,11 @@ class MapApp(QMainWindow):
         btn_layout.addWidget(self.lat_input)
         btn_layout.addWidget(self.lon_input)
 
-        self.note_input = QTextEdit(self)
+        self.note_input = NoteWidget(self)
         self.note_input.setMaximumHeight(200)
         self.note_input.setPlaceholderText("Enter Note")
         self.note_input.textChanged.connect(self.note_changed)
+        self.note_input.setAutoFormatting(QTextEdit.AutoFormatting.AutoAll)
         # self.add_button = QPushButton("Save Location", self)
         # self.add_button.clicked.connect(self.add_location)
 
@@ -406,50 +409,32 @@ class MapApp(QMainWindow):
 
     def action_text_h(self, level: int):
         cursor = self.note_input.textCursor()
-        cursor_position = cursor.position()
-        logger.debug(f"action_text_h {level}, {cursor_position}")
-
-        # Get full markdown text
-        markdown_text = self.note_input.toMarkdown()
-        markdown_text_lines = markdown_text.split("\n")
-        logger.debug(f"action_text_h {markdown_text_lines}")
-
-        # # text_lines = self.note_input.toPlainText().split('\n')
-        # # logger.debug(f"action_text_h {text_lines}")
-
-        current_position = 0
-        ln = len(markdown_text_lines) - 1
-        for line_number, line in enumerate(markdown_text_lines):
-            current_position += len(line) + 1  # Account for newline character
-            if cursor_position+1 < current_position:
-                ln = line_number  # 1-based line number
-                break
-        logger.debug(f"action_text_h ln: {ln}")
-
-        markdown_line = markdown_text_lines[ln]
-
-        if not markdown_line:
-            return  # Do nothing if the line is empty
+        # cursor.beginEditBlock()
+        blockFormat = cursor.blockFormat()
 
         # Ensure level is between 1 and 6
         level = max(1, min(level, 6))
+        logger.debug(f"action_text_h new level: {level}")
 
-        current_level = len(markdown_line) - len(markdown_line.lstrip('#'))
-        header = '#' * level
+        current_level = blockFormat.headingLevel()
+        logger.debug(f"action_text_h cur level: {current_level}")
 
-        if current_level == level:
-            markdown_line = markdown_line[level+1:]
-        elif current_level > 0:
-            markdown_line[current_level+1:] = header
-        else:
-            markdown_line = f"{'#' * level} {markdown_line}"
+        level = 0 if current_level == level else level
+        blockFormat.setHeadingLevel(level)
 
-        markdown_text_lines[ln] = markdown_line
-        markdown_text = "\n".join(markdown_text_lines)
-        logger.debug(f"action_text_h new: {markdown_text}")
+        cursor.setBlockFormat(blockFormat)
+        self.note_input.setTextCursor(cursor)
+        self.note_input.repaint()
+        self.note_input.update()
 
-        # Update QTextEdit
-        self.note_input.setMarkdown(markdown_text)
+        # H1 to H6: +3 to -2
+        size_adjustment = 4 - level if level != 0 else 0
+        fmt = QTextCharFormat()
+        fmt.setFontWeight(QFont.Bold if level else QFont.Normal)
+        fmt.setProperty(QTextFormat.FontSizeAdjustment, size_adjustment)
+        cursor.select(QTextCursor.LineUnderCursor)
+        cursor.mergeCharFormat(fmt)
+        self.note_input.mergeCurrentCharFormat(fmt)
 
     def action_text_bold(self):
         cursor = self.note_input.textCursor()
@@ -457,28 +442,15 @@ class MapApp(QMainWindow):
         if not cursor.hasSelection():
             return  # Do nothing if there's no selected text
 
-        selected_text = cursor.selectedText()
-        markdown_text = self.note_input.toMarkdown()  # Get the full markdown text
-
-        # Find the selected text position in the markdown
-        start = cursor.selectionStart()
-        end = cursor.selectionEnd()
-
-        # Extract the relevant portion of the markdown text
-        before = markdown_text[:start]
-        after = markdown_text[end:]
-
-        # Check if text is already bold (wrapped in ** or __)
-        if selected_text.startswith("**") and selected_text.endswith("**"):
-            new_text = selected_text[2:-2]  # Remove surrounding **
-        elif selected_text.startswith("__") and selected_text.endswith("__"):
-            new_text = selected_text[2:-2]  # Remove surrounding __
+        char_format = cursor.charFormat()
+        if char_format.fontWeight() == QFont.Bold:
+            # If text is already bold, remove the bold
+            char_format.setFontWeight(QFont.Normal)
         else:
-            new_text = f"**{selected_text}**"  # Wrap in markdown bold
-
-        # Replace the selection with the new text
-        new_markdown_text = before + new_text + after
-        self.note_input.setMarkdown(new_markdown_text)  # Update the QTextEdit
+            # If text is not bold, make it bold
+            char_format.setFontWeight(QFont.Bold)
+        cursor.mergeCharFormat(char_format)
+        self.note_input.setTextCursor(cursor)
 
     def action_text_italic(self):
         cursor = self.note_input.textCursor()
@@ -486,28 +458,10 @@ class MapApp(QMainWindow):
         if not cursor.hasSelection():
             return  # Do nothing if there's no selected text
 
-        selected_text = cursor.selectedText()
-        markdown_text = self.note_input.toMarkdown()  # Get the full markdown text
-
-        # Find the selected text position in the markdown
-        start = cursor.selectionStart()
-        end = cursor.selectionEnd()
-
-        # Extract the relevant portion of the markdown text
-        before = markdown_text[:start]
-        after = markdown_text[end:]
-
-        # Check if text is already bold (wrapped in ** or __)
-        if selected_text.startswith("*") and selected_text.endswith("*"):
-            new_text = selected_text[1:-1]  # Remove surrounding **
-        elif selected_text.startswith("_") and selected_text.endswith("_"):
-            new_text = selected_text[1:-1]  # Remove surrounding __
-        else:
-            new_text = f"*{selected_text}*"  # Wrap in markdown bold
-
-        # Replace the selection with the new text
-        new_markdown_text = before + new_text + after
-        self.note_input.setMarkdown(new_markdown_text)  # Update the QTextEdit
+        char_format = cursor.charFormat()
+        char_format.setFontItalic(not char_format.fontItalic())
+        cursor.mergeCharFormat(char_format)
+        self.note_input.setTextCursor(cursor)
 
     def action_text_underline(self):
         cursor = self.note_input.textCursor()
@@ -515,28 +469,10 @@ class MapApp(QMainWindow):
         if not cursor.hasSelection():
             return  # Do nothing if there's no selected text
 
-        selected_text = cursor.selectedText()
-        markdown_text = self.note_input.toMarkdown()  # Get the full markdown text
-
-        # Find the selected text position in the markdown
-        start = cursor.selectionStart()
-        end = cursor.selectionEnd()
-
-        # Extract the relevant portion of the markdown text
-        before = markdown_text[:start]
-        after = markdown_text[end:]
-
-        # Check if text is already bold (wrapped in ** or __)
-        if selected_text.startswith("**") and selected_text.endswith("**"):
-            new_text = selected_text[2:-2]  # Remove surrounding **
-        elif selected_text.startswith("__") and selected_text.endswith("__"):
-            new_text = selected_text[2:-2]  # Remove surrounding __
-        else:
-            new_text = f"<u>{selected_text}</u>"  # Wrap in markdown bold
-
-        # Replace the selection with the new text
-        new_markdown_text = before + new_text + after
-        self.note_input.setMarkdown(new_markdown_text)  # Update the QTextEdit
+        char_format = cursor.charFormat()
+        char_format.setFontUnderline(not char_format.fontUnderline())
+        cursor.mergeCharFormat(char_format)
+        self.note_input.setTextCursor(cursor)
 
     def action_text_strikethrough(self):
         cursor = self.note_input.textCursor()
@@ -544,28 +480,10 @@ class MapApp(QMainWindow):
         if not cursor.hasSelection():
             return  # Do nothing if there's no selected text
 
-        selected_text = cursor.selectedText()
-        markdown_text = self.note_input.toMarkdown()  # Get the full markdown text
-
-        # Find the selected text position in the markdown
-        start = cursor.selectionStart()
-        end = cursor.selectionEnd()
-
-        # Extract the relevant portion of the markdown text
-        before = markdown_text[:start]
-        after = markdown_text[end:]
-
-        # Check if text is already bold (wrapped in ** or __)
-        if selected_text.startswith("**") and selected_text.endswith("**"):
-            new_text = selected_text[2:-2]  # Remove surrounding **
-        elif selected_text.startswith("__") and selected_text.endswith("__"):
-            new_text = selected_text[2:-2]  # Remove surrounding __
-        else:
-            new_text = f"~~{selected_text}~~"  # Wrap in markdown bold
-
-        # Replace the selection with the new text
-        new_markdown_text = before + new_text + after
-        self.note_input.setMarkdown(new_markdown_text)  # Update the QTextEdit
+        char_format = cursor.charFormat()
+        char_format.setFontStrikeOut(not char_format.fontStrikeOut())
+        cursor.mergeCharFormat(char_format)
+        self.note_input.setTextCursor(cursor)
 
     def get_toolbar_action_by_name(self, name):
         """
