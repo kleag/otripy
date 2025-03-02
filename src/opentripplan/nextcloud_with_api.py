@@ -1,3 +1,4 @@
+import json
 import logging
 import nc_py_api
 import os
@@ -10,10 +11,59 @@ from PySide6.QtWidgets import (QApplication, QMainWindow, QVBoxLayout,
     QMessageBox, QAbstractItemView, QWidget)
 from PySide6.QtGui import QStandardItemModel, QStandardItem
 
+try:
+    from .journey import Journey
+    from .location import Location
+except ImportError:
+    from journey import Journey
+    from location import Location
+
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.DEBUG)
 logging.root.setLevel(logging.DEBUG)
 
+
+class NextcloudClient:
+    def __init__(self):
+        self.settings = QSettings("Kleag", "OpenTripPlan")
+        base_url = self.settings.value("nextcloud/url", "")
+        username = self.settings.value("nextcloud/username", "")
+        password = self.settings.value("nextcloud/password", "")
+        if not base_url or not username or not password:
+            raise RuntimeError(
+                f"Please set Nextcloud data in settings before connecting.")
+        try:
+            self.nc = nc_py_api.Nextcloud(nextcloud_url=base_url,
+                                          nc_auth_user=username,
+                                          nc_auth_pass=password)
+            logger.debug(f"nc capabilities: {self.nc.capabilities}")
+        except nc_py_api.NextcloudException as e:
+            raise RuntimeError(f"Error connecting to Nextcloud:\n\n{e}")
+
+    def download(self, selected_file: str) -> tuple[nc_py_api.FsNode, bytes]:
+        node = self.nc.files.by_path(selected_file)
+        json_bytes = self.nc.files.download(selected_file)
+        return node, json_bytes
+
+
+    def save(self, journey: Journey, current_file: nc_py_api.FsNode):
+        locations = [loc.to_dict() for loc in journey]
+        data = json.dumps(locations, indent=4)
+        file_id  = current_file.file_id
+        current_remote_node = self.nc.files.by_id(file_id)
+        if current_remote_node.etag != current_file.etag:
+            popup = RenamePopup(None, current_file.user_path)
+            if popup.exec():
+                new_name = popup.line_edit.text().strip()
+
+                #  by_path will raise an exception if the file does not already exist as we wan
+                try:
+                    self.nc.files.by_path(new_name)
+                    raise RuntimeError(f"File {new_name} already exist. Abort.")
+                except nc_py_api.NextcloudException as e:
+                    return self.nc.files.upload(new_name, data)
+            else:
+                return None
 
 class NextcloudFilePicker(QDialog):
     def __init__(self, nextcloud, parent=None):

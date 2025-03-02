@@ -7,7 +7,7 @@ import os
 import sys
 
 from PySide6.QtCore import QSettings, QUrl, QObject, Signal, Slot
-from PySide6.QtGui import QAction, QDoubleValidator, QKeySequence
+from PySide6.QtGui import QAction, QDoubleValidator, QKeySequence, QTextCursor
 from PySide6.QtWidgets import (
     QApplication,
     QDialog,
@@ -30,6 +30,7 @@ from branca.element import Element
 from folium.elements import *
 from geopy.geocoders import Nominatim
 from pathlib import Path
+from typing import TYPE_CHECKING, Dict, List, Any
 
 try:
     from .journey import Journey
@@ -37,8 +38,8 @@ try:
     from .search_popup import SearchPopup
     from .config import ConfigDialog
     from .nextcloud_with_api import NextcloudFilePicker
-    from .nextcloud_with_api import NextcloudFilePicker
     from .rename_popup import RenamePopup
+    from .toolbar import ToolBar
 except ImportError:
     from journey import Journey
     from location import Location
@@ -46,6 +47,7 @@ except ImportError:
     from config import ConfigDialog
     from nextcloud_with_api import NextcloudFilePicker
     from rename_popup import RenamePopup
+    from toolbar import ToolBar
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.DEBUG)
@@ -157,10 +159,12 @@ class MapApp(QMainWindow):
         self.del_btn = QPushButton("Delete Location")
         self.del_btn.clicked.connect(self.delete_item)
 
+        self.create_icons_toolbar()
         ctrl_layout = QVBoxLayout()
         ctrl_layout.addLayout(search_layout)
         ctrl_layout.addWidget(self.map_view)
         ctrl_layout.addLayout(btn_layout)
+        ctrl_layout.addWidget(self.toolbar)
         ctrl_layout.addWidget(self.note_input)
         # ctrl_layout.addWidget(self.add_button)
 
@@ -178,6 +182,418 @@ class MapApp(QMainWindow):
 
         central_widget.setLayout(layout)
 
+    def createMenu(self):
+        menu_bar = self.menuBar()
+        file_menu = menu_bar.addMenu("File")
+
+        new_action = QAction("New", self)
+        new_action.setShortcut(QKeySequence("Ctrl+N"))
+        new_action.triggered.connect(self.new)
+
+        load_action = QAction("Open…", self)
+        load_action.setShortcut(QKeySequence("Ctrl+O"))
+        load_action.triggered.connect(self.load_file)
+
+        load_nc_action = QAction("Open Nextcloud…", self)
+        load_nc_action.setShortcut(QKeySequence("Ctrl+Alt+O"))
+        load_nc_action.triggered.connect(self.load_nc_file)
+
+        save_action = QAction("Save", self)
+        save_action.setShortcut(QKeySequence("Ctrl+S"))
+        save_action.triggered.connect(self.save_file)
+
+        save_as_action = QAction("Save As…", self)
+        save_as_action.setShortcut(QKeySequence("Ctrl+Shift+S"))
+        save_as_action.triggered.connect(self.save_file_as)
+
+        save_as_nc_action = QAction("Save As Nextcloud…", self)
+        save_as_nc_action.setShortcut(QKeySequence("Ctrl+Alt+S"))
+        save_as_nc_action.triggered.connect(self.save_file_as_nc)
+
+        quit_action = QAction("Quit", self)
+        quit_action.setShortcut(QKeySequence("Ctrl+Q"))
+        quit_action.triggered.connect(self.close)
+
+        file_menu.addAction(new_action)
+        file_menu.addSeparator()
+        file_menu.addAction(load_action)
+        file_menu.addAction(load_nc_action)
+        file_menu.addSeparator()
+        file_menu.addAction(save_action)
+        file_menu.addAction(save_as_action)
+        file_menu.addAction(save_as_nc_action)
+        file_menu.addSeparator()
+        file_menu.addAction(quit_action)
+
+        config_menu = menu_bar.addMenu("Settings")
+
+        # Configuration action
+        config_action = QAction("Configure OpenTripPlan", self)
+        config_action.triggered.connect(self.open_config_dialog)
+        config_menu.addAction(config_action)
+
+    def get_toolbar_actions(self) -> List[Dict[str, Any]]:
+        """
+        Main toolbar items map for convenience.
+        """
+        return [
+            # {'type': 'action', 'weight': 1, 'name': 'toolbar_actions_label_new_document', 'system_icon': 'document-new',
+            #  'theme_icon': 'file-earmark-plus-fill.svg', 'color': self.theme_helper.get_color('toolbar_icon_color_new'),
+            #  'label': self.lexemes.get('actions_label_new_document', scope='toolbar'),
+            #  'accessible_name': self.lexemes.get('actions_accessible_name_new_document', scope='toolbar'),
+            #  'action': self.action_new_file},
+            # {'type': 'action', 'weight': 2, 'name': 'toolbar_actions_label_open', 'system_icon': 'document-open',
+            #  'theme_icon': 'folder-fill.svg', 'color': self.theme_helper.get_color('toolbar_icon_color_open'),
+            #  'label': self.lexemes.get('actions_label_open', scope='toolbar'),
+            #  'accessible_name': self.lexemes.get('actions_accessible_name_open', scope='toolbar'),
+            #  'action': self.action_open_file},
+            # {'type': 'action', 'weight': 3, 'name': 'toolbar_actions_label_save', 'system_icon': 'media-floppy',
+            #  'theme_icon': 'floppy2-fill.svg', 'color': self.theme_helper.get_color('toolbar_icon_color_save'),
+            #  'label': self.lexemes.get('actions_label_save', scope='toolbar'),
+            #  'accessible_name': self.lexemes.get('actions_accessible_name_save', scope='toolbar'),
+            #  'action': self.action_save_file, 'var_name': 'toolbar_save_button', 'switched_off_check': lambda: True},
+            # {'type': 'delimiter'},
+            # {'type': 'action', 'weight': 4, 'name': 'toolbar_actions_label_edit',
+            #  'system_icon': 'accessories-text-editor', 'theme_icon': 'pencil-square.svg',
+            #  'color': self.theme_helper.get_color('toolbar_icon_color_edit'),
+            #  'label': self.lexemes.get('actions_label_edit', scope='toolbar'),
+            #  'accessible_name': self.lexemes.get('actions_accessible_name_edit', scope='toolbar'),
+            #  'action': self.action_edit_file, 'var_name': 'toolbar_edit_button',
+            #  'active_state_check': lambda: self.get_mode() != Mode.EDIT},
+            # # Active Edit Mode icon
+            # {'type': 'action', 'weight': 4, 'name': 'toolbar_actions_label_edit_act',
+            #  'system_icon': 'accessories-text-editor', 'theme_icon': 'pencil-square.svg',
+            #  'color': self.theme_helper.get_color('toolbar_icon_color_edit_act'),
+            #  'label': self.lexemes.get('actions_label_edit', scope='toolbar'),
+            #  'accessible_name': self.lexemes.get('actions_accessible_name_edit', scope='toolbar'),
+            #  'action': self.action_edit_file, 'active_state_check': lambda: self.get_mode() == Mode.EDIT},
+            # {'type': 'action', 'weight': 5, 'name': 'toolbar_actions_label_source', 'system_icon': 'edit-find',
+            #  'theme_icon': 'code-slash.svg', 'color': self.theme_helper.get_color('toolbar_icon_color_source'),
+            #  'label': self.lexemes.get('actions_label_source', scope='toolbar'),
+            #  'accessible_name': self.lexemes.get('actions_accessible_name_source', scope='toolbar'),
+            #  'action': self.action_source,
+            #  'active_state_check': lambda: self.get_mode() != Mode.SOURCE},
+            # # Active Source Mode icon
+            # {'type': 'action', 'weight': 5, 'name': 'toolbar_actions_label_source_act', 'system_icon': 'edit-find',
+            #  'theme_icon': 'code-slash.svg', 'color': self.theme_helper.get_color('toolbar_icon_color_source_act'),
+            #  'label': self.lexemes.get('actions_label_source', scope='toolbar'),
+            #  'accessible_name': self.lexemes.get('actions_accessible_name_source', scope='toolbar'),
+            #  'action': self.action_source,
+            #  'active_state_check': lambda: self.get_mode() == Mode.SOURCE},
+            # {'type': 'action', 'weight': 6, 'name': 'toolbar_actions_label_encrypt', 'system_icon': 'security-low',
+            #  'theme_icon': 'shield-lock.svg', 'color': self.theme_helper.get_color('toolbar_icon_color_encrypt'),
+            #  'label': self.lexemes.get('actions_label_encrypt', scope='toolbar'),
+            #  'accessible_name': self.lexemes.get('actions_accessible_name_encrypt', scope='toolbar'),
+            #  'action': self.action_encrypt,
+            #  'active_state_check': lambda: self.get_encryption() != Encryption.ENCRYPTED},
+            # # Active Encryption icon
+            # {'type': 'action', 'weight': 6, 'name': 'toolbar_actions_label_decrypt', 'system_icon': 'security-medium',
+            #  'theme_icon': 'shield-lock-fill.svg', 'color': self.theme_helper.get_color('toolbar_icon_color_decrypt'),
+            #  'label': self.lexemes.get('actions_label_decrypt', scope='toolbar'),
+            #  'accessible_name': self.lexemes.get('actions_accessible_name_decrypt', scope='toolbar'),
+            #  'action': self.action_decrypt,
+            #  'active_state_check': lambda: self.get_encryption() == Encryption.ENCRYPTED},
+            # {'type': 'delimiter'},
+            # # Text format
+            {'type': 'action', 'weight': 7, 'name': 'toolbar_toolbar_icon_header1',
+             'text_icon': 'h1',
+             'color': 'red',
+             'label': 'Header1',
+             'accessible_name': 'h1',
+             'action': self.action_text_h1,
+             'switched_off_check': lambda: False},
+            {'type': 'action', 'weight': 7, 'name': 'toolbar_toolbar_icon_header2',
+             'text_icon': 'h2',
+             'color': 'red',
+             'label': 'Header2',
+             'accessible_name': 'h2',
+             'action': self.action_text_h2,
+             'switched_off_check': lambda: False},
+            {'type': 'action', 'weight': 7, 'name': 'toolbar_toolbar_icon_header3',
+             'text_icon': 'h3',
+             'color': 'red',
+             'label': 'Header3',
+             'accessible_name': 'h3',
+             'action': self.action_text_h3,
+             'switched_off_check': lambda: False},
+            {'type': 'action', 'weight': 7, 'name': 'toolbar_toolbar_icon_color_bold',
+             'system_icon': 'format-text-bold', 'theme_icon': 'type-bold.svg',
+             'color': 'red',
+             'label': 'Bold',
+             'accessible_name': 'bold',
+             'action': self.action_text_bold,
+             'switched_off_check': lambda: False},
+            {'type': 'action', 'weight': 8, 'name': 'toolbar_actions_label_italic',
+             'system_icon': 'format-text-italic', 'theme_icon': 'type-italic.svg',
+             'color': 'red',
+             'label': 'Italic',
+             'accessible_name': 'italic',
+             'action': self.action_text_italic,
+             'switched_off_check': lambda: False},
+            {'type': 'action', 'weight': 9, 'name': 'toolbar_actions_label_underline',
+             'system_icon': 'format-text-underline', 'theme_icon': 'type-underline.svg',
+             'color': 'red',
+             'label': 'Underline',
+             'accessible_name': 'underline',
+             'action': self.action_text_underline,
+             'switched_off_check': lambda: False},
+            {'type': 'action', 'weight': 10, 'name': 'toolbar_actions_label_strikethrough',
+             'system_icon': 'format-text-strikethrough', 'theme_icon': 'type-strikethrough.svg',
+             'color': 'red',
+             'label': 'Strikethrough',
+             'accessible_name': 'strikethrough',
+             'action': self.action_text_strikethrough,
+             'switched_off_check': lambda: False},
+            # {'type': 'action', 'weight': 11, 'name': 'toolbar_actions_label_blockquote',
+            #  'system_icon': 'format-text-blockquote', 'theme_icon': 'quote.svg',
+            #  'color': self.theme_helper.get_color('toolbar_icon_color_blockquote'),
+            #  'label': self.lexemes.get('actions_label_blockquote', scope='toolbar'),
+            #  'accessible_name': self.lexemes.get('actions_accessible_name_blockquote', scope='toolbar'),
+            #  'action': self.action_text_blockquote, 'switched_off_check': lambda: self.get_mode() != Mode.EDIT},
+            # {'type': 'delimiter'},
+            # {'type': 'action', 'weight': 12, 'name': 'toolbar_actions_label_ai_assistant',
+            #  'theme_icon': 'robot.svg', 'color': self.theme_helper.get_color('toolbar_icon_color_ai_assistant'),
+            #  'label': self.lexemes.get('actions_label_ai_assistant', scope='toolbar'),
+            #  'accessible_name': self.lexemes.get('actions_accessible_name_ai_assistant', scope='toolbar'),
+            #  'action': self.action_ai_assistant,
+            #  'active_state_check': lambda: not hasattr(self, 'ai_assistant') or not self.ai_assistant},
+            # # Active AI Assistant icon
+            # {'type': 'action', 'weight': 12, 'name': 'toolbar_actions_label_ai_assistant_act',
+            #  'theme_icon': 'robot.svg', 'color': self.theme_helper.get_color('toolbar_icon_color_ai_assistant_act'),
+            #  'label': self.lexemes.get('actions_label_ai_assistant', scope='toolbar'),
+            #  'accessible_name': self.lexemes.get('actions_accessible_name_ai_assistant', scope='toolbar'),
+            #  'action': self.action_ai_assistant,  # Bring to foreground if active
+            #  'active_state_check': lambda: hasattr(self, 'ai_assistant') and self.ai_assistant},
+            # {'type': 'action', 'weight': 13, 'name': 'toolbar_actions_label_color', 'theme_icon': 'eyedropper.svg',
+            #  'color': self.theme_helper.get_color('toolbar_icon_color_color_picker'),
+            #  'label': self.lexemes.get('actions_label_color_picker', scope='toolbar'),
+            #  'accessible_name': self.lexemes.get('actions_accessible_name_color_picker', scope='toolbar'),
+            #  'action': self.action_text_color_picker,
+            #  'active_state_check': lambda: not hasattr(self, 'color_picker') or not self.color_picker},
+            # # Active Color Picker icon
+            # {'type': 'action', 'weight': 13, 'name': 'toolbar_actions_label_color_act', 'theme_icon': 'eyedropper.svg',
+            #  'color': self.theme_helper.get_color('toolbar_icon_color_color_picker_act'),
+            #  'label': self.lexemes.get('actions_label_color_picker', scope='toolbar'),
+            #  'accessible_name': self.lexemes.get('actions_accessible_name_color_picker', scope='toolbar'),
+            #  'action': None,
+            #  'active_state_check': lambda: hasattr(self, 'color_picker') and self.color_picker},
+            # {'type': 'delimiter'},
+            # {'type': 'action', 'weight': 14, 'name': 'toolbar_actions_label_about',
+            #  'theme_icon': 'balloon-fill.svg', 'color': self.theme_helper.get_color('toolbar_icon_color_about'),
+            #  'label': self.lexemes.get('actions_label_about', scope='toolbar'),
+            #  'accessible_name': self.lexemes.get('actions_accessible_name_about', scope='toolbar'),
+            #  'action': self.action_about},
+            # {'type': 'action', 'weight': 15, 'name': 'toolbar_actions_label_exit',
+            #  'theme_icon': 'power.svg', 'color': self.theme_helper.get_color('toolbar_icon_color_exit'),
+            #  'label': self.lexemes.get('actions_label_exit', scope='toolbar'),
+            #  'accessible_name': self.lexemes.get('actions_accessible_name_exit', scope='toolbar'),
+            #  'action': self.action_exit},
+            # {'type': 'action', 'weight': 16, 'name': 'toolbar_actions_label_settings',
+            #  'theme_icon': 'three-dots.svg', 'color': self.theme_helper.get_color('toolbar_icon_color_settings'),
+            #  'label': self.lexemes.get('actions_label_settings', scope='toolbar'),
+            #  'accessible_name': self.lexemes.get('actions_accessible_name_settings', scope='toolbar'),
+            #  'action': self.action_settings},
+        ]
+
+    def action_text_h1(self):
+        self.action_text_h(1)
+
+    def action_text_h2(self):
+        self.action_text_h(2)
+
+    def action_text_h3(self):
+        self.action_text_h(3)
+
+    def action_text_h(self, level: int):
+        cursor = self.note_input.textCursor()
+        cursor_position = cursor.position()
+        logger.debug(f"action_text_h {level}, {cursor_position}")
+
+        # Get full markdown text
+        markdown_text = self.note_input.toMarkdown()
+        markdown_text_lines = markdown_text.split("\n")
+        logger.debug(f"action_text_h {markdown_text_lines}")
+
+        # # text_lines = self.note_input.toPlainText().split('\n')
+        # # logger.debug(f"action_text_h {text_lines}")
+
+        current_position = 0
+        ln = len(markdown_text_lines) - 1
+        for line_number, line in enumerate(markdown_text_lines):
+            current_position += len(line) + 1  # Account for newline character
+            if cursor_position+1 < current_position:
+                ln = line_number  # 1-based line number
+                break
+        logger.debug(f"action_text_h ln: {ln}")
+
+        markdown_line = markdown_text_lines[ln]
+
+        if not markdown_line:
+            return  # Do nothing if the line is empty
+
+        # Ensure level is between 1 and 6
+        level = max(1, min(level, 6))
+
+        current_level = len(markdown_line) - len(markdown_line.lstrip('#'))
+        header = '#' * level
+
+        if current_level == level:
+            markdown_line = markdown_line[level+1:]
+        elif current_level > 0:
+            markdown_line[current_level+1:] = header
+        else:
+            markdown_line = f"{'#' * level} {markdown_line}"
+
+        markdown_text_lines[ln] = markdown_line
+        markdown_text = "\n".join(markdown_text_lines)
+        logger.debug(f"action_text_h new: {markdown_text}")
+
+        # Update QTextEdit
+        self.note_input.setMarkdown(markdown_text)
+
+    def action_text_bold(self):
+        cursor = self.note_input.textCursor()
+
+        if not cursor.hasSelection():
+            return  # Do nothing if there's no selected text
+
+        selected_text = cursor.selectedText()
+        markdown_text = self.note_input.toMarkdown()  # Get the full markdown text
+
+        # Find the selected text position in the markdown
+        start = cursor.selectionStart()
+        end = cursor.selectionEnd()
+
+        # Extract the relevant portion of the markdown text
+        before = markdown_text[:start]
+        after = markdown_text[end:]
+
+        # Check if text is already bold (wrapped in ** or __)
+        if selected_text.startswith("**") and selected_text.endswith("**"):
+            new_text = selected_text[2:-2]  # Remove surrounding **
+        elif selected_text.startswith("__") and selected_text.endswith("__"):
+            new_text = selected_text[2:-2]  # Remove surrounding __
+        else:
+            new_text = f"**{selected_text}**"  # Wrap in markdown bold
+
+        # Replace the selection with the new text
+        new_markdown_text = before + new_text + after
+        self.note_input.setMarkdown(new_markdown_text)  # Update the QTextEdit
+
+    def action_text_italic(self):
+        cursor = self.note_input.textCursor()
+
+        if not cursor.hasSelection():
+            return  # Do nothing if there's no selected text
+
+        selected_text = cursor.selectedText()
+        markdown_text = self.note_input.toMarkdown()  # Get the full markdown text
+
+        # Find the selected text position in the markdown
+        start = cursor.selectionStart()
+        end = cursor.selectionEnd()
+
+        # Extract the relevant portion of the markdown text
+        before = markdown_text[:start]
+        after = markdown_text[end:]
+
+        # Check if text is already bold (wrapped in ** or __)
+        if selected_text.startswith("*") and selected_text.endswith("*"):
+            new_text = selected_text[1:-1]  # Remove surrounding **
+        elif selected_text.startswith("_") and selected_text.endswith("_"):
+            new_text = selected_text[1:-1]  # Remove surrounding __
+        else:
+            new_text = f"*{selected_text}*"  # Wrap in markdown bold
+
+        # Replace the selection with the new text
+        new_markdown_text = before + new_text + after
+        self.note_input.setMarkdown(new_markdown_text)  # Update the QTextEdit
+
+    def action_text_underline(self):
+        cursor = self.note_input.textCursor()
+
+        if not cursor.hasSelection():
+            return  # Do nothing if there's no selected text
+
+        selected_text = cursor.selectedText()
+        markdown_text = self.note_input.toMarkdown()  # Get the full markdown text
+
+        # Find the selected text position in the markdown
+        start = cursor.selectionStart()
+        end = cursor.selectionEnd()
+
+        # Extract the relevant portion of the markdown text
+        before = markdown_text[:start]
+        after = markdown_text[end:]
+
+        # Check if text is already bold (wrapped in ** or __)
+        if selected_text.startswith("**") and selected_text.endswith("**"):
+            new_text = selected_text[2:-2]  # Remove surrounding **
+        elif selected_text.startswith("__") and selected_text.endswith("__"):
+            new_text = selected_text[2:-2]  # Remove surrounding __
+        else:
+            new_text = f"<u>{selected_text}</u>"  # Wrap in markdown bold
+
+        # Replace the selection with the new text
+        new_markdown_text = before + new_text + after
+        self.note_input.setMarkdown(new_markdown_text)  # Update the QTextEdit
+
+    def action_text_strikethrough(self):
+        cursor = self.note_input.textCursor()
+
+        if not cursor.hasSelection():
+            return  # Do nothing if there's no selected text
+
+        selected_text = cursor.selectedText()
+        markdown_text = self.note_input.toMarkdown()  # Get the full markdown text
+
+        # Find the selected text position in the markdown
+        start = cursor.selectionStart()
+        end = cursor.selectionEnd()
+
+        # Extract the relevant portion of the markdown text
+        before = markdown_text[:start]
+        after = markdown_text[end:]
+
+        # Check if text is already bold (wrapped in ** or __)
+        if selected_text.startswith("**") and selected_text.endswith("**"):
+            new_text = selected_text[2:-2]  # Remove surrounding **
+        elif selected_text.startswith("__") and selected_text.endswith("__"):
+            new_text = selected_text[2:-2]  # Remove surrounding __
+        else:
+            new_text = f"~~{selected_text}~~"  # Wrap in markdown bold
+
+        # Replace the selection with the new text
+        new_markdown_text = before + new_text + after
+        self.note_input.setMarkdown(new_markdown_text)  # Update the QTextEdit
+
+    def get_toolbar_action_by_name(self, name):
+        """
+        Get particular action config by name.
+        """
+        for action in self.get_toolbar_actions():
+            if 'name' in action and action['name'] == name:
+                return action
+
+    def create_icons_toolbar(self, refresh: bool = False) -> ToolBar:
+        """
+        Main toolbar with icons.
+        """
+        if refresh and hasattr(self, 'toolbar'):
+            self.removeToolBar(self.toolbar)
+        """
+        Or Toolbar element:
+        toolbar = self.addToolBar("Toolbar")
+        """
+        self.toolbar = ToolBar(
+            parent=self,
+            actions=self.get_toolbar_actions(),
+            refresh=lambda: self.create_icons_toolbar(refresh=True)  # Action to call if refresh needed
+        )
+
+        return self.toolbar
+        # self.addToolBar(self.toolbar)
+
     @Slot(dict)
     def receiveData(self, data):
         logger.debug(f"MapApp.receiveData Received from JS: {data}")
@@ -193,7 +609,7 @@ class MapApp(QMainWindow):
             location = self.geolocator.reverse(f"{data["lat"]}, {data["lon"]}")
             address = location.address.replace(", ", "\n", 1)
 
-            self.note_input.setText(address)
+            self.note_input.setMarkdown(address)
             self.add_location()
         except json.JSONDecodeError as e:
             pass
@@ -204,7 +620,7 @@ class MapApp(QMainWindow):
         selected_item = self.list_widget.currentItem()
         if selected_item:
             index = self.list_widget.row(selected_item)
-            self.locations[index].note = self.note_input.toPlainText()
+            self.locations[index].note = self.note_input.toMarkdown()
             lat = str(self.locations[index].lat)
             lon = str(self.locations[index].lon)
             label = self.locations[index].label()
@@ -346,7 +762,7 @@ class MapApp(QMainWindow):
         try:
             lat = float(self.lat_input.text())
             lon = float(self.lon_input.text())
-            note = self.note_input.toPlainText()
+            note = self.note_input.toMarkdown()
             new_location = Location(lat=lat, lon=lon, note=note)
             self.locations.append(new_location)
 
@@ -364,56 +780,6 @@ class MapApp(QMainWindow):
         except ValueError:
             print("Invalid latitude or longitude")
 
-    def createMenu(self):
-        menu_bar = self.menuBar()
-        file_menu = menu_bar.addMenu("File")
-
-        new_action = QAction("New", self)
-        new_action.setShortcut(QKeySequence("Ctrl+N"))
-        new_action.triggered.connect(self.new)
-
-        load_action = QAction("Open…", self)
-        load_action.setShortcut(QKeySequence("Ctrl+O"))
-        load_action.triggered.connect(self.load_file)
-
-        load_nc_action = QAction("Open Nextcloud…", self)
-        load_nc_action.setShortcut(QKeySequence("Ctrl+Alt+O"))
-        load_nc_action.triggered.connect(self.load_nc_file)
-
-        save_action = QAction("Save", self)
-        save_action.setShortcut(QKeySequence("Ctrl+S"))
-        save_action.triggered.connect(self.save_file)
-
-        save_as_action = QAction("Save As…", self)
-        save_as_action.setShortcut(QKeySequence("Ctrl+Shift+S"))
-        save_as_action.triggered.connect(self.save_file_as)
-
-        save_as_nc_action = QAction("Save As Nextcloud…", self)
-        save_as_nc_action.setShortcut(QKeySequence("Ctrl+Alt+S"))
-        save_as_nc_action.triggered.connect(self.save_file_as_nc)
-
-        quit_action = QAction("Quit", self)
-        quit_action.setShortcut(QKeySequence("Ctrl+Q"))
-        quit_action.triggered.connect(self.close)
-
-        file_menu.addAction(new_action)
-        file_menu.addSeparator()
-        file_menu.addAction(load_action)
-        file_menu.addAction(load_nc_action)
-        file_menu.addSeparator()
-        file_menu.addAction(save_action)
-        file_menu.addAction(save_as_action)
-        file_menu.addAction(save_as_nc_action)
-        file_menu.addSeparator()
-        file_menu.addAction(quit_action)
-
-        config_menu = menu_bar.addMenu("Settings")
-
-        # Configuration action
-        config_action = QAction("Configure OpenTripPlan", self)
-        config_action.triggered.connect(self.open_config_dialog)
-        config_menu.addAction(config_action)
-
     def open_config_dialog(self):
         """Open the configuration dialog"""
         dialog = ConfigDialog(self.settings, self)
@@ -430,7 +796,7 @@ class MapApp(QMainWindow):
             self,
             "Open JSON File",
             "",
-            "JSON Files (*.json)")
+            "JSON Files (*.json);;All files (*.*)")
         if file_name:
             try:
                 with open(file_name, "r") as file:
@@ -567,7 +933,7 @@ class MapApp(QMainWindow):
         loc = self.locations[index]
         self.lat_input.setText(str(loc.lat))
         self.lon_input.setText(str(loc.lon))
-        self.note_input.setText(str(loc.note))
+        self.note_input.setMarkdown(str(loc.note))
         for i in range(self.list_widget.count()):
             if i == index:
                 self.highlight_marker(self.locations[i].id)
