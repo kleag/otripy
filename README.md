@@ -31,6 +31,8 @@ Open Trip Plan is already usable but would be better with a lot of other feature
 * Delete markers
 * Open and save local files
 * Open and save files on any Nextcloud server you have access to
+* Note text formatting (heading, bold, …)
+* Image insertion (copy paste only currently)
 
 ## Screenshots
 
