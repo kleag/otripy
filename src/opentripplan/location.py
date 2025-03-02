@@ -9,7 +9,7 @@ class Location:
     def __init__(self,
                  lat: float = 0.0,
                  lon: float = 0.0,
-                 note: str = "",
+                 note: Dict[str, str] = {"markdown": ""},
                  id: str = str(uuid.uuid4())):
         logger.info(f"Location({lat}, {lon}, {note}, {id})")
         self.id = id
@@ -18,19 +18,21 @@ class Location:
         self.note = note
 
     @classmethod
-    def from_data(cls, data: Dict[str, str] = {}):
+    def from_data(cls, data: Dict[str, str | dict] = {}):
         logger.info(f"Location.from_data({data})")
         lat = float(data["lat"]) if "lat" in data else 0.0
         lon = float(data["lon"]) if "lon" in data else 0.0
-        note = data["note"] if "note" in data else ""
+        note = data["note"] if "note" in data else {"markdown": ""}
+        if type(note) is str:
+            note = {"markdown": note}
         id = data["id"] if "id" in data else str(uuid.uuid4())
-        return cls(lat, lon, note,id)
+        return cls(lat, lon, note, id)
 
     def label(self):
-        return self.note.split('\n')[0]
+        return self.note["markdown"].split('\n')[0]
 
     def to_html(self):
-        return self.note.split('\n')[0].replace("\n", "<br>")
+        return self.note["markdown"].split('\n')[0].replace("\n", "<br>")
 
     def location(self):
         return [self.lat, self.lon]

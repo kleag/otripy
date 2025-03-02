@@ -19,8 +19,6 @@ except ImportError:
     from location import Location
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.DEBUG)
-logging.root.setLevel(logging.DEBUG)
 
 
 class NextcloudClient:

@@ -8,9 +8,12 @@ dependencies = [
     "folium>=0.19.5",
     "geopy>=2.4.1",
     "lxml>=5.3.1",
+    "markdown>=3.7",
     "nc-py-api>=0.19.0",
     "numpy>=2.2.3",
+    "pillow>=11.1.0",
     "pyside6>=6.8.2.1",
+    "typing-extensions>=4.12.2",
 ]
 authors = [{ name = "Gaël de Chalendar (aka Kleag)", email = "kleagg@gmail.com" }]
 license = { text = "AGPL" }

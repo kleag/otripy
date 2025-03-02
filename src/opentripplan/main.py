@@ -526,8 +526,8 @@ class MapApp(QMainWindow):
             self.lon_input.setText(str(data["lon"]))
             location = self.geolocator.reverse(f"{data["lat"]}, {data["lon"]}")
             address = location.address.replace(", ", "\n", 1)
-
-            self.note_input.setMarkdown(address)
+            note = {"markdown": address}
+            self.note_input.from_note(note)
             self.add_location()
         except json.JSONDecodeError as e:
             pass
@@ -538,7 +538,7 @@ class MapApp(QMainWindow):
         selected_item = self.list_widget.currentItem()
         if selected_item:
             index = self.list_widget.row(selected_item)
-            self.locations[index].note = self.note_input.toMarkdown()
+            self.locations[index].note = self.note_input.to_note()
             lat = str(self.locations[index].lat)
             lon = str(self.locations[index].lon)
             label = self.locations[index].label()
@@ -680,7 +680,7 @@ class MapApp(QMainWindow):
         try:
             lat = float(self.lat_input.text())
             lon = float(self.lon_input.text())
-            note = self.note_input.toMarkdown()
+            note = self.note_input.to_note()
             new_location = Location(lat=lat, lon=lon, note=note)
             self.locations.append(new_location)
 
@@ -696,7 +696,7 @@ class MapApp(QMainWindow):
             self.handle_marker_click(new_location.id)
             self.highlight_marker(new_location.id)
         except ValueError:
-            print("Invalid latitude or longitude")
+            logger.error("Invalid latitude or longitude")
 
     def open_config_dialog(self):
         """Open the configuration dialog"""
@@ -851,7 +851,10 @@ class MapApp(QMainWindow):
         loc = self.locations[index]
         self.lat_input.setText(str(loc.lat))
         self.lon_input.setText(str(loc.lon))
-        self.note_input.setMarkdown(str(loc.note))
+        self.note_input.textChanged.disconnect()
+        self.note_input.from_note(loc.note)
+        self.note_input.textChanged.connect(self.note_changed)
+        logger.info(f"MapApp.on_item_selected {item} after from_note")
         for i in range(self.list_widget.count()):
             if i == index:
                 self.highlight_marker(self.locations[i].id)
