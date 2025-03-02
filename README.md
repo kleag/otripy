@@ -87,7 +87,7 @@ Then, to build and publish:
 
 ```sh
 rm dist/opentripplan-*
-bumpver update --patch
+bumpver update --patch # or --minor or --major
 uv build
 uv publish
 uv sync --all-extras
