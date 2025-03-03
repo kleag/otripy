@@ -1,5 +1,5 @@
 [project]
-name = "opentripplan"
+name = "otripy"
 version = "0.4.0"
 description = "A tool to plan your next trip"
 readme = "README.md"
@@ -25,9 +25,11 @@ classifiers = [
     "Programming Language :: Python :: 3.13",
 ]
 
+[tool.uv]
+package = true
 
 [project.scripts]
-opentripplan = "opentripplan.main:main"
+otripy = "otripy.main:main"
 
 [project.optional-dependencies]
 dev = ["pytest", "black", "ruff", "mypy"]   # Development tools
@@ -45,7 +47,7 @@ push = true  # Set to true if you want to push automatically
 "pyproject.toml" = [
     'version = "{version}"',
 ]
-"src/opentripplan/__init__.py" = [
+"src/otripy/__init__.py" = [
     '__version__ = "{version}"',
 ]
 

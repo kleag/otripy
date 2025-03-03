@@ -1,24 +1,24 @@
-# Open Trip Plan
+# Otripy - An open trip planning tool
 
 
-[![PyPI Version](https://img.shields.io/pypi/v/opentripplan)](https://pypi.org/project/opentripplan)
-[![License](https://img.shields.io/pypi/l/opentripplan)](https://github.com/kleag/opentripplan/blob/main/AGPL.md)
-[![Downloads](https://static.pepy.tech/badge/opentripplan/month)](https://pepy.tech/project/opentripplan)
-[![Supported Versions](https://img.shields.io/pypi/pyversions/opentripplan)](https://pypi.org/project/opentripplan)
-[![Contributors](https://img.shields.io/github/contributors/kleag/opentripplan)](https://github.com/kleag/opentripplan/graphs/contributors)
+[![PyPI Version](https://img.shields.io/pypi/v/otripy)](https://pypi.org/project/otripy)
+[![License](https://img.shields.io/pypi/l/otripy)](https://github.com/kleag/otripy/blob/main/AGPL.md)
+[![Downloads](https://static.pepy.tech/badge/otripy/month)](https://pepy.tech/project/otripy)
+[![Supported Versions](https://img.shields.io/pypi/pyversions/otripy)](https://pypi.org/project/otripy)
+[![Contributors](https://img.shields.io/github/contributors/kleag/otripy)](https://github.com/kleag/otripy/graphs/contributors)
 
 <!--
-![Python Versions](https://img.shields.io/pypi/pyversions/opentripplan)
-![Build Status](https://img.shields.io/github/actions/workflow/status/kleag/opentripplan/ci.yml)
+![Python Versions](https://img.shields.io/pypi/pyversions/otripy)
+![Build Status](https://img.shields.io/github/actions/workflow/status/kleag/otripy/ci.yml)
 -->
 
 ## Description
 
-Open Trip Plan is a GUI application for trip planning, providing an intuitive user interface for organizing travel visits efficiently. Open Trip Plan allows to plan a trip by adding markers on a map (based on OpenStreetMap) associated with a note.
+Otripy is a GUI application for trip planning, providing an intuitive user interface for organizing travel visits efficiently. Otripy allows to plan a trip by adding markers on a map (based on OpenStreetMap) associated with a note.
 
-Open Trip Plan is developed and daily tested on Linux. It should work on any platform. It has already been tested on MacOS.
+Otripy is developed and daily tested on Linux. It should work on any platform. It has already been tested on MacOS.
 
-Open Trip Plan is already usable but would be better with a lot of other features. Some wanted features are listed [here](https://github.com/kleag/opentripplan/issues). Don't hesitate to create a new issue if you think at other features. And contribute them if you can!
+Otripy is already usable but would be better with a lot of other features. Some wanted features are listed [here](https://github.com/kleag/otripy/issues). Don't hesitate to create a new issue if you think at other features. And contribute them if you can!
 
 ### Current features:
 
@@ -36,16 +36,16 @@ Open Trip Plan is already usable but would be better with a lot of other feature
 
 ## Screenshots
 
-![Open Trip Plan GUI snapshot](https://github.com/kleag/opentripplan/blob/main/pics/opentripplan-snapshot.png "Open Trip Plan GUI")
+![Otripy GUI snapshot](https://github.com/kleag/otripy/blob/main/pics/otripy-snapshot.png "Otripy GUI")
 
 ## Installation
 
 ### For users familiar with Python
 
-Open Trip Plan is on PyPi. To install it, run:
+Otripy is on PyPi. To install it, run:
 
 ```sh
-pip install opentripplan
+pip install otripy
 ```
 
 ### For all others
@@ -54,27 +54,27 @@ If you are not used to installing Python packages, the simplest method is probab
 
 
 ```sh
-uv venv opentripplan
-source opentripplan/bin/activate
+uv venv otripy
+source otripy/bin/activate
 ```
 
-Then install OpenTripPlan and run it:
+Then install Otripy and run it:
 
 ```sh
-uv pip install opentripplan
-opentripplan
+uv pip install otripy
+otripy
 ```
 
 ## Usage
 
 To launch the application:
 ```bash
-opentripplan
+otripy
 ```
 
 ## Building and publishing
 
-OpenTripPlan uses [uv](https://docs.astral.sh/uv/), please [install it](https://docs.astral.sh/uv/getting-started/installation/) if not already available.
+Otripy uses [uv](https://docs.astral.sh/uv/), please [install it](https://docs.astral.sh/uv/getting-started/installation/) if not already available.
 
 If you just cloned this repository, cd to it and then:
 
@@ -88,7 +88,7 @@ install -d dist
 Then, to build and publish:
 
 ```sh
-rm dist/opentripplan-*
+rm dist/otripy-*
 bumpver update --patch # or --minor or --major
 uv build
 uv publish
@@ -108,12 +108,12 @@ Contributions are welcome! Please follow these steps:
 5. Open a pull request.
 
 ## License
-This project is Free Software, licensed under the AGPL License. See the [AGPL](https://github.com/kleag/opentripplan/blob/main/AGPL.md) file for details. In summary: you can use it, share it, change it, redistribute your changes, but any version you offer, with or without changes must be under the same (or a compatible) license.
+This project is Free Software, licensed under the AGPL License. See the [AGPL](https://github.com/kleag/otripy/blob/main/AGPL.md) file for details. In summary: you can use it, share it, change it, redistribute your changes, but any version you offer, with or without changes must be under the same (or a compatible) license.
 
 ## Credits
-OpenTripPlan is developed and maintained by [Kleag](https://github.com/kleag). Special thanks to all contributors!
+Otripy is developed and maintained by [Kleag](https://github.com/kleag). Special thanks to all contributors!
 
 ---
 
-For more information, visit the [GitHub repository](https://github.com/kleag/opentripplan) or the [PyPI page](https://pypi.org/project/opentripplan/).
+For more information, visit the [GitHub repository](https://github.com/kleag/otripy) or the [PyPI page](https://pypi.org/project/otripy/).
 

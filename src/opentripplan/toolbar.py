@@ -58,7 +58,7 @@ class ToolBar(QToolBar):
         self.actions = actions if actions else {}
         self.refresh = refresh
 
-        self.settings = QSettings("Kleag", "OpenTripPlan")
+        self.settings = QSettings("Kleag", "Otripy")
         # self.theme_helper = ThemeHelper()
 
 

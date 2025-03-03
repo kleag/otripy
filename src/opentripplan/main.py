@@ -78,7 +78,7 @@ class MapApp(QMainWindow):
     def __init__(self):
         super().__init__()
         # QSettings initialization
-        self.settings = QSettings("Kleag", "OpenTripPlan")
+        self.settings = QSettings("Kleag", "Otripy")
 
         self.channel = QWebChannel()
         self.marker_handler = MarkerHandler()
@@ -88,10 +88,10 @@ class MapApp(QMainWindow):
         # Connect markerClicked signal to a Python slot
         self.marker_handler.markerClicked.connect(self.handle_marker_click)
 
-        self.setWindowTitle("Open Trip Planner")
+        self.setWindowTitle("Otripy")
         self.setGeometry(100, 100, 800, 600)
 
-        self.geolocator = Nominatim(user_agent="OpenTripPlan")
+        self.geolocator = Nominatim(user_agent="Otripy")
 
         self.current_file = None
         self.locations = Journey()
@@ -231,7 +231,7 @@ class MapApp(QMainWindow):
         config_menu = menu_bar.addMenu("Settings")
 
         # Configuration action
-        config_action = QAction("Configure OpenTripPlan", self)
+        config_action = QAction("Configure Otripy", self)
         config_action.triggered.connect(self.open_config_dialog)
         config_menu.addAction(config_action)
 

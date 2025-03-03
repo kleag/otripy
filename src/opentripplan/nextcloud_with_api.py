@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 class NextcloudClient:
     def __init__(self):
-        self.settings = QSettings("Kleag", "OpenTripPlan")
+        self.settings = QSettings("Kleag", "Otripy")
         base_url = self.settings.value("nextcloud/url", "")
         username = self.settings.value("nextcloud/username", "")
         password = self.settings.value("nextcloud/password", "")
@@ -132,7 +132,7 @@ class NextcloudFilePicker(QDialog):
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.settings = QSettings("Kleag", "OpenTripPlan")
+        self.settings = QSettings("Kleag", "Otripy")
 
         self.setWindowTitle("Nextcloud File Operations")
         self.setGeometry(100, 100, 400, 200)

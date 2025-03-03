@@ -8,7 +8,7 @@ class ConfigDialog(QDialog):
     def __init__(self, settings, parent=None):
         super().__init__(parent)
         self.settings = settings
-        self.setWindowTitle("Configure Open Trip Plan")
+        self.setWindowTitle("Configure Otripy")
 
         # Create widgets
         self.url_label = QLabel("Nextcloud URL:")
@@ -60,7 +60,7 @@ class MainWindow(QMainWindow):
         self.setGeometry(100, 100, 800, 600)
 
         # QSettings initialization
-        self.settings = QSettings("Kleag", "OpenTripPlan")
+        self.settings = QSettings("Kleag", "Otripy")
 
         # Menu bar
         menubar = self.menuBar()
