@@ -1,4 +1,5 @@
 import logging
+import re
 import uuid
 
 from typing import Dict
@@ -29,10 +30,14 @@ class Location:
         return cls(lat, lon, note, id)
 
     def label(self):
-        return self.note["markdown"].split('\n')[0]
+        the_label = self.note["markdown"].split('\n')[0]
+        the_label = re.sub(r'^#+ ?', '', the_label)
+        return the_label
 
     def to_html(self):
-        return self.note["markdown"].split('\n')[0].replace("\n", "<br>")
+        the_html = self.note["markdown"].split('\n')[0].replace("\n", "<br>")
+        the_html = re.sub(r'^#+ ?', '', the_html)
+        return the_html
 
     def location(self):
         return [self.lat, self.lon]
