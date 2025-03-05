@@ -17,24 +17,38 @@ dependencies = [
 ]
 authors = [{ name = "Gaël de Chalendar (aka Kleag)", email = "kleagg@gmail.com" }]
 license = { text = "AGPL" }
+keywords = ["map", "tourism", "openstreetmap", "journey", "planning", "trip" ]
 classifiers = [
+    "Development Status :: 5 - Production/Stable",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: GNU Affero General Public License v3",
+    "Natural Language :: English",
+    "Operating System :: MacOS",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: Unix",
 ]
 
-[tool.uv]
-package = true
-
-[project.scripts]
+[project.gui-scripts]
 otripy = "otripy.main:main"
 
 [project.optional-dependencies]
 dev = ["pytest", "black", "ruff", "mypy"]   # Development tools
 build = ["bumpver"]                   # For packaging and uploading
 deploy = ["uv"]                               # Add tools needed for deployment
+
+[project.urls]
+Homepage = "https://github.com/kleag/otripy"
+# Documentation = "https://readthedocs.org"
+Repository = "https://github.com/kleag/otripy"
+Issues = "https://github.com/kleag/otripy/issues"
+# Changelog = "https://github.com/me/spam/blob/master/CHANGELOG.md"
+
 
 [bumpver]
 current_version = "1.0.1"
@@ -51,3 +65,6 @@ push = true  # Set to true if you want to push automatically
     '__version__ = "{version}"',
 ]
 
+
+[tool.uv]
+package = true
