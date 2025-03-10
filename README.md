@@ -65,6 +65,20 @@ uv pip install otripy
 otripy
 ```
 
+When you want to restart Otripy later, open your terminal, and run:
+
+```sh
+source otripy/bin/activate
+otripy
+```
+
+Finally, to upgrade Otripy, to a new version, run:
+
+```sh
+source otripy/bin/activate
+uv pip install otripy --upgrade
+```
+
 ## Usage
 
 To launch the application:

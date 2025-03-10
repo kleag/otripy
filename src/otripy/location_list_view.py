@@ -11,8 +11,8 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 class LocationListModel(QAbstractListModel):
-    def __init__(self, locations=None):
-        super().__init__()
+    def __init__(self, locations=None, parent=None):
+        super().__init__(parent)
         self.locations = locations or Journey()
 
     def rowCount(self, parent=None):
@@ -68,6 +68,7 @@ class LocationListModel(QAbstractListModel):
 
             # Notify the view that data has changed
             self.dataChanged.emit(index, index)  # Emit signal for the changed index
+
         else:
             logger.error(f"Row {row} is out of range.")
 
@@ -112,6 +113,9 @@ class LocationListView(QListView):
         self.model = LocationListModel()
         self.setModel(self.model)
         self.clicked.connect(self.on_item_clicked)  # Connect view click to slot
+
+    def dataChanged(self,topLeft, bottomRight, roles=list()):
+        self.model.locations.dirty.emit(True)
 
     def setLocations(self, locations):
         self.model.setLocations(locations)

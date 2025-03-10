@@ -90,18 +90,29 @@ class MapApp(QMainWindow):
         # Connect markerClicked signal to a Python slot
         self.marker_handler.markerClicked.connect(self.handle_marker_click)
 
-        self.setWindowTitle("Otripy")
         self.setGeometry(100, 100, 800, 600)
 
         self.geolocator = Nominatim(user_agent="Otripy")
 
         self.current_file = None
-        # self.locations = Journey()
         self.nc = None
 
         self.initUI()
         self.createMenu()
         self.update_map()
+        self.dirty = False
+        self.set_window_title(dirty=False)
+
+    @Slot(bool)
+    def set_window_title(self, dirty: bool):
+        title = "Otripy"
+        self.dirty = dirty
+        if self.current_file:
+            title = f"{title} - {self.current_file}"
+        if dirty:
+            title = f"* {title}"
+        logger.info(f"set_window_title {dirty}: {title}")
+        self.setWindowTitle(title)
 
     def initUI(self):
 
@@ -111,6 +122,8 @@ class MapApp(QMainWindow):
 
         # List view
         self.list_widget = LocationListView()
+        self.list_widget.model.locations.dirty.connect(self.set_window_title)
+
         self.list_widget.setMaximumWidth(300)
         self.list_widget.locationClicked.connect(self.on_item_selected)
         # self.list_widget.setLocations(self.locations)
@@ -212,9 +225,10 @@ class MapApp(QMainWindow):
         save_as_action.setShortcut(QKeySequence("Ctrl+Shift+S"))
         save_as_action.triggered.connect(self.save_file_as)
 
-        save_as_nc_action = QAction("Save As Nextcloud…", self)
-        save_as_nc_action.setShortcut(QKeySequence("Ctrl+Alt+S"))
-        save_as_nc_action.triggered.connect(self.save_file_as_nc)
+        # TODO Implement Save As on Nextcloud
+        # save_as_nc_action = QAction("Save As Nextcloud…", self)
+        # save_as_nc_action.setShortcut(QKeySequence("Ctrl+Alt+S"))
+        # save_as_nc_action.triggered.connect(self.save_file_as_nc)
 
         quit_action = QAction("Quit", self)
         quit_action.setShortcut(QKeySequence("Ctrl+Q"))
@@ -227,7 +241,7 @@ class MapApp(QMainWindow):
         file_menu.addSeparator()
         file_menu.addAction(save_action)
         file_menu.addAction(save_as_action)
-        file_menu.addAction(save_as_nc_action)
+        # file_menu.addAction(save_as_nc_action)
         file_menu.addSeparator()
         file_menu.addAction(quit_action)
 
@@ -667,11 +681,28 @@ class MapApp(QMainWindow):
         dialog.exec()
 
     def new(self):
-        self.current_file = None
-        self.list_widget.clear()
-        self.update_map()
+        answer = QMessageBox.Yes
+        if self.dirty:
+            answer = QMessageBox.question(
+                self,
+                "Journey Modified",
+                "Do you really want to lose your changes?",
+                QMessageBox.Yes | QMessageBox.No)
+        if answer == QMessageBox.Yes:
+            self.current_file = None
+            self.list_widget.clear()
+            self.update_map()
 
     def load_file(self):
+        answer = QMessageBox.No
+        if self.dirty:
+            answer = QMessageBox.question(
+                self,
+                "Journey Modified",
+                "Do you really want to lose your changes?",
+                QMessageBox.Yes | QMessageBox.No)
+        if answer == QMessageBox.No:
+            return
         file_name, _ = QFileDialog.getOpenFileName(
             self,
             "Open JSON File",
@@ -681,9 +712,12 @@ class MapApp(QMainWindow):
             try:
                 with open(file_name, "r") as file:
                     locations = json.load(file)
+                    self.list_widget.clear()
                     # Complete missing data
-                    self.list_widget.setLocations(Journey([Location.from_data(loc) for loc in locations]))
                     self.current_file = file_name
+                    self.list_widget.setLocations(Journey([Location.from_data(loc) for loc in locations]))
+                    self.list_widget.model.locations.dirty.connect(self.set_window_title)
+                    self.set_window_title(dirty=False)
                     self.update_map()
             except Exception as e:
                 QMessageBox.critical(self,
@@ -691,6 +725,15 @@ class MapApp(QMainWindow):
                                      f"Failed to load file: {str(e)}")
 
     def load_nc_file(self):
+        answer = QMessageBox.No
+        if self.dirty:
+            answer = QMessageBox.question(
+                self,
+                "Journey Modified",
+                "Do you really want to lose your changes?",
+                QMessageBox.Yes | QMessageBox.No)
+        if answer == QMessageBox.No:
+            return
         if self.nc is None:
             base_url = self.settings.value("nextcloud/url", "")
             username = self.settings.value("nextcloud/username", "")
@@ -726,8 +769,11 @@ class MapApp(QMainWindow):
                 locations = json.loads(json_str)
 
                 # Complete missing data
-                self.list_widget.setLocations(Journey([Location.from_data(loc) for loc in locations]))
+                self.list_widget.clear()
                 self.current_file = node  # keep nc_py_api FsNode instead of string
+                self.list_widget.setLocations(Journey([Location.from_data(loc) for loc in locations]))
+                self.list_widget.model.locations.dirty.connect(self.set_window_title)
+                self.set_window_title(dirty=False)
                 self.update_map()
 
     def save_file(self):
@@ -757,6 +803,7 @@ class MapApp(QMainWindow):
                 self.current_file = self.nc.files.upload(self.current_file, data)
         else:
             self.write_to_file(self.current_file)
+        self.list_widget.model.locations.clean()
 
     def save_file_as(self):
         file_name, _ = QFileDialog.getSaveFileName(self,
@@ -766,6 +813,7 @@ class MapApp(QMainWindow):
         if file_name:
             self.current_file = file_name
             self.write_to_file(file_name)
+        self.list_widget.model.locations.clean()
 
     def save_file_as_nc(self):
         logger.error(f"MapApp.save_file_as_nc NOT IMPLEMENTED")
@@ -780,22 +828,6 @@ class MapApp(QMainWindow):
             QMessageBox.critical(self,
                                  "Error",
                                  f"Failed to save file: {str(e)}")
-
-    def update_list(self):
-        pass
-        # self.list_widget.clear()
-        # for item in self.locations:
-        #     lat = str(item.lat)
-        #     lat_val = QDoubleValidator(-90, 90, 3)
-        #     lat_val.setNotation(QDoubleValidator.Notation.StandardNotation)
-        #     lat_val.fixup(lat)
-        #
-        #     lon_val = QDoubleValidator(-180, 180, 3)
-        #     lon_val.setNotation(QDoubleValidator.Notation.StandardNotation)
-        #     lon = str(item.lon)
-        #     lon_val.fixup(lon)
-            # label = item.label()
-            # self.list_widget.addItem(f"{label}: {lat}, {lon}")
 
     def delete_item(self):
         selected_indexes = self.list_widget.selectedIndexes()
