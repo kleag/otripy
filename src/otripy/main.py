@@ -35,6 +35,7 @@ from typing import TYPE_CHECKING, Dict, List, Any
 try:
     from .journey import Journey
     from .location import Location
+    from .location_list_view import LocationListView
     from .search_popup import SearchPopup
     from .config import ConfigDialog
     from .nextcloud_with_api import NextcloudFilePicker
@@ -44,6 +45,7 @@ try:
 except ImportError:
     from journey import Journey
     from location import Location
+    from location_list_view import LocationListView
     from search_popup import SearchPopup
     from config import ConfigDialog
     from nextcloud_with_api import NextcloudFilePicker
@@ -94,7 +96,7 @@ class MapApp(QMainWindow):
         self.geolocator = Nominatim(user_agent="Otripy")
 
         self.current_file = None
-        self.locations = Journey()
+        # self.locations = Journey()
         self.nc = None
 
         self.initUI()
@@ -108,9 +110,10 @@ class MapApp(QMainWindow):
         layout = QVBoxLayout()
 
         # List view
-        self.list_widget = QListWidget()
+        self.list_widget = LocationListView()
         self.list_widget.setMaximumWidth(300)
-        self.list_widget.itemClicked.connect(self.on_item_selected)
+        self.list_widget.locationClicked.connect(self.on_item_selected)
+        # self.list_widget.setLocations(self.locations)
 
         # Main widget (Text editor for simplicity)
         self.map_page = MapViewPage()
@@ -517,11 +520,11 @@ class MapApp(QMainWindow):
         logger.debug(f"MapApp.receiveData Received from JS: {data}")
         data["note"] = ""
         try:
-            if self.list_widget.currentItem() is not None:
-                current_item = self.list_widget.currentItem()
-                index = self.list_widget.row(current_item)
-                self.downplay_marker(self.locations[index])
-            self.list_widget.setCurrentItem(None)
+            # if self.list_widget.currentItem() is not None:
+            #     current_item = self.list_widget.currentItem()
+            #     index = self.list_widget.row(current_item)
+            #     self.downplay_marker(self.locations[index])
+            # self.list_widget.setCurrentItem(None)
             self.lat_input.setText(str(data["lat"]))
             self.lon_input.setText(str(data["lon"]))
             location = self.geolocator.reverse(f"{data["lat"]}, {data["lon"]}")
@@ -535,21 +538,21 @@ class MapApp(QMainWindow):
     @Slot()
     def note_changed(self):
         logger.info(f"MapApp.note_changed")
-        selected_item = self.list_widget.currentItem()
-        if selected_item:
-            index = self.list_widget.row(selected_item)
-            self.locations[index].note = self.note_input.to_note()
-            lat = str(self.locations[index].lat)
-            lon = str(self.locations[index].lon)
-            label = self.locations[index].label()
-            selected_item.setText(f"{label}: {lat}, {lon}")
+        # selected_item = self.list_widget.currentItem()
+        # if selected_item:
+        #     index = self.list_widget.row(selected_item)
+        #     self.locations[index].note = self.note_input.to_note()
+        #     lat = str(self.locations[index].lat)
+        #     lon = str(self.locations[index].lon)
+        #     label = self.locations[index].label()
+        #     selected_item.setText(f"{label}: {lat}, {lon}")
 
 
     def update_map(self):
         # Default location (Paris)
         location = [48.8566, 2.3522]
-        if self.locations:
-            location = self.locations[-1].location()
+        if self.list_widget.locations():
+            location = self.list_widget.locations()[-1].location()
         m = folium.Map(location=location, zoom_start=12)
         m.get_root().html.add_child(
             JavascriptLink('qrc:///qtwebchannel/qwebchannel.js'))
@@ -613,7 +616,7 @@ class MapApp(QMainWindow):
                     pywebchannel.objects.pyObj.receiveData({"lat": lat, "lon": lon});
                 });
                 """
-        for loc in self.locations:
+        for loc in self.list_widget.locations():
             tooltip = loc.label()
             popup = loc.to_html()
             script += f"""
@@ -641,11 +644,11 @@ class MapApp(QMainWindow):
     def handle_marker_click(self, marker_id):
         """ Handle marker click events in Python. """
         logger.info(f"MapApp.handle_marker_click {marker_id}")
-        for i, loc in enumerate(self.locations):
+        for i, loc in enumerate(self.list_widget.locations()):
             if loc.id == marker_id:
-                item = self.list_widget.item(i)
-                self.list_widget.setCurrentItem(item)
-                self.on_item_selected(item)
+                # item = self.list_widget.item(i)
+                # self.list_widget.setCurrentItem(item)
+                self.on_item_selected(loc)
 
     def highlight_marker(self, marker_id):
         """ Change marker color dynamically without modifying tooltip """
@@ -682,19 +685,14 @@ class MapApp(QMainWindow):
             lon = float(self.lon_input.text())
             note = self.note_input.to_note()
             new_location = Location(lat=lat, lon=lon, note=note)
-            self.locations.append(new_location)
+            self.list_widget.addLocation(new_location)
 
-            label = new_location.label()
-            self.list_widget.addItem(f"{label}: {lat}, {lon}")
+            # label = new_location.label()
+            # self.list_widget.addItem(f"{label}: {lat}, {lon}")
             self.update_map()
-            # Get the last added item
-            new_item = self.list_widget.item(self.list_widget.count() - 1)
-            self.list_widget.setCurrentItem(new_item)  # Select it
-            new_item.setSelected(True)
-
-            # self.update_list()
-            self.handle_marker_click(new_location.id)
-            self.highlight_marker(new_location.id)
+            self.list_widget.selectById(new_location.id)
+            # self.handle_marker_click(new_location.id)
+            # self.highlight_marker(new_location.id)
         except ValueError:
             logger.error("Invalid latitude or longitude")
 
@@ -705,7 +703,7 @@ class MapApp(QMainWindow):
 
     def new(self):
         self.current_file = None
-        self.locations = Journey()
+        # self.locations = Journey()
         self.update_list()
         self.update_map()
 
@@ -720,7 +718,7 @@ class MapApp(QMainWindow):
                 with open(file_name, "r") as file:
                     locations = json.load(file)
                     # Complete missing data
-                    self.locations = Journey([Location.from_data(loc) for loc in locations])
+                    self.list_widget.setLocations(Journey([Location.from_data(loc) for loc in locations]))
                     self.current_file = file_name
                     self.update_list()
                     self.update_map()
@@ -765,7 +763,7 @@ class MapApp(QMainWindow):
                 locations = json.loads(json_str)
 
                 # Complete missing data
-                self.locations = Journey([Location.from_data(loc) for loc in locations])
+                self.list_widget.setLocations(Journey([Location.from_data(loc) for loc in locations]))
                 self.current_file = node  # keep nc_py_api FsNode instead of string
                 self.update_list()
                 self.update_map()
@@ -774,7 +772,7 @@ class MapApp(QMainWindow):
         if not self.current_file:
             self.save_file_as()
         elif type(self.current_file) == nc_py_api.FsNode:
-            locations = [loc.to_dict() for loc in self.locations]
+            locations = [loc.to_dict() for loc in self.list_widget.locations()]
             data = json.dumps(locations, indent=4)
             file_id  = self.current_file.file_id
             current_remote_node = self.nc.files.by_id(file_id)
@@ -813,7 +811,7 @@ class MapApp(QMainWindow):
 
     def write_to_file(self, file_name):
         try:
-            locations = [loc.to_dict() for loc in self.locations]
+            locations = [loc.to_dict() for loc in self.list_widget.locations()]
             with open(file_name, "w") as file:
                 json.dump(locations, file, indent=4)
         except Exception as e:
@@ -822,44 +820,45 @@ class MapApp(QMainWindow):
                                  f"Failed to save file: {str(e)}")
 
     def update_list(self):
-        self.list_widget.clear()
-        for item in self.locations:
-            lat = str(item.lat)
-            lat_val = QDoubleValidator(-90, 90, 3)
-            lat_val.setNotation(QDoubleValidator.Notation.StandardNotation)
-            lat_val.fixup(lat)
-
-            lon_val = QDoubleValidator(-180, 180, 3)
-            lon_val.setNotation(QDoubleValidator.Notation.StandardNotation)
-            lon = str(item.lon)
-            lon_val.fixup(lon)
-            label = item.label()
-            self.list_widget.addItem(f"{label}: {lat}, {lon}")
+        pass
+        # self.list_widget.clear()
+        # for item in self.locations:
+        #     lat = str(item.lat)
+        #     lat_val = QDoubleValidator(-90, 90, 3)
+        #     lat_val.setNotation(QDoubleValidator.Notation.StandardNotation)
+        #     lat_val.fixup(lat)
+        #
+        #     lon_val = QDoubleValidator(-180, 180, 3)
+        #     lon_val.setNotation(QDoubleValidator.Notation.StandardNotation)
+        #     lon = str(item.lon)
+        #     lon_val.fixup(lon)
+            # label = item.label()
+            # self.list_widget.addItem(f"{label}: {lat}, {lon}")
 
     def delete_item(self):
         pass
         selected_item = self.list_widget.currentItem()
         if selected_item:
             index = self.list_widget.row(selected_item)
-            del self.locations[index]
+            del self.list_widget.locations()[index]
             self.update_list()
             self.update_map()
 
-    def on_item_selected(self, item):
-        logger.info(f"MapApp.on_item_selected {item}")
-        index = self.list_widget.row(item)
-        loc = self.locations[index]
+    def on_item_selected(self, loc):
+        logger.info(f"MapApp.on_item_selected {loc}")
+        # index = self.list_widget.row(item)
+        # loc = self.locations[index]
         self.lat_input.setText(str(loc.lat))
         self.lon_input.setText(str(loc.lon))
         self.note_input.textChanged.disconnect()
         self.note_input.from_note(loc.note)
         self.note_input.textChanged.connect(self.note_changed)
-        logger.info(f"MapApp.on_item_selected {item} after from_note")
-        for i in range(self.list_widget.count()):
-            if i == index:
-                self.highlight_marker(self.locations[i].id)
-            else:
-                self.downplay_marker(self.locations[i].id)
+        # logger.info(f"MapApp.on_item_selected {item} after from_note")
+        # for i in range(self.list_widget.count()):
+        #     if i == index:
+        #         self.highlight_marker(self.locations[i].id)
+        #     else:
+        #         self.downplay_marker(self.locations[i].id)
         js_code = f"moveMap({loc.lat}, {loc.lon});"
         self.map_page.runJavaScript(js_code)
 

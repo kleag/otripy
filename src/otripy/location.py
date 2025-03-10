@@ -11,12 +11,18 @@ class Location:
                  lat: float = 0.0,
                  lon: float = 0.0,
                  note: Dict[str, str] = {"markdown": ""},
-                 id: str = str(uuid.uuid4())):
+                 id: str = None):
         logger.info(f"Location({lat}, {lon}, {note}, {id})")
-        self.id = id
+        self.id = id if id is not None else str(uuid.uuid4())
         self.lat = lat
         self.lon = lon
         self.note = note
+
+    def __str__(self):
+        return self.label()
+
+    def __repr__(self):
+        return f"{self.id}: [{self.lat}, {self.lon}]\n{self.note}"
 
     @classmethod
     def from_data(cls, data: Dict[str, str | dict] = {}):
