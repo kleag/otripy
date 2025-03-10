@@ -1,6 +1,6 @@
 [project]
 name = "otripy"
-version = "1.0.2"
+version = "1.1.0"
 description = "A tool to plan your next trip"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -51,7 +51,7 @@ Issues = "https://github.com/kleag/otripy/issues"
 
 
 [bumpver]
-current_version = "1.0.2"
+current_version = "1.1.0"
 version_pattern = "MAJOR.MINOR.PATCH"
 commit = true
 tag = true
