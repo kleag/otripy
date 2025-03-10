@@ -56,3 +56,6 @@ class Journey:
             if loc.id == id:
                 return loc
         return None
+
+    def clear(self):
+        self._locations.clear()

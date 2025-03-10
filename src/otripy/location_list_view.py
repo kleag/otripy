@@ -54,6 +54,56 @@ class LocationListModel(QAbstractListModel):
                 return row
         return -1  # Not found
 
+    def updateLocationNote(self, index, new_note):
+        """Update the note of a Location at the given QModelIndex and notify the view."""
+        if not index.isValid():
+            logger.error("Invalid index.")
+            return
+
+        row = index.row()  # Get the row from the QModelIndex
+        if 0 <= row < len(self.locations):
+            location = self.locations[row]
+            location.note = new_note  # Assuming your Location has a 'note' attribute
+            logger.info(f"Updated location {location.id} note to: {new_note}")
+
+            # Notify the view that data has changed
+            self.dataChanged.emit(index, index)  # Emit signal for the changed index
+        else:
+            logger.error(f"Row {row} is out of range.")
+
+    def delete_item(self, index):
+        """Deletes the Location item at the given QModelIndex and updates the view."""
+        if not index.isValid():
+            logger.error("Invalid index.")
+            return
+
+        row = index.row()  # Get the row from the QModelIndex
+        if 0 <= row < len(self.locations):
+            location = self.locations[row]
+            logger.info(f"Deleting location {location.id}: {location}")
+
+            # Notify the view that rows are about to be removed
+            self.beginRemoveRows(index.parent(), row, row)
+
+            # Remove the location from the list
+            del self.locations[row]
+
+            # Notify the view that rows have been removed
+            self.endRemoveRows()
+        else:
+            logger.error(f"Row {row} is out of range.")
+
+    def clear(self):
+        """Clears all Location items from the list and updates the view."""
+        logger.info("Clearing all locations.")
+        # Notify the view that all rows are being removed
+        self.beginResetModel()
+        # Clear the list
+        self.locations.clear()
+        # Notify the view that the model has been reset
+        self.endResetModel()
+
+
 class LocationListView(QListView):
     locationClicked = Signal(object)  # Signal emitting the selected Location object
 
@@ -86,3 +136,15 @@ class LocationListView(QListView):
         if row != -1:
             index = self.model.index(row, 0)  # Create QModelIndex
             self.setCurrentIndex(index)  # Select item
+
+    def updateLocationNoteAtIndex(self, index, new_note):
+        """Updates the note of the location at a given QModelIndex."""
+        self.model.updateLocationNote(index, new_note)
+
+    def deleteItemAtIndex(self, index):
+        """Deletes the location at the given QModelIndex."""
+        self.model.delete_item(index)
+
+    def clear(self):
+        """Clears all locations from the view."""
+        self.model.clear()
