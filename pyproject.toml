@@ -68,3 +68,29 @@ push = true  # Set to true if you want to push automatically
 
 [tool.uv]
 package = true
+
+[tool.briefcase]
+project_name = "Otripy"
+bundle = "org.kleag.otripy"
+version = "1.1.2"
+author = "Gaël de Chalendar"
+author_email = "kleagg@gmail.com"
+url = "https://github.com/kleag/otripy"
+license.file = "AGPL.md"
+
+[tool.briefcase.app.otripy]
+formal_name = "Otripy"
+description = "A tool to plan your next trip"
+icon = "src/otripy/resources/icon"
+sources = ["src/otripy"]
+requires = [
+    "folium",
+    "geopy",
+    "lxml",
+    "markdown",
+    "nc-py-api",
+    "numpy",
+    "pillow",
+    "pyside6",
+    "typing-extensions",
+]
