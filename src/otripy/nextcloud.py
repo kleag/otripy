@@ -11,8 +11,6 @@ from PySide6.QtGui import QStandardItemModel, QStandardItem
 from requests.auth import HTTPBasicAuth
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.DEBUG)
-logging.root.setLevel(logging.DEBUG)
 
 class NextcloudWebDAV:
     def __init__(self, base_url, username, password):

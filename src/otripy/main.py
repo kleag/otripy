@@ -138,6 +138,7 @@ class MapApp(QMainWindow):
         # Search interface : line edit + button at its right
         self.search_entry = QLineEdit()
         self.search_entry.setPlaceholderText("Search…")
+        self.search_entry.returnPressed.connect(self.search_location)
         self.search_btn = QPushButton("Search")
         self.search_btn.clicked.connect(self.search_location)
         search_layout = QHBoxLayout()
@@ -863,11 +864,12 @@ class MapApp(QMainWindow):
 
         logger.info(f"Found: {locations}")
 
-        # Show popup if results exist
-        if locations:
-            self.search_popup.show_popup(locations, self.search_entry)
-        else:
-            self.search_popup.hide()
+        self.search_popup.show_popup(locations, self.search_entry)
+        # # Show popup if results exist
+        # if locations:
+        #     self.search_popup.show_popup(locations, self.search_entry)
+        # else:
+        #     self.search_popup.hide()
 
     def handle_selected_location(self, location):
         """Handle the selected location"""
