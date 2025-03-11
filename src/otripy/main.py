@@ -682,28 +682,27 @@ class MapApp(QMainWindow):
         dialog.exec()
 
     def new(self):
-        answer = QMessageBox.Yes
         if self.dirty:
             answer = QMessageBox.question(
                 self,
                 "Journey Modified",
                 "Do you really want to lose your changes?",
                 QMessageBox.Yes | QMessageBox.No)
-        if answer == QMessageBox.Yes:
-            self.current_file = None
-            self.list_widget.clear()
-            self.update_map()
+            if answer == QMessageBox.No:
+                return
+        self.current_file = None
+        self.list_widget.clear()
+        self.update_map()
 
     def load_file(self):
-        answer = QMessageBox.No
         if self.dirty:
             answer = QMessageBox.question(
                 self,
                 "Journey Modified",
                 "Do you really want to lose your changes?",
                 QMessageBox.Yes | QMessageBox.No)
-        if answer == QMessageBox.No:
-            return
+            if answer == QMessageBox.No:
+                return
         file_name, _ = QFileDialog.getOpenFileName(
             self,
             "Open JSON File",
@@ -726,15 +725,14 @@ class MapApp(QMainWindow):
                                      f"Failed to load file: {str(e)}")
 
     def load_nc_file(self):
-        answer = QMessageBox.No
         if self.dirty:
             answer = QMessageBox.question(
                 self,
                 "Journey Modified",
                 "Do you really want to lose your changes?",
                 QMessageBox.Yes | QMessageBox.No)
-        if answer == QMessageBox.No:
-            return
+            if answer == QMessageBox.No:
+                return
         if self.nc is None:
             base_url = self.settings.value("nextcloud/url", "")
             username = self.settings.value("nextcloud/username", "")

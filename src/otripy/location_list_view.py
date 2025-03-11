@@ -112,7 +112,8 @@ class LocationListView(QListView):
         super().__init__(parent)
         self.model = LocationListModel()
         self.setModel(self.model)
-        self.clicked.connect(self.on_item_clicked)  # Connect view click to slot
+        self.clicked.connect(self.on_item_clicked)
+        # self.setMovement(QListView.Free)
 
     def dataChanged(self,topLeft, bottomRight, roles=list()):
         self.model.locations.dirty.emit(True)
