@@ -21,7 +21,7 @@ class SearchPopup(QListWidget):
 
     def show_popup(self, locations, search_entry):
         """Position the popup under the search entry and populate it"""
-        logger.info(f"SearchPopup.show_popup {len(locations if locations else '')}, {search_entry}")
+        # logger.info(f"SearchPopup.show_popup {len(locations if locations else '')}, {search_entry}")
         self.clear()
 
         no_location = False
@@ -57,7 +57,7 @@ class SearchPopup(QListWidget):
     def select_location(self, item):
         """Handle selection and hide popup"""
         location = item.data(Qt.UserRole)  # Retrieve the stored Location object
-        logger.info(f"SearchPopup.select_location '{str(location)}'")
+        # logger.info(f"SearchPopup.select_location '{str(location)}'")
         if str(location) == "<No Result>":
             self.clear()
         elif location and self.parent():

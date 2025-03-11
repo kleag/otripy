@@ -54,8 +54,8 @@ except ImportError:
     from note_widget import NoteWidget
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.DEBUG)
-logging.root.setLevel(logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
+logging.root.setLevel(logging.INFO)
 
 
 class MarkerHandler(QObject):
@@ -64,7 +64,7 @@ class MarkerHandler(QObject):
 
     @Slot(str)
     def on_marker_clicked(self, marker_id):
-        logger.info(f"Marker clicked: {marker_id}")  # Handle click event in Python
+        # logger.info(f"Marker clicked: {marker_id}")  # Handle click event in Python
         self.markerClicked.emit(marker_id)  # Emit the signal for further handling
 
 
@@ -111,7 +111,7 @@ class MapApp(QMainWindow):
             title = f"{title} - {self.current_file}"
         if dirty:
             title = f"* {title}"
-        logger.info(f"set_window_title {dirty}: {title}")
+        # logger.info(f"set_window_title {dirty}: {title}")
         self.setWindowTitle(title)
 
     def initUI(self):
@@ -432,10 +432,10 @@ class MapApp(QMainWindow):
 
         # Ensure level is between 1 and 6
         level = max(1, min(level, 6))
-        logger.debug(f"action_text_h new level: {level}")
+        # logger.debug(f"action_text_h new level: {level}")
 
         current_level = blockFormat.headingLevel()
-        logger.debug(f"action_text_h cur level: {current_level}")
+        # logger.debug(f"action_text_h cur level: {current_level}")
 
         level = 0 if current_level == level else level
         blockFormat.setHeadingLevel(level)
@@ -532,7 +532,7 @@ class MapApp(QMainWindow):
 
     @Slot(dict)
     def receiveData(self, data):
-        logger.debug(f"MapApp.receiveData Received from JS: {data}")
+        # logger.debug(f"MapApp.receiveData Received from JS: {data}")
         data["note"] = ""
         try:
             self.note_input.textChanged.disconnect()
@@ -549,7 +549,7 @@ class MapApp(QMainWindow):
 
     @Slot()
     def note_changed(self):
-        logger.info(f"MapApp.note_changed")
+        # logger.info(f"MapApp.note_changed")
         selected_indexes = self.list_widget.selectedIndexes()
         if selected_indexes:
             self.list_widget.updateLocationNoteAtIndex(selected_indexes[0], self.note_input.to_note())
@@ -628,7 +628,7 @@ class MapApp(QMainWindow):
 
     def handle_marker_click(self, marker_id):
         """ Handle marker click events in Python. """
-        logger.info(f"MapApp.handle_marker_click {marker_id}")
+        # logger.info(f"MapApp.handle_marker_click {marker_id}")
         self.list_widget.selectById(marker_id)
         for loc in self.list_widget.locations():
             if loc.id == marker_id:
@@ -636,7 +636,7 @@ class MapApp(QMainWindow):
 
     def highlight_marker(self, marker_id):
         """ Change marker color dynamically without modifying tooltip """
-        logger.info(f"MapApp.highlight_marker {marker_id}")
+        # logger.info(f"MapApp.highlight_marker {marker_id}")
         js_code = f"""
         if (window.markerMap["{marker_id}"]) {{
             window.markerMap["{marker_id}"].setIcon(
@@ -663,7 +663,7 @@ class MapApp(QMainWindow):
         self.map_page.runJavaScript(js_code)
 
     def add_location(self):
-        logger.info(f"MapApp.add_location")
+        # logger.info(f"MapApp.add_location")
         try:
             lat = float(self.lat_input.text())
             lon = float(self.lon_input.text())
@@ -747,7 +747,7 @@ class MapApp(QMainWindow):
                 self.nc = nc_py_api.Nextcloud(nextcloud_url=base_url,
                                             nc_auth_user=username,
                                             nc_auth_pass=password)
-                logger.info(f"nc capabilities: {self.nc.capabilities}")
+                # logger.info(f"nc capabilities: {self.nc.capabilities}")
             except nc_py_api.NextcloudException as e:
                 QMessageBox.critical(
                     self,
@@ -758,7 +758,7 @@ class MapApp(QMainWindow):
         if file_picker.exec() == QDialog.DialogCode.Accepted:
             selected_file = file_picker.get_selected_file()
             if selected_file:
-                logger.info(f"MapApp.load_nc_file got {selected_file}")
+                # logger.info(f"MapApp.load_nc_file got {selected_file}")
                 node = self.nc.files.by_path(selected_file)
                 json_bytes = self.nc.files.download(selected_file)
                 # Convert bytes to a string
@@ -836,7 +836,7 @@ class MapApp(QMainWindow):
             self.update_map()
 
     def on_item_selected(self, loc: Location):
-        logger.info(f"MapApp.on_item_selected {loc}")
+        # logger.info(f"MapApp.on_item_selected {loc}")
         self.lat_input.setText(str(loc.lat))
         self.lon_input.setText(str(loc.lon))
         self.note_input.textChanged.disconnect()
@@ -850,17 +850,43 @@ class MapApp(QMainWindow):
         self.map_page.runJavaScript(js_code)
 
     def close(self):
+        if self.dirty:
+            answer = QMessageBox.question(
+                self,
+                "Journey Modified",
+                "Do you really want to lose your changes?",
+                QMessageBox.Yes | QMessageBox.No)
+            if answer == QMessageBox.No:
+                return
         QApplication.quit()
 
+    def closeEvent(self, event):
+        if self.dirty:
+            reply = QMessageBox.question(self, 'Journey Modified',
+                                         'You have unsaved changes. Do you want to save them?',
+                                         QMessageBox.Save | QMessageBox.Discard | QMessageBox.Cancel,
+                                         QMessageBox.Save)
+            if reply == QMessageBox.Save:
+                # Handle saving here
+                logger.info("Saving changes...")
+                self.save_file()
+                event.accept()  # Close the window after saving
+            elif reply == QMessageBox.Discard:
+                event.accept()  # Close the window without saving
+            else:
+                event.ignore()  # Ignore the close event to keep the window open
+        else:
+            event.accept()  # No unsaved changes, just close the window
+
     def search_location(self):
-        logger.info(f"MapApp.search_location {self.search_entry.text()}")
+        # logger.info(f"MapApp.search_location {self.search_entry.text()}")
         query = self.search_entry.text().strip()
         if not query:
             self.search_popup.hide()
             return
         locations = self.geolocator.geocode(query, exactly_one=False)
 
-        logger.info(f"Found: {locations}")
+        # logger.info(f"Found: {locations}")
 
         self.search_popup.show_popup(locations, self.search_entry)
         # # Show popup if results exist
@@ -871,7 +897,7 @@ class MapApp(QMainWindow):
 
     def handle_selected_location(self, location):
         """Handle the selected location"""
-        logger.info(f"Selected: {location}")
+        # logger.info(f"Selected: {location}")
         self.receiveData({"lat": location.latitude, "lon": location.longitude})
 
 

@@ -1,6 +1,6 @@
 import logging
 
-from PySide6.QtWidgets import QListView
+from PySide6.QtWidgets import QListView, QAbstractItemView
 from PySide6.QtCore import QAbstractListModel, Qt, QModelIndex, Signal
 
 try:
@@ -26,7 +26,7 @@ class LocationListModel(QAbstractListModel):
         return None
 
     def setLocations(self, locations):
-        logger.info(f"LocationListModel.setLocations {locations}")
+        # logger.info(f"LocationListModel.setLocations {locations}")
         self.beginResetModel()
         self.locations = locations
         self.endResetModel()
@@ -64,7 +64,7 @@ class LocationListModel(QAbstractListModel):
         if 0 <= row < len(self.locations):
             location = self.locations[row]
             location.note = new_note  # Assuming your Location has a 'note' attribute
-            logger.info(f"Updated location {location.id} note to: {new_note}")
+            # logger.info(f"Updated location {location.id} note to: {new_note}")
 
             # Notify the view that data has changed
             self.dataChanged.emit(index, index)  # Emit signal for the changed index
@@ -81,7 +81,7 @@ class LocationListModel(QAbstractListModel):
         row = index.row()  # Get the row from the QModelIndex
         if 0 <= row < len(self.locations):
             location = self.locations[row]
-            logger.info(f"Deleting location {location.id}: {location}")
+            # logger.info(f"Deleting location {location.id}: {location}")
 
             # Notify the view that rows are about to be removed
             self.beginRemoveRows(index.parent(), row, row)
@@ -96,13 +96,68 @@ class LocationListModel(QAbstractListModel):
 
     def clear(self):
         """Clears all Location items from the list and updates the view."""
-        logger.info("Clearing all locations.")
+        # logger.info("Clearing all locations.")
         # Notify the view that all rows are being removed
         self.beginResetModel()
         # Clear the list
         self.locations.clear()
         # Notify the view that the model has been reset
         self.endResetModel()
+
+    def flags(self, index):
+        if not index.isValid():
+            return Qt.ItemIsEnabled
+        return (Qt.ItemIsEnabled | Qt.ItemIsSelectable
+                | Qt.ItemIsDragEnabled | Qt.ItemIsDropEnabled)
+
+    def supportedDropActions(self):
+        return Qt.MoveAction
+
+    def mimeTypes(self):
+        return ["application/x-mylistmodel"]
+
+    def mimeData(self, indexes):
+        """Serialize data to be dragged"""
+        # logger.info(f"LocationListModel.mimeData {indexes}")
+        if not indexes:
+            return None
+        data = indexes[0].row()  # Store row index
+        mimeData = super().mimeData(indexes)
+        mimeData.setData("application/x-mylistmodel", str(data).encode())
+        # logger.info(f"LocationListModel.mimeData: {mimeData}")
+        return mimeData
+
+    def dropMimeData(self, data, action, row, column, parent):
+        """Handle dropping of data"""
+        # logger.info(f"LocationListModel.dropMimeData {data}, {action}, {row}, {column}, {parent}")
+        if action != Qt.MoveAction:
+            return False
+        if not data.hasFormat("application/x-mylistmodel"):
+            return False
+
+        old_index = int(data.data("application/x-mylistmodel").data().decode())
+        # logger.info(f"LocationListModel.dropMimeData old_index: {old_index}")
+        if parent.isValid():
+            drop_index = parent
+            row = drop_index.row()
+            column = drop_index.column()
+        else:
+            drop_index = self.indexAt(parent)
+            if drop_index.isValid():
+                row = drop_index.row()
+                column = drop_index.column()
+            else:
+                row = self.model().rowCount()
+                column = 0  # Default to column 0
+
+        # logger.info(f"Dropping at row {row}, column {column}")
+
+        self.beginMoveRows(QModelIndex(), old_index, old_index, QModelIndex(), row)
+        item = self.locations.pop(old_index)
+        # logger.info(f"LocationListModel.dropMimeData dropping: {item} at {row}")
+        self.locations.insert(row, item)
+        self.endMoveRows()
+        return True
 
 
 class LocationListView(QListView):
@@ -113,7 +168,8 @@ class LocationListView(QListView):
         self.model = LocationListModel()
         self.setModel(self.model)
         self.clicked.connect(self.on_item_clicked)
-        # self.setMovement(QListView.Free)
+        self.setDragDropMode(QListView.InternalMove)
+        self.setSelectionMode(QAbstractItemView.SingleSelection)
 
     def dataChanged(self,topLeft, bottomRight, roles=list()):
         self.model.locations.dirty.emit(True)
@@ -125,7 +181,7 @@ class LocationListView(QListView):
         """Handles item click and processes the selected location."""
         location = self.model.getLocation(index)
         if location:
-            logger.info(f"LocationListView.on_item_clicked: {location}")
+            # logger.info(f"LocationListView.on_item_clicked: {location}")
             self.locationClicked.emit(location)  # Emit signal with clicked location
 
     def addLocation(self, location):
@@ -137,7 +193,7 @@ class LocationListView(QListView):
     def selectById(self, target_id):
         """Select an item by its UUID."""
         row = self.model.findRowById(target_id)
-        logger.info(f"LocationListView.selectById {target_id}: {row}")
+        # logger.info(f"LocationListView.selectById {target_id}: {row}")
         if row != -1:
             index = self.model.index(row, 0)  # Create QModelIndex
             self.setCurrentIndex(index)  # Select item

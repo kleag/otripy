@@ -95,7 +95,7 @@ class NextcloudWebDAV:
                     file.write(chunk)
 
     def upload_file(self, local_path, remote_path):
-        logger.info(f"upload_file {local_path}, {remote_path}")
+        # logger.info(f"upload_file {local_path}, {remote_path}")
         url = f"{self.base_url}/{remote_path}"
         with open(local_path, "rb") as file:
             response = requests.put(url, data=file, auth=self.auth)
