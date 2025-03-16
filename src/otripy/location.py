@@ -26,7 +26,7 @@ class Location:
         return self.label()
 
     def __repr__(self):
-        return f"{self.lid}: [{self.lat}, {self.lon}]\n{self.note}"
+        return f"{self.lid}: [{self.lat}, {self.lon}]\n{self.marker}, {self.color}\n{self.note}"
 
     @classmethod
     def from_data(cls, data: Dict[str, str | dict] = {}):
@@ -37,8 +37,8 @@ class Location:
         if type(note) is str:
             note = {"markdown": note}
         id = data["id"] if "id" in data else None
-        marker = data["marker"] if "marker" in data else ""
-        color = data["color"] if "color" in data else ""
+        marker = data["marker"] if "marker" in data and data["marker"] else None
+        color = data["color"] if "color" in data and data["color"] else None
         return cls(lat, lon, note, id, marker, color)
 
     def label(self):

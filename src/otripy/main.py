@@ -81,6 +81,7 @@ class MapViewPage(QWebEnginePage):
 class MapApp(QMainWindow):
     def __init__(self):
         super().__init__()
+        # self.current_location = None
         # QSettings initialization
         self.settings = QSettings("Kleag", "Otripy")
 
@@ -123,7 +124,7 @@ class MapApp(QMainWindow):
         layout = QVBoxLayout()
 
         # List view
-        self.list_widget = LocationListView()
+        self.list_widget = LocationListView(self)
         self.list_widget.model.locations.dirty.connect(self.set_window_title)
 
         self.list_widget.setMaximumWidth(300)
@@ -447,7 +448,21 @@ class MapApp(QMainWindow):
 
     def action_marker_icon(self):
         marker_select_widget = IconPickerWidget(self)
+        marker_select_widget.icon_selected.connect(self.marker_chosen)
         marker_select_widget.exec()
+
+    def marker_chosen(self, icon_name):
+        logger.info(f"Selected marker: {icon_name}")
+        selected_indexes = self.list_widget.selectedIndexes()
+        if selected_indexes:
+            selected_item = selected_indexes[0]
+
+            location = self.list_widget.model.getLocation(selected_item)
+            if location is not None:
+                location.marker = icon_name
+                self.update_map()
+        else:
+            logger.warning(f"Marker chosen {icon_name} while no location is selected")
 
     def get_toolbar_action_by_name(self, name):
         """
@@ -508,6 +523,8 @@ class MapApp(QMainWindow):
         m = folium.Map(location=location, zoom_start=12)
         m.get_root().html.add_child(
             JavascriptLink('qrc:///qtwebchannel/qwebchannel.js'))
+        m.get_root().html.add_child(
+            JavascriptLink('https://cdnjs.cloudflare.com/ajax/libs/leaflet.awesome-markers/2.0.4/leaflet.awesome-markers.min.js'))
 
         script = """
         function moveMap(lat, lng, zoom) {
@@ -548,10 +565,26 @@ class MapApp(QMainWindow):
                 });
                 """
         for loc in self.list_widget.locations():
+            logger.info(f"Adding location to map: {repr(loc)}")
             tooltip = loc.label()
             popup = loc.to_html()
+            if loc.marker is not None:
+                icon = f"""
+                var icon = L.AwesomeMarkers.icon({{
+                    icon: 'fa-{loc.marker}',  // Icône FontAwesome (ex: fa-coffee, fa-car, fa-bicycle)
+                    markerColor: '{loc.color if loc.color is not None else "blue"}', // Couleurs disponibles : red, blue, green, orange, yellow, purple, darkred, lightred, darkblue, lightblue, darkgreen, lightgreen, cadetblue, white, pink, gray, black
+                    prefix: 'fa'        // Indique que l'on utilise FontAwesome
+                }});
+                """
+                script += icon
+                script += f"""
+                var marker = L.marker([{loc.lat}, {loc.lon}], {{ icon: icon }}).addTo(map).bindTooltip("{tooltip}", {{permanent: false}}).bindPopup("{popup}");
+                """
+            else:
+                script += f"""
+                var marker = L.marker([{loc.lat}, {loc.lon}]).addTo(map).bindTooltip("{tooltip}", {{permanent: false}}).bindPopup("{popup}");
+                """
             script += f"""
-            var marker = L.marker([{loc.lat}, {loc.lon}]).addTo(map).bindTooltip("{tooltip}", {{permanent: false}}).bindPopup("{popup}");
             window.markerMap["{loc.lid}"] = marker;
             marker.on("click", function() {{
                 if (pywebchannel.objects.markerHandler) {{
@@ -574,7 +607,7 @@ class MapApp(QMainWindow):
 
     def handle_marker_click(self, marker_id):
         """ Handle marker click events in Python. """
-        # logger.info(f"MapApp.handle_marker_click {marker_id}")
+        logger.info(f"MapApp.handle_marker_click {marker_id}")
         self.list_widget.selectById(marker_id)
         for loc in self.list_widget.locations():
             if loc.lid == marker_id:
@@ -582,7 +615,7 @@ class MapApp(QMainWindow):
 
     def highlight_marker(self, marker_id):
         """ Change marker color dynamically without modifying tooltip """
-        # logger.info(f"MapApp.highlight_marker {marker_id}")
+        logger.info(f"MapApp.highlight_marker {marker_id}")
         js_code = f"""
         if (window.markerMap["{marker_id}"]) {{
             window.markerMap["{marker_id}"].setIcon(
@@ -599,11 +632,22 @@ class MapApp(QMainWindow):
 
     def downplay_marker(self, marker_id):
         """ Change marker color dynamically without modifying tooltip """
+        logger.info(f"MapApp.downplay_marker {marker_id}")
+        loc = self.list_widget.model.get_location_by_id(marker_id)
+        if loc and loc.marker is not None:
+            icon_js = f"""
+            var icon = L.AwesomeMarkers.icon({{
+                icon: 'fa-{loc.marker}',  // Icône FontAwesome (ex: fa-coffee, fa-car, fa-bicycle)
+                markerColor: '{loc.color if loc.color is not None else "blue"}', // Couleurs disponibles : red, blue, green, orange, yellow, purple, darkred, lightred, darkblue, lightblue, darkgreen, lightgreen, cadetblue, white, pink, gray, black
+                prefix: 'fa'        // Indique que l'on utilise FontAwesome
+            }});
+            """
+        else:
+            icon_js = f"""var icon = new L.Icon.Default;"""
         js_code = f"""
+        {icon_js}
         if (window.markerMap["{marker_id}"]) {{
-            window.markerMap["{marker_id}"].setIcon(
-                new L.Icon.Default
-            );
+            window.markerMap["{marker_id}"].setIcon(icon);
         }}
         """
         self.map_page.runJavaScript(js_code)
@@ -616,7 +660,7 @@ class MapApp(QMainWindow):
             note = self.note_input.to_note()
             new_location = Location(lat=lat, lon=lon, note=note)
             self.list_widget.addLocation(new_location)
-
+            # self.current_location = new_location
             self.update_map()
             self.handle_marker_click(new_location.lid)
         except ValueError:

@@ -3,6 +3,7 @@ import sys
 import time
 from PySide6.QtWidgets import QWidget, QPushButton, QGridLayout, QVBoxLayout, QDialog
 from PySide6.QtGui import QIcon
+from PySide6.QtCore import Signal
 
 # Directory where the icons are stored
 RESOURCE_DIR = "resources/icons"
@@ -13,6 +14,8 @@ ICON_NAMES = [
 ]
 
 class IconPickerWidget(QDialog):
+    icon_selected = Signal(str)
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Pick an Icon")
@@ -39,10 +42,10 @@ class IconPickerWidget(QDialog):
                 row, col = divmod(idx, 5)  # Arrange in a grid
                 self.grid_layout.addWidget(icon_button, row, col)
 
-                icon_button.clicked.connect(lambda _, path=icon_path: self.select_icon(path))
+                icon_button.clicked.connect(lambda _, name=icon_name: self.select_icon(name))
 
-    def select_icon(self, icon_path):
-        print(f"Selected icon: {icon_path}")
+    def select_icon(self, icon_name):
+        self.icon_selected.emit(icon_name)
         self.accept()
 
 # Example usage:
@@ -61,7 +64,7 @@ if __name__ == "__main__":
 
         def open_icon_picker(self):
             self.dialog = IconPickerWidget(self)
-            # self.dialog.icon_selected.connect(self.icon_chosen)
+            self.dialog.icon_selected.connect(self.icon_chosen)
             self.dialog.exec()
 
         def icon_chosen(self, icon_name):

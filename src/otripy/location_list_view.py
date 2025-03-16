@@ -54,6 +54,13 @@ class LocationListModel(QAbstractListModel):
                 return row
         return -1  # Not found
 
+    def get_location_by_id(self, target_id):
+        """Find a location by its UUID."""
+        for location in self.locations:
+            if location.lid == target_id:
+                return location
+        return None  # Not found
+
     def updateLocationNote(self, index, new_note):
         """Update the note of a Location at the given QModelIndex and notify the view."""
         if not index.isValid():
@@ -179,9 +186,11 @@ class LocationListView(QListView):
 
     def on_item_clicked(self, index):
         """Handles item click and processes the selected location."""
+        logger.info(f"LocationListView.on_item_clicked {index}")
         location = self.model.getLocation(index)
         if location:
-            # logger.info(f"LocationListView.on_item_clicked: {location}")
+            logger.info(f"LocationListView.on_item_clicked: {location}")
+            self.parent().current_location = location
             self.locationClicked.emit(location)  # Emit signal with clicked location
 
     def addLocation(self, location):
@@ -209,3 +218,6 @@ class LocationListView(QListView):
     def clear(self):
         """Clears all locations from the view."""
         self.model.clear()
+
+    def get_location_by_id(self, target_id):
+        return  self.model.get_location_by_id(target_id)
