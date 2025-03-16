@@ -1,6 +1,8 @@
 """
-Notolog Editor
-An open-source Markdown editor built with Python.
+Otripy toolbar.
+This code has been borrowed from Notolog Editor,
+An open-source Markdown editor built with Python, released under the MIT
+License which authorizes to reuse and to relicense the code.
 
 File Details:
 - Purpose: Provides app toolbar UI.
@@ -20,9 +22,6 @@ For detailed instructions and project information, please see the repository's R
 from PySide6.QtCore import QSettings, QSize, Qt
 from PySide6.QtGui import QAction, QColor, QIcon, QPixmap, QPainter, QFont
 from PySide6.QtWidgets import QToolBar, QWidget, QMenu, QToolButton, QSizePolicy
-
-# from . import ThemeHelper
-
 
 from typing import TYPE_CHECKING
 
@@ -59,8 +58,6 @@ class ToolBar(QToolBar):
         self.refresh = refresh
 
         self.settings = QSettings("Kleag", "Otripy")
-        # self.theme_helper = ThemeHelper()
-
 
         self.toolbar_save_button = None  # type: Union[QToolButton, None]
         self.toolbar_edit_button = None  # type: Union[QToolButton, None]
@@ -71,14 +68,15 @@ class ToolBar(QToolBar):
 
     def init_ui(self):
         """
-        Build the toolbar's UI components by dynamically creating toolbar icons and adding a search form
-        based on defined actions and settings.
+        Build the toolbar's UI components by dynamically creating toolbar
+        icons and adding a search form based on defined actions and settings.
         """
 
         # Adjust layout margins for proper spacing
         self.setContentsMargins(0, 1, 5, 1)
 
-        # Calculate and set the icon size based on the height of the search input.
+        # Calculate and set the icon size based on the height of the search
+        # input.
         # Set the fixed size for the search form first, or use a hinted size.
         icon_width = icon_height = int(20 * 0.85)
         self.setIconSize(QSize(icon_width, icon_height))
@@ -105,20 +103,19 @@ class ToolBar(QToolBar):
         central_spacer.setSizePolicy(QSizePolicy.Policy.MinimumExpanding, QSizePolicy.Policy.MinimumExpanding)
         self.addWidget(central_spacer)
 
-
-        # Set the toolbar's stylesheet from the theme helper.
-        # self.setStyleSheet(self.theme_helper.get_css('toolbar'))
-
     def append_toolbar_icon(self, conf):
         """
         Helper to create, add to the toolbar and return button with an icon.
         """
         # Use a themed icon with a fallback to a system icon
         system_icon = conf['system_icon'] if 'system_icon' in conf else None
+        theme_icon = f"resources/icons/{conf['theme_icon']}" if 'theme_icon' in conf else None
         text_icon = conf['text_icon'] if 'text_icon' in conf else None
-        # Increase the icon size based on the ratio between the actual and base font sizes
         width = height = max(self.BASE_ICON_SIZE, 11)
-        icon = QIcon.fromTheme(system_icon) if system_icon else self.create_text_icon(text_icon, 20)
+        self.logger.info(f"append_toolbar_icon {system_icon}, {theme_icon}, {text_icon}")
+        icon = (QIcon(theme_icon) if theme_icon
+                else (QIcon.fromTheme(system_icon) if system_icon
+                      else self.create_text_icon(text_icon, 20)))
 
         # Button's action
         label = conf['label'] if 'label' in conf else ''

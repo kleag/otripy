@@ -33,6 +33,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Dict, List, Any
 
 try:
+    from .icon_picker import IconPickerWidget
     from .journey import Journey
     from .location import Location
     from .location_list_view import LocationListView
@@ -43,6 +44,7 @@ try:
     from .toolbar import ToolBar
     from .note_widget import NoteWidget
 except ImportError:
+    from icon_picker import IconPickerWidget
     from journey import Journey
     from location import Location
     from location_list_view import LocationListView
@@ -258,108 +260,62 @@ class MapApp(QMainWindow):
         Main toolbar items map for convenience.
         """
         return [
-            # {'type': 'action', 'weight': 1, 'name': 'toolbar_actions_label_new_document', 'system_icon': 'document-new',
-            #  'theme_icon': 'file-earmark-plus-fill.svg', 'color': self.theme_helper.get_color('toolbar_icon_color_new'),
-            #  'label': self.lexemes.get('actions_label_new_document', scope='toolbar'),
-            #  'accessible_name': self.lexemes.get('actions_accessible_name_new_document', scope='toolbar'),
-            #  'action': self.action_new_file},
-            # {'type': 'action', 'weight': 2, 'name': 'toolbar_actions_label_open', 'system_icon': 'document-open',
-            #  'theme_icon': 'folder-fill.svg', 'color': self.theme_helper.get_color('toolbar_icon_color_open'),
-            #  'label': self.lexemes.get('actions_label_open', scope='toolbar'),
-            #  'accessible_name': self.lexemes.get('actions_accessible_name_open', scope='toolbar'),
-            #  'action': self.action_open_file},
-            # {'type': 'action', 'weight': 3, 'name': 'toolbar_actions_label_save', 'system_icon': 'media-floppy',
-            #  'theme_icon': 'floppy2-fill.svg', 'color': self.theme_helper.get_color('toolbar_icon_color_save'),
-            #  'label': self.lexemes.get('actions_label_save', scope='toolbar'),
-            #  'accessible_name': self.lexemes.get('actions_accessible_name_save', scope='toolbar'),
-            #  'action': self.action_save_file, 'var_name': 'toolbar_save_button', 'switched_off_check': lambda: True},
-            # {'type': 'delimiter'},
-            # {'type': 'action', 'weight': 4, 'name': 'toolbar_actions_label_edit',
-            #  'system_icon': 'accessories-text-editor', 'theme_icon': 'pencil-square.svg',
-            #  'color': self.theme_helper.get_color('toolbar_icon_color_edit'),
-            #  'label': self.lexemes.get('actions_label_edit', scope='toolbar'),
-            #  'accessible_name': self.lexemes.get('actions_accessible_name_edit', scope='toolbar'),
-            #  'action': self.action_edit_file, 'var_name': 'toolbar_edit_button',
-            #  'active_state_check': lambda: self.get_mode() != Mode.EDIT},
-            # # Active Edit Mode icon
-            # {'type': 'action', 'weight': 4, 'name': 'toolbar_actions_label_edit_act',
-            #  'system_icon': 'accessories-text-editor', 'theme_icon': 'pencil-square.svg',
-            #  'color': self.theme_helper.get_color('toolbar_icon_color_edit_act'),
-            #  'label': self.lexemes.get('actions_label_edit', scope='toolbar'),
-            #  'accessible_name': self.lexemes.get('actions_accessible_name_edit', scope='toolbar'),
-            #  'action': self.action_edit_file, 'active_state_check': lambda: self.get_mode() == Mode.EDIT},
-            # {'type': 'action', 'weight': 5, 'name': 'toolbar_actions_label_source', 'system_icon': 'edit-find',
-            #  'theme_icon': 'code-slash.svg', 'color': self.theme_helper.get_color('toolbar_icon_color_source'),
-            #  'label': self.lexemes.get('actions_label_source', scope='toolbar'),
-            #  'accessible_name': self.lexemes.get('actions_accessible_name_source', scope='toolbar'),
-            #  'action': self.action_source,
-            #  'active_state_check': lambda: self.get_mode() != Mode.SOURCE},
-            # # Active Source Mode icon
-            # {'type': 'action', 'weight': 5, 'name': 'toolbar_actions_label_source_act', 'system_icon': 'edit-find',
-            #  'theme_icon': 'code-slash.svg', 'color': self.theme_helper.get_color('toolbar_icon_color_source_act'),
-            #  'label': self.lexemes.get('actions_label_source', scope='toolbar'),
-            #  'accessible_name': self.lexemes.get('actions_accessible_name_source', scope='toolbar'),
-            #  'action': self.action_source,
-            #  'active_state_check': lambda: self.get_mode() == Mode.SOURCE},
-            # {'type': 'action', 'weight': 6, 'name': 'toolbar_actions_label_encrypt', 'system_icon': 'security-low',
-            #  'theme_icon': 'shield-lock.svg', 'color': self.theme_helper.get_color('toolbar_icon_color_encrypt'),
-            #  'label': self.lexemes.get('actions_label_encrypt', scope='toolbar'),
-            #  'accessible_name': self.lexemes.get('actions_accessible_name_encrypt', scope='toolbar'),
-            #  'action': self.action_encrypt,
-            #  'active_state_check': lambda: self.get_encryption() != Encryption.ENCRYPTED},
-            # # Active Encryption icon
-            # {'type': 'action', 'weight': 6, 'name': 'toolbar_actions_label_decrypt', 'system_icon': 'security-medium',
-            #  'theme_icon': 'shield-lock-fill.svg', 'color': self.theme_helper.get_color('toolbar_icon_color_decrypt'),
-            #  'label': self.lexemes.get('actions_label_decrypt', scope='toolbar'),
-            #  'accessible_name': self.lexemes.get('actions_accessible_name_decrypt', scope='toolbar'),
-            #  'action': self.action_decrypt,
-            #  'active_state_check': lambda: self.get_encryption() == Encryption.ENCRYPTED},
-            # {'type': 'delimiter'},
             # # Text format
-            {'type': 'action', 'weight': 7, 'name': 'toolbar_toolbar_icon_header1',
+            {'type': 'action', 'weight': 7,
+             'name': 'toolbar_toolbar_icon_header1',
              'text_icon': 'h1',
              'color': 'red',
              'label': 'Header1',
              'accessible_name': 'h1',
              'action': self.action_text_h1,
              'switched_off_check': lambda: False},
-            {'type': 'action', 'weight': 7, 'name': 'toolbar_toolbar_icon_header2',
+            {'type': 'action', 'weight': 7,
+             'name': 'toolbar_toolbar_icon_header2',
              'text_icon': 'h2',
              'color': 'red',
              'label': 'Header2',
              'accessible_name': 'h2',
              'action': self.action_text_h2,
              'switched_off_check': lambda: False},
-            {'type': 'action', 'weight': 7, 'name': 'toolbar_toolbar_icon_header3',
+            {'type': 'action', 'weight': 7,
+             'name': 'toolbar_toolbar_icon_header3',
              'text_icon': 'h3',
              'color': 'red',
              'label': 'Header3',
              'accessible_name': 'h3',
              'action': self.action_text_h3,
              'switched_off_check': lambda: False},
-            {'type': 'action', 'weight': 7, 'name': 'toolbar_toolbar_icon_color_bold',
-             'system_icon': 'format-text-bold', 'theme_icon': 'type-bold.svg',
+            {'type': 'action', 'weight': 7,
+             'name': 'toolbar_toolbar_icon_color_bold',
+             'system_icon': 'format-text-bold',
+             'theme_icon': 'bold.svg',
              'color': 'red',
              'label': 'Bold',
              'accessible_name': 'bold',
              'action': self.action_text_bold,
              'switched_off_check': lambda: False},
-            {'type': 'action', 'weight': 8, 'name': 'toolbar_actions_label_italic',
-             'system_icon': 'format-text-italic', 'theme_icon': 'type-italic.svg',
+            {'type': 'action', 'weight': 8,
+             'name': 'toolbar_actions_label_italic',
+             'system_icon': 'format-text-italic',
+             'theme_icon': 'italic.svg',
              'color': 'red',
              'label': 'Italic',
              'accessible_name': 'italic',
              'action': self.action_text_italic,
              'switched_off_check': lambda: False},
-            {'type': 'action', 'weight': 9, 'name': 'toolbar_actions_label_underline',
-             'system_icon': 'format-text-underline', 'theme_icon': 'type-underline.svg',
+            {'type': 'action', 'weight': 9,
+             'name': 'toolbar_actions_label_underline',
+             'system_icon': 'format-text-underline',
+             'theme_icon': 'underline.svg',
              'color': 'red',
              'label': 'Underline',
              'accessible_name': 'underline',
              'action': self.action_text_underline,
              'switched_off_check': lambda: False},
-            {'type': 'action', 'weight': 10, 'name': 'toolbar_actions_label_strikethrough',
-             'system_icon': 'format-text-strikethrough', 'theme_icon': 'type-strikethrough.svg',
+            {'type': 'action', 'weight': 10,
+             'name': 'toolbar_actions_label_strikethrough',
+             'system_icon': 'format-text-strikethrough',
+             'theme_icon': 'strikethrough.svg',
              'color': 'red',
              'label': 'Strikethrough',
              'accessible_name': 'strikethrough',
@@ -372,48 +328,23 @@ class MapApp(QMainWindow):
             #  'accessible_name': self.lexemes.get('actions_accessible_name_blockquote', scope='toolbar'),
             #  'action': self.action_text_blockquote, 'switched_off_check': lambda: self.get_mode() != Mode.EDIT},
             # {'type': 'delimiter'},
-            # {'type': 'action', 'weight': 12, 'name': 'toolbar_actions_label_ai_assistant',
-            #  'theme_icon': 'robot.svg', 'color': self.theme_helper.get_color('toolbar_icon_color_ai_assistant'),
-            #  'label': self.lexemes.get('actions_label_ai_assistant', scope='toolbar'),
-            #  'accessible_name': self.lexemes.get('actions_accessible_name_ai_assistant', scope='toolbar'),
-            #  'action': self.action_ai_assistant,
-            #  'active_state_check': lambda: not hasattr(self, 'ai_assistant') or not self.ai_assistant},
-            # # Active AI Assistant icon
-            # {'type': 'action', 'weight': 12, 'name': 'toolbar_actions_label_ai_assistant_act',
-            #  'theme_icon': 'robot.svg', 'color': self.theme_helper.get_color('toolbar_icon_color_ai_assistant_act'),
-            #  'label': self.lexemes.get('actions_label_ai_assistant', scope='toolbar'),
-            #  'accessible_name': self.lexemes.get('actions_accessible_name_ai_assistant', scope='toolbar'),
-            #  'action': self.action_ai_assistant,  # Bring to foreground if active
-            #  'active_state_check': lambda: hasattr(self, 'ai_assistant') and self.ai_assistant},
-            # {'type': 'action', 'weight': 13, 'name': 'toolbar_actions_label_color', 'theme_icon': 'eyedropper.svg',
-            #  'color': self.theme_helper.get_color('toolbar_icon_color_color_picker'),
-            #  'label': self.lexemes.get('actions_label_color_picker', scope='toolbar'),
-            #  'accessible_name': self.lexemes.get('actions_accessible_name_color_picker', scope='toolbar'),
-            #  'action': self.action_text_color_picker,
-            #  'active_state_check': lambda: not hasattr(self, 'color_picker') or not self.color_picker},
-            # # Active Color Picker icon
-            # {'type': 'action', 'weight': 13, 'name': 'toolbar_actions_label_color_act', 'theme_icon': 'eyedropper.svg',
-            #  'color': self.theme_helper.get_color('toolbar_icon_color_color_picker_act'),
-            #  'label': self.lexemes.get('actions_label_color_picker', scope='toolbar'),
-            #  'accessible_name': self.lexemes.get('actions_accessible_name_color_picker', scope='toolbar'),
-            #  'action': None,
-            #  'active_state_check': lambda: hasattr(self, 'color_picker') and self.color_picker},
+            {'type': 'action',
+             'weight': 13,
+             'name': 'toolbar_actions_marker_icon',
+             'theme_icon': 'location-dot.svg',
+             'color': 'red',
+             'label': 'Marker',
+             'accessible_name': 'marker',
+             'action': self.action_marker_icon},
+            {'type': 'action',
+             'weight': 13,
+             'name': 'toolbar_actions_label_color',
+             'theme_icon': 'eye-dropper.svg',
+             'color': 'red',
+             'label': 'Color',
+             'accessible_name': 'color',
+             'action': self.action_text_color_picker},
             # {'type': 'delimiter'},
-            # {'type': 'action', 'weight': 14, 'name': 'toolbar_actions_label_about',
-            #  'theme_icon': 'balloon-fill.svg', 'color': self.theme_helper.get_color('toolbar_icon_color_about'),
-            #  'label': self.lexemes.get('actions_label_about', scope='toolbar'),
-            #  'accessible_name': self.lexemes.get('actions_accessible_name_about', scope='toolbar'),
-            #  'action': self.action_about},
-            # {'type': 'action', 'weight': 15, 'name': 'toolbar_actions_label_exit',
-            #  'theme_icon': 'power.svg', 'color': self.theme_helper.get_color('toolbar_icon_color_exit'),
-            #  'label': self.lexemes.get('actions_label_exit', scope='toolbar'),
-            #  'accessible_name': self.lexemes.get('actions_accessible_name_exit', scope='toolbar'),
-            #  'action': self.action_exit},
-            # {'type': 'action', 'weight': 16, 'name': 'toolbar_actions_label_settings',
-            #  'theme_icon': 'three-dots.svg', 'color': self.theme_helper.get_color('toolbar_icon_color_settings'),
-            #  'label': self.lexemes.get('actions_label_settings', scope='toolbar'),
-            #  'accessible_name': self.lexemes.get('actions_accessible_name_settings', scope='toolbar'),
-            #  'action': self.action_settings},
         ]
 
     def action_text_h1(self):
@@ -502,6 +433,21 @@ class MapApp(QMainWindow):
         char_format.setFontStrikeOut(not char_format.fontStrikeOut())
         cursor.mergeCharFormat(char_format)
         self.note_input.setTextCursor(cursor)
+
+    def action_text_color_picker(self):
+        cursor = self.note_input.textCursor()
+
+        if not cursor.hasSelection():
+            return  # Do nothing if there's no selected text
+
+        char_format = cursor.charFormat()
+        # char_format.setFontStrikeOut(not char_format.fontStrikeOut())
+        cursor.mergeCharFormat(char_format)
+        self.note_input.setTextCursor(cursor)
+
+    def action_marker_icon(self):
+        marker_select_widget = IconPickerWidget(self)
+        marker_select_widget.exec()
 
     def get_toolbar_action_by_name(self, name):
         """
@@ -606,10 +552,10 @@ class MapApp(QMainWindow):
             popup = loc.to_html()
             script += f"""
             var marker = L.marker([{loc.lat}, {loc.lon}]).addTo(map).bindTooltip("{tooltip}", {{permanent: false}}).bindPopup("{popup}");
-            window.markerMap["{loc.id}"] = marker;
+            window.markerMap["{loc.lid}"] = marker;
             marker.on("click", function() {{
                 if (pywebchannel.objects.markerHandler) {{
-                    pywebchannel.objects.markerHandler.on_marker_clicked("{loc.id}");
+                    pywebchannel.objects.markerHandler.on_marker_clicked("{loc.lid}");
                 }}
             }});
             """
@@ -631,7 +577,7 @@ class MapApp(QMainWindow):
         # logger.info(f"MapApp.handle_marker_click {marker_id}")
         self.list_widget.selectById(marker_id)
         for loc in self.list_widget.locations():
-            if loc.id == marker_id:
+            if loc.lid == marker_id:
                 self.on_item_selected(loc)
 
     def highlight_marker(self, marker_id):
@@ -672,7 +618,7 @@ class MapApp(QMainWindow):
             self.list_widget.addLocation(new_location)
 
             self.update_map()
-            self.handle_marker_click(new_location.id)
+            self.handle_marker_click(new_location.lid)
         except ValueError:
             logger.error("Invalid latitude or longitude")
 
@@ -711,11 +657,11 @@ class MapApp(QMainWindow):
         if file_name:
             try:
                 with open(file_name, "r") as file:
-                    locations = json.load(file)
+                    json_str = file.read()
                     self.list_widget.clear()
                     # Complete missing data
                     self.current_file = file_name
-                    self.list_widget.setLocations(Journey([Location.from_data(loc) for loc in locations]))
+                    self.list_widget.setLocations(Journey.from_json_str(json_str))
                     self.list_widget.model.locations.dirty.connect(self.set_window_title)
                     self.set_window_title(dirty=False)
                     self.update_map()
@@ -764,13 +710,10 @@ class MapApp(QMainWindow):
                 # Convert bytes to a string
                 json_str = json_bytes.decode('utf-8')
 
-                # Parse JSON string into a Python object (dictionary in this case)
-                locations = json.loads(json_str)
-
                 # Complete missing data
                 self.list_widget.clear()
                 self.current_file = node  # keep nc_py_api FsNode instead of string
-                self.list_widget.setLocations(Journey([Location.from_data(loc) for loc in locations]))
+                self.list_widget.setLocations(Journey.from_json_str(json_str))
                 self.list_widget.model.locations.dirty.connect(self.set_window_title)
                 self.set_window_title(dirty=False)
                 self.update_map()
@@ -820,9 +763,10 @@ class MapApp(QMainWindow):
 
     def write_to_file(self, file_name):
         try:
-            locations = [loc.to_dict() for loc in self.list_widget.locations()]
+            # locations = [loc.to_dict() for loc in self.list_widget.locations()]
             with open(file_name, "w") as file:
-                json.dump(locations, file, indent=4)
+                self.list_widget.locations().write_to_file(file)
+                # json.dump(locations, file, indent=4)
         except Exception as e:
             QMessageBox.critical(self,
                                  "Error",
@@ -844,8 +788,8 @@ class MapApp(QMainWindow):
         self.note_input.textChanged.connect(self.note_changed)
         # logger.info(f"MapApp.on_item_selected {item} after from_note")
         for a_loc in self.list_widget.locations():
-            (self.highlight_marker(loc.id) if loc.id == a_loc.id
-             else self.downplay_marker(a_loc.id))
+            (self.highlight_marker(loc.lid) if loc.lid == a_loc.lid
+             else self.downplay_marker(a_loc.lid))
         js_code = f"moveMap({loc.lat}, {loc.lon});"
         self.map_page.runJavaScript(js_code)
 

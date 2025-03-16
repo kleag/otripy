@@ -50,7 +50,7 @@ class LocationListModel(QAbstractListModel):
     def findRowById(self, target_id):
         """Find the row index of a location by its UUID."""
         for row, location in enumerate(self.locations):
-            if location.id == target_id:
+            if location.lid == target_id:
                 return row
         return -1  # Not found
 
@@ -64,7 +64,7 @@ class LocationListModel(QAbstractListModel):
         if 0 <= row < len(self.locations):
             location = self.locations[row]
             location.note = new_note  # Assuming your Location has a 'note' attribute
-            # logger.info(f"Updated location {location.id} note to: {new_note}")
+            # logger.info(f"Updated location {location.lid} note to: {new_note}")
 
             # Notify the view that data has changed
             self.dataChanged.emit(index, index)  # Emit signal for the changed index
@@ -81,7 +81,7 @@ class LocationListModel(QAbstractListModel):
         row = index.row()  # Get the row from the QModelIndex
         if 0 <= row < len(self.locations):
             location = self.locations[row]
-            # logger.info(f"Deleting location {location.id}: {location}")
+            # logger.info(f"Deleting location {location.lid}: {location}")
 
             # Notify the view that rows are about to be removed
             self.beginRemoveRows(index.parent(), row, row)

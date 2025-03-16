@@ -11,6 +11,7 @@ dependencies = [
     "markdown>=3.7",
     "nc-py-api>=0.19.0",
     "numpy>=2.2.3",
+    "packaging>=24.2",
     "pillow>=11.1.0",
     "pyside6>=6.8.2.1",
     "typing-extensions>=4.12.2",
@@ -93,4 +94,9 @@ requires = [
     "pillow",
     "pyside6",
     "typing-extensions",
+]
+
+[dependency-groups]
+dev = [
+    "selenium>=4.29.0",
 ]
