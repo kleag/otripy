@@ -20,17 +20,21 @@ For detailed instructions and project information, please see the repository's R
 """
 import logging
 
+from importlib import resources
+from typing import TYPE_CHECKING
+
 from PySide6.QtCore import QSettings, QSize, Qt
 from PySide6.QtGui import QAction, QColor, QIcon, QPixmap, QPainter, QFont
 from PySide6.QtWidgets import QToolBar, QWidget, QMenu, QToolButton, QSizePolicy
-
-from typing import TYPE_CHECKING
 
 
 if TYPE_CHECKING:
     from typing import Union  # noqa
     from ..notolog_editor import NotologEditor  # noqa
 
+logger = logging.getLogger(__name__)
+
+RESOURCE_DIR = "resources/icons"
 
 class ToolBar(QToolBar):
     # Main window toolbar class
@@ -52,7 +56,6 @@ class ToolBar(QToolBar):
             # Apply the font from the main window to this dialog
             self.setFont(self.parent.font())
 
-        self.logger = logging.getLogger('toolbar')
 
         self.actions = actions if actions else {}
         self.refresh = refresh
@@ -109,10 +112,21 @@ class ToolBar(QToolBar):
         """
         # Use a themed icon with a fallback to a system icon
         system_icon = conf['system_icon'] if 'system_icon' in conf else None
-        theme_icon = f"resources/icons/{conf['theme_icon']}" if 'theme_icon' in conf else None
+        if resources.files("otripy.resources.icons"):  # Check if the module is available
+            # Use importlib.resources to list all SVG files in the package resources
+            if 'theme_icon' in conf:
+                icon_resource = resources.files("otripy.resources.icons") / conf['theme_icon']
+                with resources.as_file(icon_resource) as icon_path:
+                    theme_icon = str(icon_path.resolve())
+            else:
+                theme_icon = None
+        else:
+            # Fallback to local directory if not installed
+            theme_icon = f"{RESOURCE_DIR}/{conf['theme_icon']}" if 'theme_icon' in conf else None
+        # logger.info(f"append_toolbar_icon {conf}. theme_icon: {theme_icon}")
         text_icon = conf['text_icon'] if 'text_icon' in conf else None
         width = height = max(self.BASE_ICON_SIZE, 11)
-        self.logger.info(f"append_toolbar_icon {system_icon}, {theme_icon}, {text_icon}")
+        # logger.info(f"append_toolbar_icon {system_icon}, {theme_icon}, {text_icon}")
         icon = (QIcon(theme_icon) if theme_icon
                 else (QIcon.fromTheme(system_icon) if system_icon
                       else self.create_text_icon(text_icon, 20)))
@@ -140,7 +154,7 @@ class ToolBar(QToolBar):
         # Add an internal variable to access the icon later, e.g., for state toggling
         if 'var_name' in conf:
             if hasattr(self, conf['var_name']):
-                self.logger.debug('Variable "%s" is already set! Re-writing it...' % conf['var_name'])
+                logger.debug('Variable "%s" is already set! Re-writing it...' % conf['var_name'])
             setattr(self, conf['var_name'], icon_button)  # type: QToolButton
         # If the icon has a switched-off check, handle it here
         if ('switched_off_check' in conf
@@ -211,7 +225,7 @@ class ToolBar(QToolBar):
             index (int): Index in a toolbar menu mapping
         """
         pi = pow(2, index)
-        self.logger.debug('checked:{} index:{} pi:{}' . format(checked, index, pi))
+        # logger.debug('checked:{} index:{} pi:{}' . format(checked, index, pi))
         if checked:
             self.settings.toolbar_icons |= pi
         else:
@@ -230,7 +244,7 @@ class ToolBar(QToolBar):
     #    """
     #    super(ToolBar, self).removeAction(action)
     #
-    #    self.logger.debug('Remove element action "%s"' % action)
+    #    logger.debug('Remove element action "%s"' % action)
 
     def create_text_icon(self, text="H1", size=20):
         pixmap = QPixmap(size, size)

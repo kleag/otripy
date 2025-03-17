@@ -1,3 +1,4 @@
+from importlib import resources
 import logging
 import os
 import sys
@@ -95,14 +96,22 @@ class IconPickerWidget(QDialog):
         self.load_icons()
 
     def load_icons(self):
-        icon_files = [f for f in os.listdir(RESOURCE_DIR) if f.endswith(".svg")]
+        # logger.info(f"resources.files: {resources.files("otripy.resources.icons")}")
+
+        if resources.files("otripy.resources.icons"):  # Check if the module is available
+            # Use importlib.resources to list all SVG files in the package resources
+            icon_dir = resources.files("otripy.resources.icons")
+            svg_files = {f.name: f"{icon_dir}/{f.name}" for f in icon_dir.iterdir() if f.suffix == ".svg"}
+        else:
+            # Fallback to local directory if not installed
+            svg_files = {f: f"{RESOURCE_DIR}/{f}" for f in os.listdir(RESOURCE_DIR) if f.endswith(".svg")}
+
         for idx, icon_name in enumerate(ICON_NAMES):
             icon_file = f"{icon_name}.svg"
-            if icon_file in icon_files:
-                # logger.info(f"load icon {idx}, {icon_file}", file=sys.stderr)
-                icon_path = os.path.join(RESOURCE_DIR, icon_file)
+            if icon_file in svg_files:
+                # logger.info(f"load icon {idx}, {svg_files[icon_file]}")
                 icon_button = QPushButton()
-                icon = QIcon(icon_path)
+                icon = QIcon(svg_files[icon_file])
                 # logger.info(f"icon {icon.size()}")
                 icon_button.setIcon(icon)
                 # icon_button.setIconSize(self.sizeHint())
