@@ -118,7 +118,7 @@ class Journey(QObject):
 
     def load_from_json(self, json_str: str):
         journey = json.loads(json_str)
-        logger.info(f"Journey.load_from_json {journey}")
+        # logger.info(f"Journey.load_from_json {journey}")
         if type(journey) is list:
             # Initial pre-1.0.0 unstructured format with no metadata
             # we have only a list of locations
@@ -145,7 +145,7 @@ class Journey(QObject):
         iso_timestamp = datetime.now(timezone.utc).isoformat()
 
         locations = [loc.to_dict() for loc in self._locations]
-        logger.info(f"Journey.write_to_file locations: {locations}")
+        # logger.info(f"Journey.write_to_file locations: {locations}")
         data = {
             "format": "otripy",
             "description": "A Journey with Otripy",  # A brief description of the data.

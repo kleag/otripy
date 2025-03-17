@@ -30,6 +30,8 @@ ICON_NAMES = [
     "car-side",
     "caravan",
     "charging-station",
+    "circle",
+    "circle-dot",
     "city",
     "cloud",
     "compass",

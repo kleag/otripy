@@ -7,9 +7,10 @@ import os
 import sys
 
 from PySide6.QtCore import QSettings, QUrl, QObject, Signal, Slot
-from PySide6.QtGui import QAction, QDoubleValidator, QKeySequence, QTextCursor, QFont, QTextCharFormat, QTextFormat
+from PySide6.QtGui import QAction, QColor, QDoubleValidator, QKeySequence, QTextCursor, QFont, QTextCharFormat, QTextFormat
 from PySide6.QtWidgets import (
     QApplication,
+    QColorDialog,
     QDialog,
     QFileDialog,
     QHBoxLayout,
@@ -35,6 +36,7 @@ from typing import TYPE_CHECKING, Dict, List, Any
 try:
     from .icon_picker import IconPickerWidget
     from .journey import Journey
+    from .limited_color_picker import LimitedColorPicker
     from .location import Location
     from .location_list_view import LocationListView
     from .search_popup import SearchPopup
@@ -46,6 +48,7 @@ try:
 except ImportError:
     from icon_picker import IconPickerWidget
     from journey import Journey
+    from limited_color_picker import LimitedColorPicker
     from location import Location
     from location_list_view import LocationListView
     from search_popup import SearchPopup
@@ -344,7 +347,7 @@ class MapApp(QMainWindow):
              'color': 'red',
              'label': 'Color',
              'accessible_name': 'color',
-             'action': self.action_text_color_picker},
+             'action': self.action_marker_color_picker},
             # {'type': 'delimiter'},
         ]
 
@@ -435,7 +438,19 @@ class MapApp(QMainWindow):
         cursor.mergeCharFormat(char_format)
         self.note_input.setTextCursor(cursor)
 
-    def action_text_color_picker(self):
+    def action_marker_color_picker(self):
+        logger.info(f"action_marker_color_picker")
+        selected_indexes = self.list_widget.selectedIndexes()
+        if selected_indexes:
+            selected_item = selected_indexes[0]
+            location = self.list_widget.model.getLocation(selected_item)
+            if location is not None:
+                color = LimitedColorPicker.get_color()
+                location.color = color
+                self.update_map()
+        else:
+            logger.warning(f"Marker chosen {icon_name} while no location is selected")
+
         cursor = self.note_input.textCursor()
 
         if not cursor.hasSelection():
@@ -572,7 +587,7 @@ class MapApp(QMainWindow):
                 icon = f"""
                 var icon = L.AwesomeMarkers.icon({{
                     icon: 'fa-{loc.marker}',  // Icône FontAwesome (ex: fa-coffee, fa-car, fa-bicycle)
-                    markerColor: '{loc.color if loc.color is not None else "blue"}', // Couleurs disponibles : red, blue, green, orange, yellow, purple, darkred, lightred, darkblue, lightblue, darkgreen, lightgreen, cadetblue, white, pink, gray, black
+                    markerColor: '{loc.color if loc.color is not None else "blue"}', // Couleurs disponibles : red, blue, green, orange, purple, darkred, lightred, darkblue, lightblue, darkgreen, lightgreen, cadetblue, white, pink, gray, black
                     prefix: 'fa'        // Indique que l'on utilise FontAwesome
                 }});
                 """
@@ -581,9 +596,20 @@ class MapApp(QMainWindow):
                 var marker = L.marker([{loc.lat}, {loc.lon}], {{ icon: icon }}).addTo(map).bindTooltip("{tooltip}", {{permanent: false}}).bindPopup("{popup}");
                 """
             else:
-                script += f"""
-                var marker = L.marker([{loc.lat}, {loc.lon}]).addTo(map).bindTooltip("{tooltip}", {{permanent: false}}).bindPopup("{popup}");
+                icon = f"""
+                var icon = L.AwesomeMarkers.icon({{
+                    icon: 'fa-circle',  // Icône FontAwesome (ex: fa-coffee, fa-car, fa-bicycle)
+                    markerColor: '{loc.color if loc.color is not None else "blue"}', // Couleurs disponibles : red, blue, green, orange, yellow, purple, darkred, lightred, darkblue, lightblue, darkgreen, lightgreen, cadetblue, white, pink, gray, black
+                    prefix: 'fa'        // Indique que l'on utilise FontAwesome
+                }});
                 """
+                script += icon
+                script += f"""
+                var marker = L.marker([{loc.lat}, {loc.lon}], {{ icon: icon }}).addTo(map).bindTooltip("{tooltip}", {{permanent: false}}).bindPopup("{popup}");
+                """
+                # script += f"""
+                # var marker = L.marker([{loc.lat}, {loc.lon}]).addTo(map).bindTooltip("{tooltip}", {{permanent: false}}).bindPopup("{popup}");
+                # """
             script += f"""
             window.markerMap["{loc.lid}"] = marker;
             marker.on("click", function() {{
