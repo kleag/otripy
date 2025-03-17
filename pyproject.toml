@@ -1,6 +1,6 @@
 [project]
 name = "otripy"
-version = "1.1.4"
+version = "1.2.0"
 description = "A tool to plan your next trip"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -52,7 +52,7 @@ Issues = "https://github.com/kleag/otripy/issues"
 
 
 [bumpver]
-current_version = "1.1.4"
+current_version = "1.2.0"
 version_pattern = "MAJOR.MINOR.PATCH"
 commit = true
 tag = true
@@ -73,7 +73,7 @@ package = true
 [tool.briefcase]
 project_name = "Otripy"
 bundle = "org.kleag.otripy"
-version = "1.1.4"
+version = "1.2.0"
 author = "Gaël de Chalendar"
 author_email = "kleagg@gmail.com"
 url = "https://github.com/kleag/otripy"
