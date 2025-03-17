@@ -1,3 +1,7 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
 [project]
 name = "otripy"
 version = "1.2.0"
@@ -34,6 +38,18 @@ classifiers = [
     "Operating System :: POSIX :: Linux",
     "Operating System :: Unix",
 ]
+
+[tool.hatch.build.targets.sdist]
+include = ["resources/icons/**/*.svg"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/otripy"]
+
+[tool.hatch.build]
+include = ["resources/icons/**/*.svg"]
+
+[tool.setuptools.package-data]
+"your_package" = ["resources/icons/**/*.svg"]
 
 [project.gui-scripts]
 otripy = "otripy.main:main"

@@ -33,6 +33,7 @@ Otripy is already usable but would be better with a lot of other features. Some 
 * Open and save files on any Nextcloud server you have access to
 * Note text formatting (heading, bold, …)
 * Image insertion (copy paste only currently)
+* Change location markers icon and color
 
 ## Screenshots
 
