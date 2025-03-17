@@ -1,16 +1,83 @@
+import logging
 import os
 import sys
 import time
 from PySide6.QtWidgets import QWidget, QPushButton, QGridLayout, QVBoxLayout, QDialog
 from PySide6.QtGui import QIcon
-from PySide6.QtCore import Signal
+from PySide6.QtCore import QSize, Signal
+
+logger = logging.getLogger(__name__)
 
 # Directory where the icons are stored
 RESOURCE_DIR = "resources/icons"
 # List of Folium marker icon names
 ICON_NAMES = [
-    "location-dot", "cloud", "info-sign", "home", "star", "flag", "ok",
-    "remove", "plus", "minus", "heart"
+    "address-book",
+    "address-card",
+    "anchor",
+    "arrows-to-circle",
+    "bag-shopping",
+    "bed",
+    "bicycle",
+    "binoculars",
+    "briefcase",
+    "bus",
+    "cable-car",
+    "camera",
+    "campground",
+    "cannabis",
+    "car-side",
+    "caravan",
+    "charging-station",
+    "city",
+    "cloud",
+    "compass",
+    "ferry",
+    "flag",
+    "globe",
+    "guitar",
+    "heart",
+    "helicopter",
+    "home",
+    "hotel",
+    "info-sign",
+    "landmark",
+    "location-arrow",
+    "location-crosshairs",
+    "location-dot",
+    "location-pin-lock",
+    "location-pin",
+    "map-location-dot",
+    "map-location",
+    "map-pin",
+    "map",
+    "marker",
+    "motorcycle",
+    "mountain",
+    "passport",
+    "person-biking",
+    "person-hiking",
+    "person-running",
+    "person-skating",
+    "person-skiing-nordic",
+    "person-skiing",
+    "person-snowboarding",
+    "person-swimming",
+    "person-walking-luggage",
+    "plane-departure",
+    "route",
+    "sailboat",
+    "ship",
+    "star",
+    "suitcase-medical",
+    "suitcase-rolling",
+    "suitcase",
+    "taxi",
+    "train-subway",
+    "train",
+    "umbrella-beach",
+    "utensils",
+    "wine-glass",
 ]
 
 class IconPickerWidget(QDialog):
@@ -19,7 +86,7 @@ class IconPickerWidget(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Pick an Icon")
-        self.setFixedSize(400, 300)
+        self.setFixedSize(300, 300)
 
         self.layout = QVBoxLayout(self)
         self.grid_layout = QGridLayout()
@@ -29,17 +96,19 @@ class IconPickerWidget(QDialog):
 
     def load_icons(self):
         icon_files = [f for f in os.listdir(RESOURCE_DIR) if f.endswith(".svg")]
-        print(icon_files)
         for idx, icon_name in enumerate(ICON_NAMES):
             icon_file = f"{icon_name}.svg"
             if icon_file in icon_files:
-                print(f"load icon {idx}, {icon_file}", file=sys.stderr)
+                # logger.info(f"load icon {idx}, {icon_file}", file=sys.stderr)
                 icon_path = os.path.join(RESOURCE_DIR, icon_file)
                 icon_button = QPushButton()
-                icon_button.setIcon(QIcon(icon_path))
-                icon_button.setIconSize(self.sizeHint())
+                icon = QIcon(icon_path)
+                # logger.info(f"icon {icon.size()}")
+                icon_button.setIcon(icon)
+                # icon_button.setIconSize(self.sizeHint())
+                icon_button.setIconSize(QSize(20, 20))
 
-                row, col = divmod(idx, 5)  # Arrange in a grid
+                row, col = divmod(idx, 8)  # Arrange in a grid
                 self.grid_layout.addWidget(icon_button, row, col)
 
                 icon_button.clicked.connect(lambda _, name=icon_name: self.select_icon(name))

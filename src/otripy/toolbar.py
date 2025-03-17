@@ -18,6 +18,7 @@ License: MIT License
 
 For detailed instructions and project information, please see the repository's README.md.
 """
+import logging
 
 from PySide6.QtCore import QSettings, QSize, Qt
 from PySide6.QtGui import QAction, QColor, QIcon, QPixmap, QPainter, QFont
@@ -25,7 +26,6 @@ from PySide6.QtWidgets import QToolBar, QWidget, QMenu, QToolButton, QSizePolicy
 
 from typing import TYPE_CHECKING
 
-import logging
 
 if TYPE_CHECKING:
     from typing import Union  # noqa
