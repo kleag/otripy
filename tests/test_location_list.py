@@ -132,3 +132,37 @@ def test_marker_style_change_marks_journey_modified(qtbot):
     view.model.setMarkerStyle(index, color="purple")
     location = view.model.getLocation(index)
     assert (location.marker, location.color) == ("star", "purple")
+
+
+def test_hovered_marker_highlights_list_row_without_modifying(qtbot):
+    """Issue #22: hovering a marker on the map highlights its list entry."""
+    view = LocationListView()
+    view.setLocations(Journey([Location(id="a"), Location(id="b")]))
+    model = view.model
+    with qtbot.assertNotEmitted(model.locations.dirty):
+        model.setHovered("b")
+    assert model.data(model.index(0, 0), Qt.BackgroundRole) is None
+    assert model.data(model.index(1, 0), Qt.BackgroundRole) is not None
+    model.setHovered(None)
+    assert model.data(model.index(1, 0), Qt.BackgroundRole) is None
+
+
+def test_list_tooltip_previews_note(qapp):
+    model = LocationListModel(Journey([Location(note={"markdown": "# Louvre\n\nOpen 9:00"}, id="a")]))
+    assert model.data(model.index(0, 0), Qt.ToolTipRole) == "Louvre\nOpen 9:00"
+
+
+def test_list_reports_hovered_location(qtbot):
+    from PySide6.QtCore import QEvent
+    from PySide6.QtTest import QTest
+    view = LocationListView()
+    qtbot.addWidget(view)
+    view.setLocations(Journey([Location(note={"markdown": "# a"}, id="a"), Location(note={"markdown": "# b"}, id="b")]))
+    view.resize(200, 200)
+    view.show()
+    with qtbot.waitSignal(view.locationHovered) as hovered:
+        QTest.mouseMove(view.viewport(), view.visualRect(view.model.index(1, 0)).center())
+    assert hovered.args == ["b"]
+    with qtbot.waitSignal(view.locationHovered) as hovered:
+        view.leaveEvent(QEvent(QEvent.Leave))
+    assert hovered.args == [""]

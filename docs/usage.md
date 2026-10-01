@@ -5,6 +5,7 @@
 * **Add a location** by clicking on the map. Otripy looks up the address of the clicked point: the place's name becomes the note's title, followed by its address. To avoid adding locations by mistake, check *Settings* → *Confirm New Locations*: Otripy then shows the address and asks before adding the location.
 * **Search** a place by typing its name in the search field and pressing *Enter*; click a result to add it, or press *Escape* to close the list.
 * **Select a location** by clicking it in the list or its marker on the map: the map centers on it, and its note opens below the map.
+* **Hover** a location in the list to highlight its marker on the map, or a marker to highlight its entry in the list. Their tooltips show the title and the beginning of the note.
 * **Reorder** locations by dragging them in the list. Locations with a custom marker show its icon there.
 * **Delete** the selected location with *Delete Location*.
 

@@ -2,9 +2,9 @@ import logging
 from functools import lru_cache
 from importlib import resources
 
-from PySide6.QtWidgets import QListView, QAbstractItemView
+from PySide6.QtWidgets import QAbstractItemView, QApplication, QListView
 from PySide6.QtCore import QAbstractListModel, Qt, QModelIndex, QSize, Signal
-from PySide6.QtGui import QColor, QIcon, QPainter, QPixmap
+from PySide6.QtGui import QBrush, QColor, QIcon, QPainter, QPalette, QPixmap
 
 try:
     from .journey import Journey
@@ -56,6 +56,7 @@ class LocationListModel(QAbstractListModel):
         super().__init__(parent)
         # An empty Journey is falsy: test for None, not truth
         self.locations = locations if locations is not None else Journey()
+        self.hovered_id = None  # location whose marker the mouse is over, on the map
 
     def rowCount(self, parent=None):
         return len(self.locations)
@@ -71,7 +72,24 @@ class LocationListModel(QAbstractListModel):
             # one so that all titles are aligned and rows have the same height
             icon = marker_icon(location.marker, location.color) if location.marker else QIcon()
             return icon if not icon.isNull() else blank_icon()
+        if role == Qt.ToolTipRole:
+            return "\n".join(part for part in (location.label(), location.preview()) if part)
+        if role == Qt.BackgroundRole and location.lid == self.hovered_id:
+            highlight = QApplication.palette().color(QPalette.Highlight)
+            highlight.setAlpha(60)
+            return QBrush(highlight)
         return None
+
+    def setHovered(self, location_id):
+        """Highlight the location whose marker is hovered on the map (None for none)."""
+        if location_id == self.hovered_id:
+            return
+        rows = [self.findRowById(i) for i in (self.hovered_id, location_id) if i]
+        self.hovered_id = location_id
+        for row in rows:
+            if row != -1:
+                index = self.index(row, 0)
+                self.dataChanged.emit(index, index, [Qt.BackgroundRole])
 
     def setMarkerStyle(self, index: QModelIndex, marker=..., color=...):
         """Change a location's marker icon and/or color, and notify the views."""
@@ -219,9 +237,14 @@ class LocationListModel(QAbstractListModel):
 
 
 class LocationListView(QListView):
-    """The list of locations next to the map. Emits locationClicked(Location)."""
+    """The list of locations next to the map.
+
+    Emits locationClicked(Location), and locationHovered(id) when the mouse moves
+    onto another location ("" when it leaves them).
+    """
 
     locationClicked = Signal(object)  # Signal emitting the selected Location object
+    locationHovered = Signal(str)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -231,10 +254,29 @@ class LocationListView(QListView):
         self.setDragDropMode(QListView.InternalMove)
         self.setSelectionMode(QAbstractItemView.SingleSelection)
         self.setIconSize(QSize(LIST_ICON_SIZE, LIST_ICON_SIZE))
+        self.setMouseTracking(True)  # hover highlight of the markers
+        self._list_hovered_id = None
 
     def dataChanged(self, topLeft, bottomRight, roles=()):
         super().dataChanged(topLeft, bottomRight, roles)
-        self.model.locations.dirty.emit(True)
+        # A hover highlight is not a change of the journey
+        if list(roles) != [Qt.BackgroundRole]:
+            self.model.locations.dirty.emit(True)
+
+    def mouseMoveEvent(self, event):
+        super().mouseMoveEvent(event)
+        location = self.model.getLocation(self.indexAt(event.position().toPoint()))
+        self.set_list_hover(location.lid if location is not None else None)
+
+    def leaveEvent(self, event):
+        super().leaveEvent(event)
+        self.set_list_hover(None)
+
+    def set_list_hover(self, location_id):
+        """Track the location under the mouse in the list, to highlight its marker."""
+        if location_id != self._list_hovered_id:
+            self._list_hovered_id = location_id
+            self.locationHovered.emit(location_id or "")
 
     def setLocations(self, locations):
         self.model.setLocations(locations)

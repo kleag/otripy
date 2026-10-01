@@ -38,7 +38,7 @@ try:
     from .limited_color_picker import LimitedColorPicker
     from .location import Location
     from .location_list_view import LocationListView
-    from .map_view import (DEFAULT_ZOOM, MapBridge, build_map_html, downplay_marker_js, highlight_marker_js, move_map_js,
+    from .map_view import (DEFAULT_ZOOM, MapBridge, hover_marker_js, tooltip_html, build_map_html, downplay_marker_js, highlight_marker_js, move_map_js,
                            update_marker_text_js)
     from .search_popup import SearchPopup
     from .config import ConfigDialog, load_nextcloud_password
@@ -52,7 +52,7 @@ except ImportError:
     from limited_color_picker import LimitedColorPicker
     from location import Location
     from location_list_view import LocationListView
-    from map_view import (DEFAULT_ZOOM, MapBridge, build_map_html, downplay_marker_js, highlight_marker_js, move_map_js,
+    from map_view import (DEFAULT_ZOOM, MapBridge, hover_marker_js, tooltip_html, build_map_html, downplay_marker_js, highlight_marker_js, move_map_js,
                           update_marker_text_js)
     from search_popup import SearchPopup
     from config import ConfigDialog, load_nextcloud_password
@@ -131,6 +131,10 @@ class MapApp(QMainWindow):
 
         self.list_widget.locationClicked.connect(self.on_item_selected)
         self.list_widget.model.rowsMoved.connect(lambda *args: self.schedule_autosave())
+        # Hovering a location in the list or on the map highlights it in the other (issue #22)
+        self._hovered_marker = None
+        self.list_widget.locationHovered.connect(self.hover_marker)
+        self.map_bridge.markerHovered.connect(lambda lid: self.list_widget.model.setHovered(lid or None))
         # self.list_widget.setLocations(self.locations)
 
         # Main widget (Text editor for simplicity)
@@ -615,11 +619,19 @@ class MapApp(QMainWindow):
         selected_indexes = self.list_widget.selectedIndexes()
         if selected_indexes:
             location = self.list_widget.model.getLocation(selected_indexes[0])
-            old_label = location.label() if location is not None else None
+            old_tooltip = tooltip_html(location) if location is not None else None
             self.list_widget.updateLocationNoteAtIndex(selected_indexes[0], self.note_input.to_note())
             # The list shows the new title at once; the map's marker needs updating too
-            if location is not None and location.label() != old_label:
+            if location is not None and tooltip_html(location) != old_tooltip:
                 self.map_page.runJavaScript(update_marker_text_js(location))
+
+    def hover_marker(self, location_id: str):
+        """Highlight the marker of the location hovered in the list ("" for none)."""
+        if self._hovered_marker:
+            self.map_page.runJavaScript(hover_marker_js(self._hovered_marker, False))
+        self._hovered_marker = location_id or None
+        if self._hovered_marker:
+            self.map_page.runJavaScript(hover_marker_js(self._hovered_marker, True))
 
     @Slot(float, float, int)
     def map_view_changed(self, lat: float, lon: float, zoom: int):

@@ -8,7 +8,7 @@ from otripy.journey import Journey
 from otripy.location import Location
 from otripy.map_view import (DEFAULT_CENTER, MapBridge, build_map_html, downplay_marker_js,
                              highlight_marker_js, js_string, marker_icon_js, move_map_js,
-                             update_marker_text_js)
+                             hover_marker_js, tooltip_html, update_marker_text_js)
 
 
 def inline_scripts(html):
@@ -125,3 +125,27 @@ def test_bridge_relays_view_changes(qtbot):
     with qtbot.waitSignal(bridge.viewChanged) as changed:
         bridge.on_view_changed(45.5, 4.25, 9)
     assert changed.args == [45.5, 4.25, 9]
+
+
+def test_tooltip_shows_title_and_note_preview():
+    loc = Location(note={"markdown": "# Fish & Chips\n\nOpen <late>\n\nCash only"})
+    assert tooltip_html(loc) == "<b>Fish &amp; Chips</b><br>Open &lt;late&gt;<br>Cash only"
+
+
+def test_markers_report_hovering():
+    html = build_map_html([Location(1, 2, id="abc")])
+    assert 'on_marker_hovered("abc")' in html
+    assert 'on_marker_hovered("")' in html
+    assert ".otripy-hover" in html
+
+
+def test_hover_snippet_is_valid(tmp_path):
+    for hovered in (True, False):
+        assert_valid_js("function hoverMarker() {}\n" + hover_marker_js('a"b', hovered), tmp_path)
+
+
+def test_bridge_relays_hovering(qtbot):
+    bridge = MapBridge()
+    with qtbot.waitSignal(bridge.markerHovered) as hovered:
+        bridge.on_marker_hovered("abc")
+    assert hovered.args == ["abc"]
