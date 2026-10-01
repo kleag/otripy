@@ -9,22 +9,17 @@ description = "A tool to plan your next trip"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-    "bs4>=0.0.2",
     "folium>=0.19.5",
     "geopy>=2.4.1",
     "keyring>=25.6.0",
-    "lxml>=5.3.1",
-    "markdown>=3.7",
     "nc-py-api>=0.19.0",
-    "numpy>=2.2.3",
     "packaging>=24.2",
-    "pillow>=11.1.0",
     "pyside6>=6.8.2.1",
-    "requests>=2.32.3",
     "typing-extensions>=4.12.2",
 ]
 authors = [{ name = "Gaël de Chalendar (aka Kleag)", email = "kleagg@gmail.com" }]
-license = { text = "AGPL" }
+license = "AGPL-3.0-or-later"
+license-files = ["AGPL.md"]
 keywords = ["map", "tourism", "openstreetmap", "journey", "planning", "trip" ]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
@@ -34,7 +29,6 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Intended Audience :: End Users/Desktop",
-    "License :: OSI Approved :: GNU Affero General Public License v3",
     "Natural Language :: English",
     "Operating System :: MacOS",
     "Operating System :: Microsoft :: Windows",
@@ -104,7 +98,8 @@ version = "1.2.3"
 author = "Gaël de Chalendar"
 author_email = "kleagg@gmail.com"
 url = "https://github.com/kleag/otripy"
-license.file = "AGPL.md"
+license = "AGPL-3.0-or-later"
+license-files = ["AGPL.md"]
 
 [tool.briefcase.app.otripy]
 formal_name = "Otripy"
@@ -115,11 +110,8 @@ requires = [
     "folium",
     "geopy",
     "keyring",
-    "lxml",
-    "markdown",
     "nc-py-api",
-    "numpy",
-    "pillow",
+    "packaging",
     "pyside6",
     "typing-extensions",
 ]

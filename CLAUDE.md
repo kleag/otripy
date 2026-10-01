@@ -24,16 +24,15 @@ Testing notes:
 - Geocoding goes through `MapApp.geolocator`; replace it with a fake object, never hit Nominatim.
 - JavaScript generated in `map_view.py` is syntax-checked with `node --check` (tests skip if node is missing).
 
-Release (from README):
+CI (`.github/workflows/ci.yml`) runs ruff and pytest on Linux, Windows and macOS with Python 3.10 and 3.13.
+
+Release:
 
 ```sh
-rm dist/otripy-*
-bumpver update --patch     # bumps pyproject.toml + src/otripy/__init__.py, commits, tags, pushes
-uv build && uv publish
-uv sync --all-extras && git add uv.lock && git commit -m "Update lock to new package version"
+bumpver update --patch     # bumps the version in pyproject.toml ([project] and [tool.briefcase]) and src/otripy/__init__.py, commits, tags (MAJOR.MINOR.PATCH, no "v") and pushes
 ```
 
-bumpver tags releases as `1.2.3` (no `v`). There is no CI yet: `.github/workflows/release.yml` (Briefcase builds) exists locally but is untracked and broken; it is rewritten in Phase 2 of `ROADMAP.md`. bumpver's `version = "{version}"` pattern updates both the `[project]` and `[tool.briefcase]` versions.
+The tag triggers `.github/workflows/release.yml`: it checks the tag matches the version, builds the sdist and wheel, publishes them to PyPI (trusted publishing, `pypi` environment), builds a Windows MSI and an ad-hoc signed (not notarized) macOS DMG with Briefcase, and attaches everything to a GitHub release. Running the workflow by hand only builds. Briefcase starts the app with `python -m otripy` (`__main__.py`) and installs `[tool.briefcase.app.otripy] requires`, which must be kept in sync with `[project] dependencies`.
 
 ## Architecture
 
