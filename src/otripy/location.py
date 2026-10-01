@@ -26,6 +26,8 @@ class NoteHolder:
         """Return the first line of the note as plain text: heading marks and markdown escapes removed."""
         the_label = self.note["markdown"].split('\n')[0]
         the_label = re.sub(r'^#+ ?', '', the_label)
+        # bold (**, __) and strikethrough (~~) written by Qt around formatted words
+        the_label = re.sub(r'(?<!\\)(\*\*|__|~~)(.+?)(?<!\\)\1', r'\2', the_label)
         return re.sub(MARKDOWN_ESCAPE, r'\1', the_label)
 
     def to_html(self):
