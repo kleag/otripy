@@ -51,7 +51,7 @@ Feature requests and bugs are tracked as [GitHub issues](https://github.com/klea
 - [x] #26 Text popup over markers is not always updated
 
 ### Quick wins
-- [ ] #25 Fit map to all markers when opening a file
+- [x] #25 Fit map to all markers when opening a file
 - [ ] #27 Show the location icon in the list entry
 - [ ] #28 "Save as…" to Nextcloud
 - [ ] #29 Resizable side panels

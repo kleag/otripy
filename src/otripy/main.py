@@ -549,8 +549,9 @@ class MapApp(QMainWindow):
             if location is not None and location.label() != old_label:
                 self.map_page.runJavaScript(update_marker_text_js(location))
 
-    def update_map(self):
-        self.map_page.setHtml(build_map_html(self.list_widget.locations()))
+    def update_map(self, fit_all: bool = False):
+        """Redraw the map; with fit_all, zoom it to show all the locations."""
+        self.map_page.setHtml(build_map_html(self.list_widget.locations(), fit_all=fit_all))
 
     def handle_marker_click(self, marker_id):
         """ Handle marker click events in Python. """
@@ -606,7 +607,7 @@ class MapApp(QMainWindow):
         self.list_widget.setLocations(journey)
         journey.dirty.connect(self.set_window_title)
         self.set_window_title(dirty=False)
-        self.update_map()
+        self.update_map(fit_all=True)
 
     def new(self):
         if self.confirm_discard():
