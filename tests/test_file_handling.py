@@ -2,6 +2,7 @@ import json
 
 import nc_py_api
 import pytest
+from PySide6.QtCore import QModelIndex, Qt
 from PySide6.QtGui import QCloseEvent
 from PySide6.QtWidgets import QMessageBox
 
@@ -409,3 +410,72 @@ def test_recent_nextcloud_file(window, nextcloud, fixture_text):
     window.new()
     assert window.open_recent_file(main.NEXTCLOUD_PREFIX + "Trips/paris.json")
     assert window.current_file.user_path == "Trips/paris.json"
+
+
+@pytest.fixture
+def autosaved_trip(window, dialogs, fixture_text, tmp_path, qtbot):
+    trip = tmp_path / "trip.json"
+    trip.write_text(fixture_text("journey-1.0.0.json"), encoding="utf-8")
+    dialogs.open_path = trip
+    window.load_file()
+    window.autosave_action.setChecked(True)
+    return trip
+
+
+def saved_labels(trip):
+    return [loc.label() for loc in Journey.from_file(trip)]
+
+
+def test_autosave_after_adding_a_location(window, autosaved_trip, qtbot):
+    """Issue #12: with Auto Save, actions on locations save the trip."""
+    window.geolocator = type("G", (), {"reverse": lambda self, q: None})()
+    window.map_bridge.on_map_clicked(45.0, 5.0)
+    qtbot.waitUntil(lambda: not window.dirty)
+    assert len(saved_labels(autosaved_trip)) == 7
+
+
+def test_autosave_not_on_each_key(window, autosaved_trip, qtbot):
+    window.list_widget.selectById(window.list_widget.locations()[0].lid)
+    window.on_item_selected(window.list_widget.locations()[0])
+    qtbot.wait(10)
+    window.note_input.setPlainText("Typed title")
+    qtbot.wait(50)
+    assert window.dirty, "typing in a note must not save"
+    assert saved_labels(autosaved_trip)[0] == "Tour Eiffel"
+    # Selecting another location saves the edited note
+    window.on_item_selected(window.list_widget.locations()[1])
+    qtbot.waitUntil(lambda: not window.dirty)
+    assert saved_labels(autosaved_trip)[0] == "Typed title"
+
+
+def test_autosave_after_delete_and_reorder(window, autosaved_trip, qtbot):
+    window.list_widget.setCurrentIndex(window.list_widget.model.index(0, 0))
+    window.delete_item()
+    qtbot.waitUntil(lambda: not window.dirty)
+    assert len(saved_labels(autosaved_trip)) == 5
+    model = window.list_widget.model
+    data = model.mimeData([model.index(0, 0)])
+    model.dropMimeData(data, Qt.MoveAction, 3, 0, QModelIndex())
+    qtbot.waitUntil(lambda: not window.dirty)
+    assert saved_labels(autosaved_trip)[2] == "Musée du Louvre"
+
+
+def test_autosave_off_by_default(window, dialogs, fixture_text, tmp_path, qtbot):
+    trip = tmp_path / "trip.json"
+    trip.write_text(fixture_text("journey-1.0.0.json"), encoding="utf-8")
+    dialogs.open_path = trip
+    window.load_file()
+    window.list_widget.setCurrentIndex(window.list_widget.model.index(0, 0))
+    window.delete_item()
+    qtbot.wait(50)
+    assert window.dirty
+    assert len(saved_labels(trip)) == 6
+
+
+def test_autosave_skips_unnamed_trip(window, dialogs, qtbot):
+    window.autosave_action.setChecked(True)
+    add_location(window)
+    window.on_item_selected(window.list_widget.locations()[0])
+    qtbot.wait(50)
+    assert window.dirty
+    assert window.current_file is None

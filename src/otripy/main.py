@@ -2,7 +2,7 @@ import logging
 import nc_py_api
 import sys
 
-from PySide6.QtCore import QSettings, Qt, Slot
+from PySide6.QtCore import QSettings, Qt, QTimer, Slot
 from PySide6.QtGui import QAction, QDoubleValidator, QIcon, QKeySequence, QTextCursor, QFont, QTextCharFormat, QTextFormat
 from PySide6.QtWidgets import (
     QApplication,
@@ -93,6 +93,7 @@ class MapApp(QMainWindow):
         # Last view of the map (latitude, longitude, zoom), kept when it is redrawn
         self.map_view_state = None
         self.map_bridge.viewChanged.connect(self.map_view_changed)
+        self._autosave_pending = False
 
         self.setGeometry(100, 100, 800, 600)
 
@@ -129,6 +130,7 @@ class MapApp(QMainWindow):
         self.list_widget.model.locations.dirty.connect(self.set_window_title)
 
         self.list_widget.locationClicked.connect(self.on_item_selected)
+        self.list_widget.model.rowsMoved.connect(lambda *args: self.schedule_autosave())
         # self.list_widget.setLocations(self.locations)
 
         # Main widget (Text editor for simplicity)
@@ -297,6 +299,13 @@ class MapApp(QMainWindow):
         self.confirm_locations_action.toggled.connect(
             lambda checked: self.settings.setValue("map/confirmNewLocations", checked))
         config_menu.addAction(self.confirm_locations_action)
+
+        # Save after each action on locations, not on each key typed (issue #12)
+        self.autosave_action = QAction("Auto Save", self)
+        self.autosave_action.setCheckable(True)
+        self.autosave_action.setChecked(self.settings.value("files/autoSave", False, type=bool))
+        self.autosave_action.toggled.connect(lambda checked: self.settings.setValue("files/autoSave", checked))
+        config_menu.addAction(self.autosave_action)
 
     # def export_as_html(self):
     #     if not self.model or not getattr(self.model, "trip_data", None):
@@ -508,6 +517,7 @@ class MapApp(QMainWindow):
                     return  # cancelled: keep the current color
                 self.list_widget.model.setMarkerStyle(selected_item, color=color)
                 self.update_map()
+                self.schedule_autosave()
         else:
             logger.warning("Marker color picker hit while no location is selected")
 
@@ -535,6 +545,7 @@ class MapApp(QMainWindow):
             if self.list_widget.model.getLocation(selected_item) is not None:
                 self.list_widget.model.setMarkerStyle(selected_item, marker=icon_name)
                 self.update_map()
+                self.schedule_autosave()
         else:
             logger.warning(f"Marker chosen {icon_name} while no location is selected")
 
@@ -914,6 +925,7 @@ class MapApp(QMainWindow):
             selected_item = selected_indexes[0]
             self.list_widget.deleteItemAtIndex(selected_item)
             self.update_map()
+            self.schedule_autosave()
 
     def on_item_selected(self, loc: Location):
         # logger.info(f"MapApp.on_item_selected {loc}")
@@ -927,6 +939,20 @@ class MapApp(QMainWindow):
             (self.highlight_marker(loc.lid) if loc.lid == a_loc.lid
              else self.downplay_marker(a_loc.lid))
         self.map_page.runJavaScript(move_map_js(loc.lat, loc.lon))
+        # Selecting another location ends the editing of the previous one's note
+        self.schedule_autosave()
+
+    def schedule_autosave(self):
+        """With Auto Save on, save a named trip once the current action is over."""
+        if self.autosave_action.isChecked() and not self._autosave_pending:
+            self._autosave_pending = True
+            QTimer.singleShot(0, self.autosave)
+
+    def autosave(self):
+        self._autosave_pending = False
+        # An unnamed trip would need a file dialog: only save trips that have a file
+        if self.autosave_action.isChecked() and self.dirty and self.current_file:
+            self.save_file()
 
     def closeEvent(self, event):
         self.save_layout()

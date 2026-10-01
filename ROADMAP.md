@@ -61,7 +61,7 @@ Feature requests and bugs are tracked as [GitHub issues](https://github.com/klea
 ### File handling
 - [x] #10 Improve handling of changed file check (merging changes left for later)
 - [x] #11 Recent Files menu
-- [ ] #12 Auto-save option
+- [x] #12 Auto-save option
 
 ### Notes
 - [ ] #5 Clickable links in notes

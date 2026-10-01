@@ -28,6 +28,8 @@ The two last toolbar buttons change the selected location's marker: its icon, ch
 | Save as a new file on Nextcloud | Ctrl+Alt+S |
 | Quit | Ctrl+Q |
 
+With *Settings* → *Auto Save* checked, Otripy saves the trip after each action on its locations: adding, deleting, reordering or changing a marker, and selecting another location, which saves the note you were editing. It does not save while you type, nor trips that were never saved, which need a file name first.
+
 *File* → *Open Recent* lists the last trips you opened or saved, on your computer or on Nextcloud.
 
 Otripy asks before closing or opening another trip when there are unsaved changes; the window title starts with `*` while there are. Trips are JSON files, described in [the file format page](file-format.md).
