@@ -206,3 +206,71 @@ def test_ctrl_click_opens_typed_address(widget, opened):
     assert not widget.anchorAt(point_at(widget, "example"))
     QTest.mouseClick(widget.viewport(), Qt.LeftButton, Qt.ControlModifier, point_at(widget, "example"))
     assert opened == ["http://www.example.org/typed"]
+
+
+def image_cursor(widget):
+    [fragment] = list(widget._image_fragments())
+    cursor = widget.textCursor()
+    cursor.setPosition(fragment.position())
+    cursor.setPosition(fragment.position() + 1, QTextCursor.KeepAnchor)
+    return cursor
+
+
+def test_resized_image_width_is_saved_and_restored(widget):
+    """Issue #20: image display widths survive saving, although markdown drops them."""
+    widget.from_note({"markdown": "Title\n\nbody"})
+    paste_image(widget)
+    widget.set_image_width(image_cursor(widget), 160)
+    note = widget.to_note()
+    [name] = image_refs(note)
+    assert note["image_widths"] == {name: 160}
+    widget.from_note({"markdown": "Other"})
+    widget.from_note(note)
+    assert widget.image_widths() == {name: 160}
+    assert widget.to_note()["image_widths"] == {name: 160}
+
+
+def test_original_size_removes_the_width(widget):
+    widget.from_note({"markdown": "Title"})
+    paste_image(widget)
+    widget.set_image_width(image_cursor(widget), 320)
+    widget.set_image_width(image_cursor(widget), None)
+    assert "image_widths" not in widget.to_note()
+
+
+def test_resizing_changes_the_note(widget, qtbot):
+    widget.from_note({"markdown": "Title"})
+    paste_image(widget)
+    with qtbot.waitSignal(widget.textChanged):
+        widget.set_image_width(image_cursor(widget), 640)
+
+
+def test_widths_of_deleted_images_are_not_saved(widget):
+    widget.from_note({"markdown": "Title"})
+    paste_image(widget)
+    widget.set_image_width(image_cursor(widget), 160)
+    select_last_character(widget)
+    widget.textCursor().removeSelectedText()
+    assert "image_widths" not in widget.to_note()
+
+
+def test_image_context_menu_offers_sizes(widget):
+    widget.from_note({"markdown": "Title"})
+    paste_image(widget)
+    widget.resize(600, 300)
+    widget.show()
+    on_image = widget.cursorRect(image_cursor(widget)).center()
+    menus = [widget.build_context_menu(on_image), widget.build_context_menu(point_at(widget, "Title"))]
+    titles = [[a.text() for a in m.actions() if a.menu()] for m in menus]
+    assert titles == [["Image Size"], []]
+    [size_menu] = [a.menu() for a in menus[0].actions() if a.menu()]
+    assert [a.text() for a in size_menu.actions()] == ["Small", "Medium", "Large", "Original Size"]
+    size_menu.actions()[1].trigger()
+    assert list(widget.image_widths().values()) == [320]
+
+
+def test_fixture_image_width(widget, fixture_text):
+    journey = Journey.from_json_str(fixture_text("journey-with-images.json"))
+    widget.from_note(journey[1].note)
+    assert widget.image_widths() == {"dropped_image_1": 160}
+    assert widget.to_note()["image_widths"] == {"dropped_image_1": 160}

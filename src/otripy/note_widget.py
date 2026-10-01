@@ -1,6 +1,6 @@
 from PySide6.QtCore import QUrl, QFileInfo, QMimeData, QIODevice, QByteArray, QBuffer, Qt
-from PySide6.QtGui import QDesktopServices, QImage, QImageReader, QPixmap, QTextDocument
-from PySide6.QtWidgets import QMessageBox, QTextEdit, QToolTip
+from PySide6.QtGui import QDesktopServices, QImage, QImageReader, QPixmap, QTextCursor, QTextDocument, QTextFormat
+from PySide6.QtWidgets import QMenu, QMessageBox, QTextEdit, QToolTip
 import os
 import logging
 import json
@@ -16,6 +16,8 @@ logger = logging.getLogger(__name__)
 IMAGE_REF = re.compile(r"!\[[^\]]*\]\(([^)\s]+)")
 # Clipboard format carrying the data of the images in a cut or copied selection
 IMAGES_MIME_TYPE = "application/x-otripy-images"
+# Display widths offered for images in notes (issue #20); None is the original size
+IMAGE_SIZES = (("Small", 160), ("Medium", 320), ("Large", 640), ("Original Size", None))
 # Web addresses typed as plain text, which are not links in the document
 BARE_URL = re.compile(r"(?:https?://|www\.)[^\s<>\"]+")
 
@@ -123,7 +125,75 @@ class NoteWidget(QTextEdit):
         markdown_text = self.toMarkdown()
         images = {name: data for name in IMAGE_REF.findall(markdown_text)
                   if (data := self._image_data(name))}
-        return {"markdown": markdown_text, "images": images}
+        note = {"markdown": markdown_text, "images": images}
+        # Markdown keeps no image size: save the widths set in the editor separately
+        widths = {name: width for name, width in self.image_widths().items() if name in images}
+        if widths:
+            note["image_widths"] = widths
+        return note
+
+    def _image_fragments(self):
+        """Yield the document fragments that are images."""
+        block = self.document().begin()
+        while block.isValid():
+            it = block.begin()
+            while not it.atEnd():
+                fragment = it.fragment()
+                if fragment.isValid() and fragment.charFormat().isImageFormat():
+                    yield fragment
+                it += 1
+            block = block.next()
+
+    def image_widths(self) -> dict:
+        """Return the display width of the resized images, by image name."""
+        widths = {}
+        for fragment in self._image_fragments():
+            image_format = fragment.charFormat().toImageFormat()
+            if image_format.hasProperty(QTextFormat.Property.ImageWidth):
+                widths[image_format.name()] = round(image_format.width())
+        return widths
+
+    def image_cursor_at(self, pos):
+        """Return a cursor selecting the image at a viewport position, or None."""
+        position = self.cursorForPosition(pos).position()
+        for end in (position, position + 1):  # the image is just before or after the position
+            if 1 <= end < self.document().characterCount():
+                cursor = QTextCursor(self.document())
+                cursor.setPosition(end - 1)
+                cursor.movePosition(QTextCursor.Right, QTextCursor.KeepAnchor)
+                if cursor.charFormat().isImageFormat():
+                    return cursor
+        return None
+
+    def set_image_width(self, cursor, width):
+        """Set the display width of the image selected by cursor; None restores its original size."""
+        image_format = cursor.charFormat().toImageFormat()
+        image_format.clearProperty(QTextFormat.Property.ImageHeight)  # keep the aspect ratio
+        if width:
+            image_format.setWidth(width)
+        else:
+            image_format.clearProperty(QTextFormat.Property.ImageWidth)
+        cursor.setCharFormat(image_format)
+
+    def build_context_menu(self, pos):
+        """Return the context menu for a viewport position: the standard one, plus image sizes on images."""
+        menu = self.createStandardContextMenu(pos)
+        image_cursor = self.image_cursor_at(pos)
+        if image_cursor is not None:
+            menu.addSeparator()
+            # Parented to the menu: a submenu owned by Python would be deleted on return
+            size_menu = QMenu("Image Size", menu)
+            menu.addMenu(size_menu)
+            for label, width in IMAGE_SIZES:
+                action = size_menu.addAction(label)
+                action.triggered.connect(lambda checked=False, width=width: self.set_image_width(image_cursor, width))
+        return menu
+
+    @override
+    def contextMenuEvent(self, event):
+        menu = self.build_context_menu(event.pos())
+        menu.exec(event.globalPos())
+        menu.deleteLater()
 
     def _image_data(self, name):
         """Return the image resource with this name as base64 PNG, or None."""
@@ -151,6 +221,15 @@ class NoteWidget(QTextEdit):
         # setMarkdown clears the document resources: add the images after it, then relayout
         for name, image_data in data.get("images", {}).items():
             self._add_image(name, image_data)
+        widths = data.get("image_widths", {})
+        if widths:
+            for fragment in list(self._image_fragments()):
+                name = fragment.charFormat().toImageFormat().name()
+                if name in widths:
+                    cursor = QTextCursor(self.document())
+                    cursor.setPosition(fragment.position())
+                    cursor.setPosition(fragment.position() + fragment.length(), QTextCursor.KeepAnchor)
+                    self.set_image_width(cursor, widths[name])
         document = self.document()
         document.markContentsDirty(0, document.characterCount())
         document.setPageSize(self.viewport().size())  # Adjust page size
