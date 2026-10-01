@@ -117,6 +117,9 @@ requires = [
 ]
 
 [dependency-groups]
+appimage = [
+    "pyinstaller>=6.11",
+]
 dev = [
     "hatch==1.14.0",
     "pytest>=9.1.1",

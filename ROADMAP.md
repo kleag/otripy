@@ -29,7 +29,8 @@ Feature requests and bugs are tracked as [GitHub issues](https://github.com/klea
 - [x] Publish to PyPI on version tag using trusted publishing (replace manual `uv publish`); needs the trusted publisher configured on pypi.org
 - [x] Fix macOS release job: ad-hoc signed DMG (no Apple Developer ID, so no notarization)
 - [ ] Run the release workflow by hand (workflow_dispatch) and test the Windows `.msi` and macOS `.dmg` on real machines
-- [ ] Add a Linux bundle (AppImage or Flatpak via Briefcase); a native `linux system` build needs the distribution's own Python
+- [x] Add a Linux bundle: AppImage built with PyInstaller on Ubuntu 22.04 (Briefcase's AppImage support is unreliable for PySide6); Flatpak only if publishing on Flathub
+- [ ] Pin Briefcase `requires` to the locked versions, so all platforms ship the tested PySide6
 - [x] Declare the license as an SPDX expression (PEP 639): AGPL-3.0-or-later
 
 ## Phase 3 — Documentation
