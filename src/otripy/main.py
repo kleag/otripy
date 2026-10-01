@@ -766,7 +766,12 @@ class MapApp(QMainWindow):
         if not query:
             self.search_popup.hide()
             return
-        locations = self.geolocator.geocode(query, exactly_one=False)
+        try:
+            locations = self.geolocator.geocode(query, exactly_one=False)
+        except GeopyError as e:
+            self.search_popup.hide()
+            QMessageBox.critical(self, "Error", f"Search failed: {e}")
+            return
 
         # logger.info(f"Found: {locations}")
 
