@@ -60,3 +60,102 @@ def test_marker_click_selects_location(window):
     window.map_bridge.on_marker_clicked(first.lid)
     assert window.list_widget.currentIndex().row() == 0
     assert window.lat_input.text() == "1.0"
+
+
+def test_editing_title_updates_marker_texts(window):
+    """Issue #26: the marker's tooltip and popup follow the note's first line."""
+    window.geolocator = FakeGeolocator("Old title, Somewhere")
+    window.map_bridge.on_map_clicked(1.0, 2.0)
+    [loc] = window.list_widget.locations()
+    window.scripts_run.clear()
+    window.note_input.setPlainText("New <title>\n\nbody")
+    updates = [code for code in window.scripts_run if "setTooltipContent" in code]
+    assert updates
+    assert '"New <title>"' not in updates[-1], "Leaflet renders tooltips as HTML: the title must be escaped"
+    assert updates[-1].count('"New &lt;title&gt;"') == 2
+
+
+def test_editing_note_body_does_not_touch_marker(window):
+    window.geolocator = FakeGeolocator("Title, Somewhere")
+    window.map_bridge.on_map_clicked(1.0, 2.0)
+    window.note_input.setPlainText("Title\n\nfirst body")
+    window.scripts_run.clear()
+    window.note_input.setPlainText("Title\n\nsecond body")
+    assert not [code for code in window.scripts_run if "setTooltipContent" in code]
+
+
+def test_redrawing_keeps_the_map_view(window):
+    """Edits redraw the map: it must stay where the user moved it."""
+    window.geolocator = FakeGeolocator("A, Somewhere")
+    window.map_bridge.on_map_clicked(48.85, 2.35)
+    window.map_bridge.on_view_changed(45.5, 4.25, 9)
+    window.map_bridge.on_map_clicked(50.63, 3.06)
+    assert "[45.5, 4.25]" in window.rendered_pages[-1]
+    assert '"zoom": 9' in window.rendered_pages[-1]
+
+
+def test_new_journey_resets_the_map_view(window):
+    window.map_bridge.on_view_changed(45.5, 4.25, 9)
+    window.set_journey(main.Journey(), None)
+    assert '"zoom": 9' not in window.rendered_pages[-1]
+    assert window.map_view_state is None
+
+
+def add_and_select(window):
+    window.geolocator = FakeGeolocator("Somewhere, Paris")
+    window.map_bridge.on_map_clicked(1.0, 2.0)
+    window.set_window_title(dirty=False)
+    return window.list_widget.locations()[0]
+
+
+def test_changing_marker_icon_marks_trip_modified(window):
+    loc = add_and_select(window)
+    window.marker_chosen("bed")
+    assert loc.marker == "bed"
+    assert window.dirty
+
+
+def test_changing_marker_color_marks_trip_modified(window, monkeypatch):
+    loc = add_and_select(window)
+    monkeypatch.setattr(main.LimitedColorPicker, "get_color", staticmethod(lambda: "purple"))
+    window.action_marker_color_picker()
+    assert loc.color == "purple"
+    assert window.dirty
+
+
+def test_cancelling_color_picker_keeps_color(window, monkeypatch):
+    loc = add_and_select(window)
+    loc.color = "red"
+    monkeypatch.setattr(main.LimitedColorPicker, "get_color", staticmethod(lambda: None))
+    window.action_marker_color_picker()
+    assert loc.color == "red"
+    assert not window.dirty
+
+
+def test_map_click_adds_without_asking_by_default(window, monkeypatch):
+    asked = []
+    monkeypatch.setattr(main.QMessageBox, "question", lambda *a, **k: asked.append(a) or QMessageBox.No)
+    window.geolocator = FakeGeolocator("Tour Eiffel, Paris")
+    window.map_bridge.on_map_clicked(48.8584, 2.2945)
+    assert not asked
+    assert len(window.list_widget.locations()) == 1
+
+
+@pytest.mark.parametrize("answer, added", [(QMessageBox.Yes, 1), (QMessageBox.No, 0)])
+def test_map_click_confirmation(window, monkeypatch, answer, added):
+    """Issue #30: optionally confirm, with the address, before adding a clicked location."""
+    asked = []
+    monkeypatch.setattr(main.QMessageBox, "question", lambda parent, title, text, *a: asked.append(text) or answer)
+    window.confirm_locations_action.setChecked(True)
+    window.geolocator = FakeGeolocator("Tour Eiffel, Paris")
+    window.map_bridge.on_map_clicked(48.8584, 2.2945)
+    assert "Tour Eiffel, Paris" in asked[0]
+    assert len(window.list_widget.locations()) == added
+    assert (window.lat_input.text() != "") == bool(added)
+
+
+def test_confirmation_setting_is_remembered(window, qtbot):
+    window.confirm_locations_action.setChecked(True)
+    again = MapApp()
+    qtbot.addWidget(again)
+    assert again.confirm_locations_action.isChecked()

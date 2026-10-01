@@ -7,7 +7,8 @@ import pytest
 from otripy.journey import Journey
 from otripy.location import Location
 from otripy.map_view import (DEFAULT_CENTER, MapBridge, build_map_html, downplay_marker_js,
-                             highlight_marker_js, js_string, marker_icon_js, move_map_js)
+                             highlight_marker_js, js_string, marker_icon_js, move_map_js,
+                             update_marker_text_js)
 
 
 def inline_scripts(html):
@@ -63,7 +64,8 @@ def test_empty_map_centers_on_default():
 
 def test_marker_update_snippets_are_valid(tmp_path):
     loc = Location(1, 2, id='quote"id', marker="star", color="red")
-    for code in (highlight_marker_js(loc.lid), downplay_marker_js(loc), move_map_js(1, 2)):
+    for code in (highlight_marker_js(loc.lid), downplay_marker_js(loc), move_map_js(1, 2),
+                 update_marker_text_js(loc)):
         assert_valid_js("function moveMap() {}\n" + code, tmp_path)
 
 
@@ -75,3 +77,51 @@ def test_bridge_relays_events(qtbot):
     with qtbot.waitSignal(bridge.markerClicked) as clicked:
         bridge.on_marker_clicked("abc")
     assert clicked.args == ["abc"]
+
+
+def test_marker_texts_are_escaped_html():
+    loc = Location(1, 2, {"markdown": "# Fish & <Chips>"}, id="x")
+    for code in (build_map_html([loc]), update_marker_text_js(loc)):
+        assert "<Chips>" not in code
+        assert "Fish &amp; &lt;Chips&gt;" in code
+
+
+def test_fit_all_frames_every_location():
+    locations = [Location(48.85, 2.35), Location(43.30, 5.37), Location(50.63, 3.06)]
+    html = build_map_html(locations, fit_all=True)
+    assert "fitBounds" in html
+    assert "[[43.3, 2.35], [50.63, 5.37]]" in html
+
+
+@pytest.mark.parametrize("locations", [[], [Location(48.85, 2.35)]])
+def test_fit_all_needs_two_locations(locations):
+    assert "fitBounds" not in build_map_html(locations, fit_all=True)
+
+
+def test_map_does_not_fit_by_default():
+    assert "fitBounds" not in build_map_html([Location(48.85, 2.35), Location(43.30, 5.37)])
+
+
+def test_map_keeps_given_view():
+    html = build_map_html([Location(48.85, 2.35), Location(43.30, 5.37)], view=(45.5, 4.25, 9))
+    assert "[45.5, 4.25]" in html
+    assert '"zoom": 9' in html
+
+
+def test_fit_all_overrides_view():
+    html = build_map_html([Location(48.85, 2.35), Location(43.30, 5.37)], fit_all=True, view=(45.5, 4.25, 9))
+    assert "fitBounds" in html
+    assert '"zoom": 9' not in html
+
+
+def test_page_reports_its_view():
+    html = build_map_html([Location(48.85, 2.35)])
+    assert 'map.on("moveend", reportView)' in html
+    assert "on_view_changed" in html
+
+
+def test_bridge_relays_view_changes(qtbot):
+    bridge = MapBridge()
+    with qtbot.waitSignal(bridge.viewChanged) as changed:
+        bridge.on_view_changed(45.5, 4.25, 9)
+    assert changed.args == [45.5, 4.25, 9]

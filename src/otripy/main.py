@@ -2,7 +2,7 @@ import logging
 import nc_py_api
 import sys
 
-from PySide6.QtCore import QSettings, Slot
+from PySide6.QtCore import QSettings, Qt, Slot
 from PySide6.QtGui import QAction, QDoubleValidator, QIcon, QKeySequence, QTextCursor, QFont, QTextCharFormat, QTextFormat
 from PySide6.QtWidgets import (
     QApplication,
@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
     QMainWindow,
     QMessageBox,
     QPushButton,
+    QSplitter,
     QTextEdit,
     QVBoxLayout,
     QWidget,
@@ -36,7 +37,8 @@ try:
     from .limited_color_picker import LimitedColorPicker
     from .location import Location
     from .location_list_view import LocationListView
-    from .map_view import MapBridge, build_map_html, downplay_marker_js, highlight_marker_js, move_map_js
+    from .map_view import (DEFAULT_ZOOM, MapBridge, build_map_html, downplay_marker_js, highlight_marker_js, move_map_js,
+                           update_marker_text_js)
     from .search_popup import SearchPopup
     from .config import ConfigDialog, load_nextcloud_password
     from .nextcloud_with_api import NextcloudFilePicker
@@ -49,7 +51,8 @@ except ImportError:
     from limited_color_picker import LimitedColorPicker
     from location import Location
     from location_list_view import LocationListView
-    from map_view import MapBridge, build_map_html, downplay_marker_js, highlight_marker_js, move_map_js
+    from map_view import (DEFAULT_ZOOM, MapBridge, build_map_html, downplay_marker_js, highlight_marker_js, move_map_js,
+                          update_marker_text_js)
     from search_popup import SearchPopup
     from config import ConfigDialog, load_nextcloud_password
     from nextcloud_with_api import NextcloudFilePicker
@@ -80,8 +83,11 @@ class MapApp(QMainWindow):
         self.channel = QWebChannel()
         self.map_bridge = MapBridge()
         self.channel.registerObject("mapBridge", self.map_bridge)
-        self.map_bridge.mapClicked.connect(self.add_location_at)
+        self.map_bridge.mapClicked.connect(self.map_clicked)
         self.map_bridge.markerClicked.connect(self.handle_marker_click)
+        # Last view of the map (latitude, longitude, zoom), kept when it is redrawn
+        self.map_view_state = None
+        self.map_bridge.viewChanged.connect(self.map_view_changed)
 
         self.setGeometry(100, 100, 800, 600)
 
@@ -117,7 +123,6 @@ class MapApp(QMainWindow):
         self.list_widget = LocationListView(self)
         self.list_widget.model.locations.dirty.connect(self.set_window_title)
 
-        self.list_widget.setMaximumWidth(300)
         self.list_widget.locationClicked.connect(self.on_item_selected)
         # self.list_widget.setLocations(self.locations)
 
@@ -162,7 +167,6 @@ class MapApp(QMainWindow):
         btn_layout.addWidget(self.lon_input)
 
         self.note_input = NoteWidget(self)
-        self.note_input.setMaximumHeight(200)
         self.note_input.setPlaceholderText("Enter Note")
         self.note_input.textChanged.connect(self.note_changed)
         self.note_input.setAutoFormatting(QTextEdit.AutoFormatting.AutoAll)
@@ -173,27 +177,58 @@ class MapApp(QMainWindow):
         self.del_btn.clicked.connect(self.delete_item)
 
         self.create_icons_toolbar()
-        ctrl_layout = QVBoxLayout()
-        ctrl_layout.addLayout(search_layout)
-        ctrl_layout.addWidget(self.map_view)
-        ctrl_layout.addLayout(btn_layout)
-        ctrl_layout.addWidget(self.toolbar)
-        ctrl_layout.addWidget(self.note_input)
-        # ctrl_layout.addWidget(self.add_button)
 
-        list_layout = QVBoxLayout()
+        # Panels, resizable with splitters: the list on the left; on the right,
+        # the map above the note
+        list_panel = QWidget()
+        list_layout = QVBoxLayout(list_panel)
+        list_layout.setContentsMargins(0, 0, 0, 0)
         list_layout.addWidget(self.list_widget)
         list_layout.addWidget(self.del_btn)
 
-        # Layout arrangement
-        main_layout = QHBoxLayout()
-        main_layout.addLayout(list_layout, 1)
-        main_layout.addLayout(ctrl_layout, 2)
+        note_panel = QWidget()
+        note_layout = QVBoxLayout(note_panel)
+        note_layout.setContentsMargins(0, 0, 0, 0)
+        note_layout.addLayout(btn_layout)
+        note_layout.addWidget(self.toolbar)
+        note_layout.addWidget(self.note_input)
 
-        layout.addLayout(main_layout)
-        # layout.addLayout(ctrl_layout)
+        self.map_splitter = QSplitter(Qt.Vertical)
+        self.map_splitter.addWidget(self.map_view)
+        self.map_splitter.addWidget(note_panel)
+        self.map_splitter.setStretchFactor(0, 1)  # the map takes the extra height
+        self.map_splitter.setSizes([500, 200])
 
+        map_panel = QWidget()
+        map_layout = QVBoxLayout(map_panel)
+        map_layout.setContentsMargins(0, 0, 0, 0)
+        map_layout.addLayout(search_layout)
+        map_layout.addWidget(self.map_splitter)
+
+        self.main_splitter = QSplitter(Qt.Horizontal)
+        self.main_splitter.addWidget(list_panel)
+        self.main_splitter.addWidget(map_panel)
+        self.main_splitter.setStretchFactor(1, 1)  # the map takes the extra width
+        self.main_splitter.setSizes([250, 550])
+
+        for splitter in (self.main_splitter, self.map_splitter):
+            splitter.setChildrenCollapsible(False)
+        self.restore_layout()
+
+        layout.addWidget(self.main_splitter)
         central_widget.setLayout(layout)
+
+    def restore_layout(self):
+        """Restore the panel sizes saved by save_layout."""
+        for key, splitter in (("window/mainSplitter", self.main_splitter), ("window/mapSplitter", self.map_splitter)):
+            state = self.settings.value(key)
+            if state is not None:
+                splitter.restoreState(state)
+
+    def save_layout(self):
+        """Save the panel sizes in the settings, for the next start."""
+        self.settings.setValue("window/mainSplitter", self.main_splitter.saveState())
+        self.settings.setValue("window/mapSplitter", self.map_splitter.saveState())
 
     def createMenu(self):
         menu_bar = self.menuBar()
@@ -219,10 +254,9 @@ class MapApp(QMainWindow):
         save_as_action.setShortcut(QKeySequence("Ctrl+Shift+S"))
         save_as_action.triggered.connect(self.save_file_as)
 
-        # TODO Implement Save As on Nextcloud
-        # save_as_nc_action = QAction("Save As Nextcloud…", self)
-        # save_as_nc_action.setShortcut(QKeySequence("Ctrl+Alt+S"))
-        # save_as_nc_action.triggered.connect(self.save_file_as_nc)
+        save_as_nc_action = QAction("Save As Nextcloud…", self)
+        save_as_nc_action.setShortcut(QKeySequence("Ctrl+Alt+S"))
+        save_as_nc_action.triggered.connect(self.save_file_as_nc)
 
         quit_action = QAction("Quit", self)
         quit_action.setShortcut(QKeySequence("Ctrl+Q"))
@@ -235,7 +269,7 @@ class MapApp(QMainWindow):
         file_menu.addSeparator()
         file_menu.addAction(save_action)
         file_menu.addAction(save_as_action)
-        # file_menu.addAction(save_as_nc_action)
+        file_menu.addAction(save_as_nc_action)
         file_menu.addSeparator()
         file_menu.addAction(quit_action)
         # export_action = file_menu.addAction("Export as HTML Map…")
@@ -247,6 +281,14 @@ class MapApp(QMainWindow):
         config_action = QAction("Configure Otripy", self)
         config_action.triggered.connect(self.open_config_dialog)
         config_menu.addAction(config_action)
+
+        # Clicking the map adds a location at once, unless this is checked (issue #30)
+        self.confirm_locations_action = QAction("Confirm New Locations", self)
+        self.confirm_locations_action.setCheckable(True)
+        self.confirm_locations_action.setChecked(self.settings.value("map/confirmNewLocations", False, type=bool))
+        self.confirm_locations_action.toggled.connect(
+            lambda checked: self.settings.setValue("map/confirmNewLocations", checked))
+        config_menu.addAction(self.confirm_locations_action)
 
     # def export_as_html(self):
     #     if not self.model or not getattr(self.model, "trip_data", None):
@@ -452,10 +494,11 @@ class MapApp(QMainWindow):
         selected_indexes = self.list_widget.selectedIndexes()
         if selected_indexes:
             selected_item = selected_indexes[0]
-            location = self.list_widget.model.getLocation(selected_item)
-            if location is not None:
+            if self.list_widget.model.getLocation(selected_item) is not None:
                 color = LimitedColorPicker.get_color()
-                location.color = color
+                if color is None:
+                    return  # cancelled: keep the current color
+                self.list_widget.model.setMarkerStyle(selected_item, color=color)
                 self.update_map()
         else:
             logger.warning("Marker color picker hit while no location is selected")
@@ -481,9 +524,8 @@ class MapApp(QMainWindow):
         if selected_indexes:
             selected_item = selected_indexes[0]
 
-            location = self.list_widget.model.getLocation(selected_item)
-            if location is not None:
-                location.marker = icon_name
+            if self.list_widget.model.getLocation(selected_item) is not None:
+                self.list_widget.model.setMarkerStyle(selected_item, marker=icon_name)
                 self.update_map()
         else:
             logger.warning(f"Marker chosen {icon_name} while no location is selected")
@@ -516,15 +558,28 @@ class MapApp(QMainWindow):
         # self.addToolBar(self.toolbar)
 
     @Slot(float, float)
-    def add_location_at(self, lat: float, lon: float):
-        """Add a location at the given coordinates, its note initialized with the address found there."""
-        self.lat_input.setText(str(lat))
-        self.lon_input.setText(str(lon))
+    def map_clicked(self, lat: float, lon: float):
+        """Add a location where the map was clicked, after confirmation if the user asked for it."""
+        self.add_location_at(lat, lon, confirm=self.confirm_locations_action.isChecked())
+
+    def add_location_at(self, lat: float, lon: float, confirm: bool = False):
+        """Add a location at the given coordinates, its note initialized with the address found there.
+
+        With confirm, first ask the user, showing the address.
+        """
         try:
             place = self.geolocator.reverse(f"{lat}, {lon}")
         except GeopyError as e:
             logger.warning(f"Reverse geocoding failed: {e}")
             place = None
+        if confirm:
+            where = place.address if place is not None else f"[{lat:.5f}, {lon:.5f}]"
+            answer = QMessageBox.question(self, "New Location", f"Add a location here?\n\n{where}",
+                                          QMessageBox.Yes | QMessageBox.No, QMessageBox.Yes)
+            if answer != QMessageBox.Yes:
+                return
+        self.lat_input.setText(str(lat))
+        self.lon_input.setText(str(lon))
         # The place name becomes the note title (its first paragraph)
         address = (place.address.replace(", ", "\n\n", 1) if place is not None
                    else f"Unknown place at [{lat}, {lon}]")
@@ -540,10 +595,23 @@ class MapApp(QMainWindow):
         # logger.info(f"MapApp.note_changed")
         selected_indexes = self.list_widget.selectedIndexes()
         if selected_indexes:
+            location = self.list_widget.model.getLocation(selected_indexes[0])
+            old_label = location.label() if location is not None else None
             self.list_widget.updateLocationNoteAtIndex(selected_indexes[0], self.note_input.to_note())
+            # The list shows the new title at once; the map's marker needs updating too
+            if location is not None and location.label() != old_label:
+                self.map_page.runJavaScript(update_marker_text_js(location))
 
-    def update_map(self):
-        self.map_page.setHtml(build_map_html(self.list_widget.locations()))
+    @Slot(float, float, int)
+    def map_view_changed(self, lat: float, lon: float, zoom: int):
+        self.map_view_state = (lat, lon, zoom)
+
+    def update_map(self, fit_all: bool = False):
+        """Redraw the map, keeping its current view; with fit_all, zoom it to show all the locations."""
+        if fit_all:
+            self.map_view_state = None
+        self.map_page.setHtml(build_map_html(self.list_widget.locations(), fit_all=fit_all,
+                                             view=self.map_view_state))
 
     def handle_marker_click(self, marker_id):
         """ Handle marker click events in Python. """
@@ -599,7 +667,7 @@ class MapApp(QMainWindow):
         self.list_widget.setLocations(journey)
         journey.dirty.connect(self.set_window_title)
         self.set_window_title(dirty=False)
-        self.update_map()
+        self.update_map(fit_all=True)
 
     def new(self):
         if self.confirm_discard():
@@ -715,8 +783,28 @@ class MapApp(QMainWindow):
         self.set_window_title(dirty=False)
         return True
 
-    def save_file_as_nc(self):
-        logger.error("MapApp.save_file_as_nc NOT IMPLEMENTED")
+    def save_file_as_nc(self) -> bool:
+        """Save the journey to a new file on Nextcloud. Return True if it was saved."""
+        if not self.connect_nextcloud():
+            return False
+        file_picker = NextcloudFilePicker(self.nc, self, save=True)
+        if file_picker.exec() != QDialog.DialogCode.Accepted:
+            return False
+        path = file_picker.get_selected_file()
+        try:
+            if self.nc_file_exists(path):
+                answer = QMessageBox.question(
+                    self, "File Exists", f"{path} already exists on Nextcloud. Replace it?",
+                    QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+                if answer != QMessageBox.Yes:
+                    return False
+            self.current_file = self.nc.files.upload(path, self.list_widget.locations().to_json_str())
+        except nc_py_api.NextcloudException as e:
+            QMessageBox.critical(self, "Error", f"Failed to save file on Nextcloud: {e}")
+            return False
+        self.list_widget.locations().clean()
+        self.set_window_title(dirty=False)
+        return True
 
     def save_local_file(self, file_name) -> bool:
         try:
@@ -748,6 +836,7 @@ class MapApp(QMainWindow):
         self.map_page.runJavaScript(move_map_js(loc.lat, loc.lon))
 
     def closeEvent(self, event):
+        self.save_layout()
         if not self.dirty:
             event.accept()
             return
@@ -785,6 +874,9 @@ class MapApp(QMainWindow):
     def handle_selected_location(self, location):
         """Handle the selected location"""
         # logger.info(f"Selected: {location}")
+        # The place may be anywhere: center the redrawn map on it, at the current zoom
+        zoom = self.map_view_state[2] if self.map_view_state is not None else DEFAULT_ZOOM
+        self.map_view_state = (location.latitude, location.longitude, zoom)
         self.add_location_at(location.latitude, location.longitude)
 
 

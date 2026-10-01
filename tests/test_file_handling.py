@@ -179,7 +179,7 @@ def nextcloud(window, monkeypatch):
     picked = {"path": None}
 
     class FakePicker:
-        def __init__(self, nc, parent):
+        def __init__(self, nc, parent, save=False):
             pass
 
         def exec(self):
@@ -248,3 +248,53 @@ def test_nextcloud_open_error(window, nextcloud, dialogs):
     window.load_nc_file()
     assert dialogs.errors
     assert labels(window) == []
+
+
+def test_opened_journey_is_framed(window, dialogs, fixture_text, tmp_path, monkeypatch):
+    """Issue #25: opening a file shows all its locations."""
+    pages = []
+    monkeypatch.setattr(window.map_page, "setHtml", pages.append)
+    dialogs.open_path = tmp_path / "trip.json"
+    dialogs.open_path.write_text(fixture_text("journey-1.0.0.json"), encoding="utf-8")
+    window.load_file()
+    assert "fitBounds" in pages[-1]
+    add_location(window)
+    window.update_map()
+    assert "fitBounds" not in pages[-1], "editing must not move the map"
+
+
+def test_save_as_nextcloud(window, nextcloud):
+    """Issue #28: save a new trip to Nextcloud, then save it again in place."""
+    add_location(window, "First")
+    nextcloud.pick("/Trips/new.json")
+    assert window.save_file_as_nc()
+    assert not window.dirty
+    assert window.current_file.user_path == "/Trips/new.json"
+    assert json.loads(nextcloud.contents["/Trips/new.json"])["locations"][0]["note"]["markdown"] == "# First"
+    add_location(window, "Second")
+    assert window.save_file()
+    assert len(json.loads(nextcloud.contents["/Trips/new.json"])["locations"]) == 2
+
+
+@pytest.mark.parametrize("answer, replaced", [(QMessageBox.Yes, True), (QMessageBox.No, False)])
+def test_save_as_nextcloud_over_existing_file(window, nextcloud, dialogs, answer, replaced):
+    nextcloud.put("/trip.json", "previous content")
+    add_location(window)
+    nextcloud.pick("/trip.json")
+    dialogs.question_answer = answer
+    assert window.save_file_as_nc() == replaced
+    assert (nextcloud.contents["/trip.json"] != b"previous content") == replaced
+    assert window.dirty != replaced
+
+
+def test_save_as_nextcloud_error_keeps_changes_unsaved(window, nextcloud, dialogs, monkeypatch):
+    add_location(window)
+    nextcloud.pick("/trip.json")
+
+    def fail(*args):
+        raise nc_py_api.NextcloudException(507, "insufficient storage")
+
+    monkeypatch.setattr(nextcloud, "upload", fail)
+    assert not window.save_file_as_nc()
+    assert dialogs.errors
+    assert window.dirty
