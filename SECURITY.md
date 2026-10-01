@@ -1,21 +1,11 @@
 # Security Policy
 
-## Supported Versions
+## Supported versions
 
-Use this section to tell people about which versions of your project are
-currently being supported with security updates.
+Only the latest release of Otripy receives fixes. Please check that a problem still happens with it before reporting it.
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 5.1.x   | :white_check_mark: |
-| 5.0.x   | :x:                |
-| 4.0.x   | :white_check_mark: |
-| < 4.0   | :x:                |
+## Reporting a vulnerability
 
-## Reporting a Vulnerability
+Please report vulnerabilities privately, not in public issues: use the [*Report a vulnerability*](https://github.com/kleag/otripy/security/advisories/new) button in the repository's *Security* tab.
 
-Use this section to tell people how to report a vulnerability.
-
-Tell them where to go, how often they can expect to get an update on a
-reported vulnerability, what to expect if the vulnerability is accepted or
-declined, etc.
+Include what is affected, how to reproduce the problem and its possible impact. Otripy is maintained on spare time: expect a first answer within two weeks. If the report is confirmed, a fix is released as soon as possible and the report is credited in the release notes, unless you prefer otherwise.

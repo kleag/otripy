@@ -1,0 +1,65 @@
+# Changelog
+
+Notable changes to Otripy. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow [Semantic Versioning](https://semver.org/).
+
+## Unreleased
+
+### Added
+
+- Installers for Windows (`.msi`), macOS 13 and later (`.dmg`) and Linux (AppImage), attached to each GitHub release.
+- Application icon.
+- The Nextcloud password is stored in the system keyring instead of the settings file; an existing password is moved there on first use.
+- `otripy --self-test` checks headless that an installation works.
+- User guide at <https://kleag.github.io/otripy/>, with a description of the file format.
+
+### Changed
+
+- Nextcloud files are saved in the current file format, with its version information; Otripy 1.2.2 and earlier refuse to open them.
+- *Quit* asks the same question as closing the window: save, discard or cancel.
+- New images in notes are named `image_<identifier>` instead of `dropped_image_<number>`.
+- The license is declared as AGPL-3.0-or-later.
+- Fewer dependencies: smaller installation.
+
+### Fixed
+
+- Cancelling *Save As*, or a failed save, marked the trip as saved: closing then lost the changes without warning.
+- Choosing *Save* when closing quit even when the save failed or was cancelled.
+- A file that failed to open replaced the open trip with an empty one.
+- Network errors with Nextcloud or the place search are reported instead of being ignored.
+- Images deleted from a note came back when the trip was reopened; images moved to another location's note were lost there and stayed in the original note ([#21](https://github.com/kleag/otripy/issues/21)); pasting an image into a note that already had images could be ignored.
+- Dropping a location between two others, or below the list, failed: only drops onto another location worked.
+- After a failed address lookup, note edits were no longer saved.
+- A note title with quotes, a backslash or `</script>` broke the map.
+- The title of a location added from the map included its whole address instead of the place's name.
+- Titles showed Markdown escape characters such as `\[`.
+- Markers without a custom icon lost their color when another location was selected.
+- Otripy runs on Python 3.10 again.
+
+## 1.2.3 - 2025-03-17
+
+### Added
+
+- Change the color of location markers.
+
+## 1.2.2 - 2025-03-17
+
+### Fixed
+
+- Loading the marker icons.
+
+## 1.2.1 - 2025-03-17
+
+### Fixed
+
+- Package content.
+
+## 1.2.0 - 2025-03-17
+
+### Added
+
+- Versioned file format (1.0.0), with metadata such as creation and update dates. Files in the previous format still open.
+- Change the icon of location markers, among the Font Awesome icons.
+
+## 1.1.4 and earlier
+
+See the [git history](https://github.com/kleag/otripy/commits/1.1.4).

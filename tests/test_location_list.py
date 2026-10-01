@@ -85,3 +85,8 @@ def test_drop_in_place_changes_nothing(to_row):
     model = make_model("a", "b", "c")
     assert not drag(model, 1, to_row=to_row)
     assert names(model) == ["a", "b", "c"]
+
+
+def test_model_keeps_the_given_empty_journey():
+    journey = Journey()
+    assert LocationListModel(journey).get_locations() is journey

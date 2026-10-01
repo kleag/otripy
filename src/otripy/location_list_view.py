@@ -11,9 +11,15 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 class LocationListModel(QAbstractListModel):
+    """Qt list model over a Journey: one row per Location, displayed by its label.
+
+    Rows can be reordered by drag and drop (internal moves only).
+    """
+
     def __init__(self, locations=None, parent=None):
         super().__init__(parent)
-        self.locations = locations or Journey()
+        # An empty Journey is falsy: test for None, not truth
+        self.locations = locations if locations is not None else Journey()
 
     def rowCount(self, parent=None):
         return len(self.locations)
@@ -160,6 +166,8 @@ class LocationListModel(QAbstractListModel):
 
 
 class LocationListView(QListView):
+    """The list of locations next to the map. Emits locationClicked(Location)."""
+
     locationClicked = Signal(object)  # Signal emitting the selected Location object
 
     def __init__(self, parent=None):

@@ -18,7 +18,14 @@ logger = logging.getLogger(__name__)
 
 CURRENT_FORMAT_VERSION = "1.0.0"
 class Journey(QObject):
-    dirty = Signal(bool)
+    """An ordered list of Locations, the document Otripy edits and saves.
+
+    It behaves like a list (indexing, iteration, len, append, insert, remove,
+    pop) and emits dirty(True) on every change, dirty(False) once saved or
+    cleared. It reads and writes the JSON format described in
+    docs/file-format.md, including the legacy pre-1.0.0 one.
+    """
+    dirty = Signal(bool)  # True when modified since last saved
 
     def __init__(self, locations: List[Location] = None, parent=None):
         """Initialize the journey with a list of Location objects."""

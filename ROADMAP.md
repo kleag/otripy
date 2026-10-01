@@ -35,13 +35,14 @@ Feature requests and bugs are tracked as [GitHub issues](https://github.com/klea
 
 ## Phase 3 — Documentation
 
-- [ ] README: user guide with screenshots; fix the build/publish section
-- [ ] `docs/file-format.md`: the `.json` journey format and its versioning rules
-- [ ] `CONTRIBUTING.md`: dev setup, running tests, release procedure
-- [ ] `CHANGELOG.md`
-- [ ] Credit Font Awesome Free (icons are CC BY 4.0, attribution required) in the README and next to `resources/icons/`
-- [ ] Include the full MIT notice for `toolbar.py` (borrowed from Notolog Editor)
-- [ ] Docstrings for the model classes (`Location`, `Journey`, list model)
+- [x] README and user guide site (GitHub Pages, MkDocs Material): installation per platform, usage; build/publish moved to CONTRIBUTING.md
+- [ ] Update the screenshot (it predates marker icons and colors)
+- [x] `docs/file-format.md`: the `.json` journey format and its versioning rules
+- [x] `CONTRIBUTING.md`: dev setup, running tests, release procedure
+- [x] `CHANGELOG.md`
+- [x] Credit Font Awesome Free (icons are CC BY 4.0, attribution required) in the README and next to `resources/icons/`
+- [x] Include the full MIT notice for `toolbar.py` (borrowed from Notolog Editor)
+- [x] Docstrings for the model classes (`Location`, `Journey`, list model)
 
 ## Phase 4 — Features
 
