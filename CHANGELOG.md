@@ -9,6 +9,7 @@ Notable changes to Otripy. The format follows [Keep a Changelog](https://keepach
 - Installers for Windows (`.msi`), macOS 13 and later (`.dmg`) and Linux (AppImage), attached to each GitHub release.
 - Application icon.
 - Opening a trip zooms the map to show all its locations ([#25](https://github.com/kleag/otripy/issues/25)).
+- When a Nextcloud file was changed or deleted on the server since it was opened, saving offers to overwrite it, besides saving under another name ([#10](https://github.com/kleag/otripy/issues/10)).
 - *File* → *Save As Nextcloud…* (Ctrl+Alt+S) saves a trip to a new file on Nextcloud ([#28](https://github.com/kleag/otripy/issues/28)).
 - *Settings* → *Confirm New Locations*: ask, showing the address, before adding a location where the map is clicked ([#30](https://github.com/kleag/otripy/issues/30)).
 - The location list shows the icon of custom markers, in their color ([#27](https://github.com/kleag/otripy/issues/27)).

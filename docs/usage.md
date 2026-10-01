@@ -34,7 +34,7 @@ Otripy asks before closing or opening another trip when there are unsaved change
 
 In *Settings* → *Configure Otripy*, enter your Nextcloud server's URL, your user name and your password. If you use two-factor authentication, create an *app password* in Nextcloud's security settings and use it here. Otripy stores the password in your system's keyring (GNOME Keyring, KWallet, macOS Keychain or Windows Credential Manager).
 
-*File* → *Open Nextcloud…* then lets you browse your Nextcloud files and open a trip. *Save* writes it back to Nextcloud. If the file was changed on the server since you opened it, Otripy asks for a new name instead of overwriting it.
+*File* → *Open Nextcloud…* then lets you browse your Nextcloud files and open a trip. *Save* writes it back to Nextcloud. If the file was changed or deleted on the server since you opened it, for instance by someone you share it with, Otripy asks whether to save your version under another name or to overwrite the file.
 
 *File* → *Save As Nextcloud…* saves the trip to a new file on Nextcloud: browse to a folder, type a file name (`.json` is added if missing) and click *Save*. Clicking an existing file reuses its name; Otripy asks before replacing it.
 

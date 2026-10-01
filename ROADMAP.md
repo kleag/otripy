@@ -59,7 +59,7 @@ Feature requests and bugs are tracked as [GitHub issues](https://github.com/klea
 - [x] #31 Create and add an application icon
 
 ### File handling
-- [ ] #10 Improve handling of changed file check
+- [x] #10 Improve handling of changed file check (merging changes left for later)
 - [ ] #11 Recent Files menu
 - [ ] #12 Auto-save option
 

@@ -747,8 +747,15 @@ class MapApp(QMainWindow):
             remote_node = self.nc.files.by_id(self.current_file.file_id)
             if remote_node is not None and remote_node.etag == self.current_file.etag:
                 self.current_file = self.nc.files.upload(self.current_file, data)
+                choice = None
             else:
-                # The file changed (or vanished) on the server since it was opened: save under a new name
+                # The file changed (or vanished) on the server since it was opened (issue #10)
+                choice = self.ask_save_conflict(self.current_file.user_path, deleted=remote_node is None)
+            if choice == "cancel":
+                return False
+            if choice == "overwrite":
+                self.current_file = self.nc.files.upload(self.current_file.user_path, data)
+            elif choice == "rename":
                 popup = RenamePopup(self, self.current_file.user_path)
                 if not popup.exec():
                     return False
@@ -762,6 +769,24 @@ class MapApp(QMainWindow):
             return False
         self.list_widget.locations().clean()
         return True
+
+    def ask_save_conflict(self, path: str, deleted: bool) -> str:
+        """Ask what to do with a Nextcloud file changed or deleted since it was opened.
+
+        Return "rename" (save under another name), "overwrite" or "cancel".
+        """
+        box = QMessageBox(self)
+        box.setIcon(QMessageBox.Warning)
+        box.setWindowTitle("File Changed on Nextcloud")
+        happened = "was deleted" if deleted else "was changed by someone else"
+        box.setText(f"{path} {happened} since you opened it.")
+        box.setInformativeText("Save your version under another name, or replace the file with it?")
+        rename = box.addButton("Save As…", QMessageBox.AcceptRole)
+        overwrite = box.addButton("Overwrite", QMessageBox.DestructiveRole)
+        box.addButton(QMessageBox.Cancel)
+        box.setDefaultButton(rename)
+        box.exec()
+        return {rename: "rename", overwrite: "overwrite"}.get(box.clickedButton(), "cancel")
 
     def nc_file_exists(self, path) -> bool:
         try:
