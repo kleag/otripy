@@ -25,6 +25,7 @@ from PySide6.QtWebEngineWidgets import QWebEngineView
 from geopy.exc import GeopyError
 from geopy.geocoders import Nominatim
 from importlib import resources
+from pathlib import Path
 from typing import Dict, List, Any
 
 
@@ -61,6 +62,10 @@ except ImportError:
     from note_widget import NoteWidget
 
 logger = logging.getLogger(__name__)
+
+RECENT_FILES_KEY = "recentFiles"
+MAX_RECENT_FILES = 10
+NEXTCLOUD_PREFIX = "nextcloud:"
 logging.basicConfig(level=logging.INFO)
 logging.root.setLevel(logging.INFO)
 
@@ -266,6 +271,9 @@ class MapApp(QMainWindow):
         file_menu.addSeparator()
         file_menu.addAction(load_action)
         file_menu.addAction(load_nc_action)
+        self.recent_menu = file_menu.addMenu("Open Recent")
+        self.recent_menu.aboutToShow.connect(self.update_recent_menu)
+        self.update_recent_menu()
         file_menu.addSeparator()
         file_menu.addAction(save_action)
         file_menu.addAction(save_as_action)
@@ -668,6 +676,7 @@ class MapApp(QMainWindow):
         journey.dirty.connect(self.set_window_title)
         self.set_window_title(dirty=False)
         self.update_map(fit_all=True)
+        self.remember_current_file()
 
     def new(self):
         if self.confirm_discard():
@@ -681,14 +690,18 @@ class MapApp(QMainWindow):
             "Open JSON File",
             "",
             "JSON Files (*.json);;All files (*.*)")
-        if not file_name:
-            return
+        if file_name:
+            self.open_local_file(file_name)
+
+    def open_local_file(self, file_name) -> bool:
+        """Open a journey file, without asking about unsaved changes. Return True on success."""
         try:
             journey = Journey.from_file(file_name)
         except (OSError, ValueError, KeyError) as e:
             QMessageBox.critical(self, "Error", f"Failed to load file: {e}")
-            return
+            return False
         self.set_journey(journey, file_name)
+        return True
 
     def connect_nextcloud(self) -> bool:
         """Connect to the Nextcloud server configured in the settings, if not done yet."""
@@ -722,24 +735,77 @@ class MapApp(QMainWindow):
         if file_picker.exec() != QDialog.DialogCode.Accepted:
             return
         selected_file = file_picker.get_selected_file()
-        if not selected_file:
-            return
+        if selected_file:
+            self.open_nc_file(selected_file)
+
+    def open_nc_file(self, path) -> bool:
+        """Open a journey file from Nextcloud, without asking about unsaved changes. Return True on success."""
         try:
             # keep the nc_py_api FsNode: its etag detects remote changes on save
-            node = self.nc.files.by_path(selected_file)
+            node = self.nc.files.by_path(path)
             journey = Journey.from_json_str(self.nc.files.download(node).decode("utf-8"))
         except (nc_py_api.NextcloudException, ValueError, KeyError) as e:
             QMessageBox.critical(self, "Error", f"Failed to load file: {e}")
-            return
+            return False
         self.set_journey(journey, node)
+        return True
+
+    # Recent files (issue #11): local paths, and Nextcloud paths with a prefix
+    def recent_files(self) -> List[str]:
+        files = self.settings.value(RECENT_FILES_KEY, [])
+        return [files] if isinstance(files, str) else list(files or [])
+
+    def remember_current_file(self):
+        """Put the current file first in the recent files."""
+        if not self.current_file:
+            return
+        entry = (NEXTCLOUD_PREFIX + self.current_file.user_path if isinstance(self.current_file, nc_py_api.FsNode)
+                 else str(Path(self.current_file).resolve()))
+        files = [entry] + [f for f in self.recent_files() if f != entry]
+        self.settings.setValue(RECENT_FILES_KEY, files[:MAX_RECENT_FILES])
+
+    def forget_recent_file(self, entry):
+        self.settings.setValue(RECENT_FILES_KEY, [f for f in self.recent_files() if f != entry])
+
+    def update_recent_menu(self):
+        """Rebuild the Open Recent menu from the settings."""
+        self.recent_menu.clear()
+        files = self.recent_files()
+        for entry in files:
+            if entry.startswith(NEXTCLOUD_PREFIX):
+                label = f"{entry[len(NEXTCLOUD_PREFIX):]} (Nextcloud)"
+            else:
+                label = entry
+            action = self.recent_menu.addAction(label)
+            action.triggered.connect(lambda checked=False, entry=entry: self.open_recent_file(entry))
+        if files:
+            self.recent_menu.addSeparator()
+        clear_action = self.recent_menu.addAction("Clear Recent Files")
+        clear_action.setEnabled(bool(files))
+        clear_action.triggered.connect(lambda: self.settings.setValue(RECENT_FILES_KEY, []))
+
+    def open_recent_file(self, entry) -> bool:
+        if not self.confirm_discard():
+            return False
+        if entry.startswith(NEXTCLOUD_PREFIX):
+            if not self.connect_nextcloud():
+                return False
+            opened = self.open_nc_file(entry[len(NEXTCLOUD_PREFIX):])
+        else:
+            opened = self.open_local_file(entry)
+        if not opened:
+            self.forget_recent_file(entry)
+        return opened
 
     def save_file(self) -> bool:
         """Save to the current file, asking for one if needed. Return True if the journey was saved."""
         if not self.current_file:
             return self.save_file_as()
-        if isinstance(self.current_file, nc_py_api.FsNode):
-            return self.save_nc_file()
-        return self.save_local_file(self.current_file)
+        saved = (self.save_nc_file() if isinstance(self.current_file, nc_py_api.FsNode)
+                 else self.save_local_file(self.current_file))
+        if saved:
+            self.remember_current_file()  # may have been saved under a new name
+        return saved
 
     def save_nc_file(self) -> bool:
         data = self.list_widget.locations().to_json_str()
@@ -806,6 +872,7 @@ class MapApp(QMainWindow):
             return False
         self.current_file = file_name
         self.set_window_title(dirty=False)
+        self.remember_current_file()
         return True
 
     def save_file_as_nc(self) -> bool:
@@ -829,6 +896,7 @@ class MapApp(QMainWindow):
             return False
         self.list_widget.locations().clean()
         self.set_window_title(dirty=False)
+        self.remember_current_file()
         return True
 
     def save_local_file(self, file_name) -> bool:

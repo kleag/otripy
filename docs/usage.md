@@ -28,6 +28,8 @@ The two last toolbar buttons change the selected location's marker: its icon, ch
 | Save as a new file on Nextcloud | Ctrl+Alt+S |
 | Quit | Ctrl+Q |
 
+*File* → *Open Recent* lists the last trips you opened or saved, on your computer or on Nextcloud.
+
 Otripy asks before closing or opening another trip when there are unsaved changes; the window title starts with `*` while there are. Trips are JSON files, described in [the file format page](file-format.md).
 
 ## Nextcloud

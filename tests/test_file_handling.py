@@ -347,3 +347,65 @@ def test_save_conflict_dialog_buttons(window, monkeypatch):
             monkeypatch.setattr(box, "clickedButton", lambda: box_clicked)
         monkeypatch.setattr(main.QMessageBox, "exec", fake_exec)
         assert window.ask_save_conflict("paris.json", deleted=False) == expected
+
+
+def recent_labels(window):
+    window.update_recent_menu()
+    return [a.text() for a in window.recent_menu.actions() if a.text() and a.text() != "Clear Recent Files"]
+
+
+def test_opened_and_saved_files_become_recent(window, dialogs, fixture_text, tmp_path):
+    """Issue #11: File > Open Recent lists opened and saved trips, most recent first."""
+    first = tmp_path / "first.json"
+    first.write_text(fixture_text("journey-1.0.0.json"), encoding="utf-8")
+    dialogs.open_path = first
+    window.load_file()
+    add_location(window)
+    dialogs.save_path = tmp_path / "second.json"
+    assert window.save_file_as()
+    assert recent_labels(window) == [str(tmp_path / "second.json"), str(first)]
+
+
+def test_open_recent_file(window, dialogs, fixture_text, tmp_path):
+    trip = tmp_path / "trip.json"
+    trip.write_text(fixture_text("journey-1.0.0.json"), encoding="utf-8")
+    dialogs.open_path = trip
+    window.load_file()
+    window.new()
+    window.update_recent_menu()  # done by the menu when it opens
+    [action] = [a for a in window.recent_menu.actions() if a.text() == str(trip)]
+    action.trigger()
+    assert labels(window)[0] == "Tour Eiffel"
+    assert window.current_file == str(trip)
+
+
+def test_missing_recent_file_is_forgotten(window, dialogs, fixture_text, tmp_path):
+    trip = tmp_path / "trip.json"
+    trip.write_text(fixture_text("journey-1.0.0.json"), encoding="utf-8")
+    dialogs.open_path = trip
+    window.load_file()
+    trip.unlink()
+    assert not window.open_recent_file(str(trip))
+    assert dialogs.errors
+    assert recent_labels(window) == []
+
+
+def test_recent_files_are_limited_and_clearable(window):
+    for i in range(main.MAX_RECENT_FILES + 3):
+        window.current_file = f"/trips/{i}.json"
+        window.remember_current_file()
+    assert len(recent_labels(window)) == main.MAX_RECENT_FILES
+    assert recent_labels(window)[0] == str(main.Path("/trips/12.json").resolve())
+    [clear] = [a for a in window.recent_menu.actions() if a.text() == "Clear Recent Files"]
+    clear.trigger()
+    assert recent_labels(window) == []
+
+
+def test_recent_nextcloud_file(window, nextcloud, fixture_text):
+    nextcloud.put("Trips/paris.json", fixture_text("journey-1.0.0.json"))
+    nextcloud.pick("Trips/paris.json")
+    window.load_nc_file()
+    assert recent_labels(window) == ["Trips/paris.json (Nextcloud)"]
+    window.new()
+    assert window.open_recent_file(main.NEXTCLOUD_PREFIX + "Trips/paris.json")
+    assert window.current_file.user_path == "Trips/paris.json"
