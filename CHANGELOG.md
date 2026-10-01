@@ -9,6 +9,7 @@ Notable changes to Otripy. The format follows [Keep a Changelog](https://keepach
 - Installers for Windows (`.msi`), macOS 13 and later (`.dmg`) and Linux (AppImage), attached to each GitHub release.
 - Application icon.
 - Opening a trip zooms the map to show all its locations ([#25](https://github.com/kleag/otripy/issues/25)).
+- The location list shows the icon of custom markers, in their color ([#27](https://github.com/kleag/otripy/issues/27)).
 - The location list, the map and the note can be resized by dragging the separators between them; their sizes are kept for the next start ([#29](https://github.com/kleag/otripy/issues/29)).
 - The Nextcloud password is stored in the system keyring instead of the settings file; an existing password is moved there on first use.
 - `otripy --self-test` checks headless that an installation works.
@@ -37,6 +38,8 @@ Notable changes to Otripy. The format follows [Keep a Changelog](https://keepach
 - Titles showed Markdown escape characters such as `\[`.
 - Markers without a custom icon lost their color when another location was selected.
 - Changing a note's title updates its marker's tooltip and popup at once ([#26](https://github.com/kleag/otripy/issues/26)); they show the title as text, not HTML.
+- Changing a marker's icon or color did not mark the trip as modified, so closing could lose it without warning.
+- Cancelling the marker color dialog reset the marker to the default color.
 - Otripy runs on Python 3.10 again.
 
 ## 1.2.3 - 2025-03-17

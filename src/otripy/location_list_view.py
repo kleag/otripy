@@ -1,14 +1,50 @@
 import logging
+from functools import lru_cache
+from importlib import resources
 
 from PySide6.QtWidgets import QListView, QAbstractItemView
-from PySide6.QtCore import QAbstractListModel, Qt, QModelIndex, Signal
+from PySide6.QtCore import QAbstractListModel, Qt, QModelIndex, QSize, Signal
+from PySide6.QtGui import QColor, QIcon, QPainter, QPixmap
 
 try:
     from .journey import Journey
+    from .limited_color_picker import LimitedColorPicker
 except ImportError:
     from journey import Journey
+    from limited_color_picker import LimitedColorPicker
 
 logger = logging.getLogger(__name__)
+
+ICON_SIZE = 32  # drawn size, scaled down for display
+LIST_ICON_SIZE = 16
+DEFAULT_MARKER_COLOR = "blue"
+
+
+@lru_cache(maxsize=1)
+def blank_icon() -> QIcon:
+    pixmap = QPixmap(ICON_SIZE, ICON_SIZE)
+    pixmap.fill(Qt.transparent)
+    return QIcon(pixmap)
+
+
+@lru_cache(maxsize=None)
+def marker_icon(marker: str, color: str | None) -> QIcon:
+    """Return the Font Awesome icon of a marker, drawn in the marker's color.
+
+    Returns a null QIcon if the icon is unknown.
+    """
+    svg = resources.files("otripy.resources.icons") / f"{marker}.svg"
+    if not svg.is_file():
+        return QIcon()
+    with resources.as_file(svg) as path:
+        pixmap = QIcon(str(path)).pixmap(ICON_SIZE, ICON_SIZE)
+    rgb = LimitedColorPicker.COLORS.get(color or DEFAULT_MARKER_COLOR, LimitedColorPicker.COLORS[DEFAULT_MARKER_COLOR])
+    # Keep the glyph's shape, paint it in the marker color
+    painter = QPainter(pixmap)
+    painter.setCompositionMode(QPainter.CompositionMode_SourceIn)
+    painter.fillRect(pixmap.rect(), QColor(*rgb))
+    painter.end()
+    return QIcon(pixmap)
 
 class LocationListModel(QAbstractListModel):
     """Qt list model over a Journey: one row per Location, displayed by its label.
@@ -27,9 +63,26 @@ class LocationListModel(QAbstractListModel):
     def data(self, index, role):
         if not index.isValid() or index.row() >= len(self.locations):
             return None
+        location = self.locations[index.row()]
         if role == Qt.DisplayRole:
-            return str(self.locations[index.row()])
+            return str(location)
+        if role == Qt.DecorationRole:
+            # Only custom markers show an icon (issue #27); others get a blank
+            # one so that all titles are aligned and rows have the same height
+            icon = marker_icon(location.marker, location.color) if location.marker else QIcon()
+            return icon if not icon.isNull() else blank_icon()
         return None
+
+    def setMarkerStyle(self, index: QModelIndex, marker=..., color=...):
+        """Change a location's marker icon and/or color, and notify the views."""
+        location = self.getLocation(index)
+        if location is None:
+            return
+        if marker is not ...:
+            location.marker = marker
+        if color is not ...:
+            location.color = color
+        self.dataChanged.emit(index, index)
 
     def setLocations(self, locations):
         # logger.info(f"LocationListModel.setLocations {locations}")
@@ -177,6 +230,7 @@ class LocationListView(QListView):
         self.clicked.connect(self.on_item_clicked)
         self.setDragDropMode(QListView.InternalMove)
         self.setSelectionMode(QAbstractItemView.SingleSelection)
+        self.setIconSize(QSize(LIST_ICON_SIZE, LIST_ICON_SIZE))
 
     def dataChanged(self, topLeft, bottomRight, roles=()):
         super().dataChanged(topLeft, bottomRight, roles)
