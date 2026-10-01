@@ -60,3 +60,25 @@ def test_marker_click_selects_location(window):
     window.map_bridge.on_marker_clicked(first.lid)
     assert window.list_widget.currentIndex().row() == 0
     assert window.lat_input.text() == "1.0"
+
+
+def test_editing_title_updates_marker_texts(window):
+    """Issue #26: the marker's tooltip and popup follow the note's first line."""
+    window.geolocator = FakeGeolocator("Old title, Somewhere")
+    window.map_bridge.on_map_clicked(1.0, 2.0)
+    [loc] = window.list_widget.locations()
+    window.scripts_run.clear()
+    window.note_input.setPlainText("New <title>\n\nbody")
+    updates = [code for code in window.scripts_run if "setTooltipContent" in code]
+    assert updates
+    assert '"New <title>"' not in updates[-1], "Leaflet renders tooltips as HTML: the title must be escaped"
+    assert updates[-1].count('"New &lt;title&gt;"') == 2
+
+
+def test_editing_note_body_does_not_touch_marker(window):
+    window.geolocator = FakeGeolocator("Title, Somewhere")
+    window.map_bridge.on_map_clicked(1.0, 2.0)
+    window.note_input.setPlainText("Title\n\nfirst body")
+    window.scripts_run.clear()
+    window.note_input.setPlainText("Title\n\nsecond body")
+    assert not [code for code in window.scripts_run if "setTooltipContent" in code]

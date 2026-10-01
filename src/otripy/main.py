@@ -36,7 +36,8 @@ try:
     from .limited_color_picker import LimitedColorPicker
     from .location import Location
     from .location_list_view import LocationListView
-    from .map_view import MapBridge, build_map_html, downplay_marker_js, highlight_marker_js, move_map_js
+    from .map_view import (MapBridge, build_map_html, downplay_marker_js, highlight_marker_js, move_map_js,
+                           update_marker_text_js)
     from .search_popup import SearchPopup
     from .config import ConfigDialog, load_nextcloud_password
     from .nextcloud_with_api import NextcloudFilePicker
@@ -49,7 +50,8 @@ except ImportError:
     from limited_color_picker import LimitedColorPicker
     from location import Location
     from location_list_view import LocationListView
-    from map_view import MapBridge, build_map_html, downplay_marker_js, highlight_marker_js, move_map_js
+    from map_view import (MapBridge, build_map_html, downplay_marker_js, highlight_marker_js, move_map_js,
+                          update_marker_text_js)
     from search_popup import SearchPopup
     from config import ConfigDialog, load_nextcloud_password
     from nextcloud_with_api import NextcloudFilePicker
@@ -540,7 +542,12 @@ class MapApp(QMainWindow):
         # logger.info(f"MapApp.note_changed")
         selected_indexes = self.list_widget.selectedIndexes()
         if selected_indexes:
+            location = self.list_widget.model.getLocation(selected_indexes[0])
+            old_label = location.label() if location is not None else None
             self.list_widget.updateLocationNoteAtIndex(selected_indexes[0], self.note_input.to_note())
+            # The list shows the new title at once; the map's marker needs updating too
+            if location is not None and location.label() != old_label:
+                self.map_page.runJavaScript(update_marker_text_js(location))
 
     def update_map(self):
         self.map_page.setHtml(build_map_html(self.list_widget.locations()))
