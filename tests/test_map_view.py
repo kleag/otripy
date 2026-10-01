@@ -100,3 +100,28 @@ def test_fit_all_needs_two_locations(locations):
 
 def test_map_does_not_fit_by_default():
     assert "fitBounds" not in build_map_html([Location(48.85, 2.35), Location(43.30, 5.37)])
+
+
+def test_map_keeps_given_view():
+    html = build_map_html([Location(48.85, 2.35), Location(43.30, 5.37)], view=(45.5, 4.25, 9))
+    assert "[45.5, 4.25]" in html
+    assert '"zoom": 9' in html
+
+
+def test_fit_all_overrides_view():
+    html = build_map_html([Location(48.85, 2.35), Location(43.30, 5.37)], fit_all=True, view=(45.5, 4.25, 9))
+    assert "fitBounds" in html
+    assert '"zoom": 9' not in html
+
+
+def test_page_reports_its_view():
+    html = build_map_html([Location(48.85, 2.35)])
+    assert 'map.on("moveend", reportView)' in html
+    assert "on_view_changed" in html
+
+
+def test_bridge_relays_view_changes(qtbot):
+    bridge = MapBridge()
+    with qtbot.waitSignal(bridge.viewChanged) as changed:
+        bridge.on_view_changed(45.5, 4.25, 9)
+    assert changed.args == [45.5, 4.25, 9]
