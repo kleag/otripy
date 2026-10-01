@@ -82,3 +82,20 @@ def test_editing_note_body_does_not_touch_marker(window):
     window.scripts_run.clear()
     window.note_input.setPlainText("Title\n\nsecond body")
     assert not [code for code in window.scripts_run if "setTooltipContent" in code]
+
+
+def test_redrawing_keeps_the_map_view(window):
+    """Edits redraw the map: it must stay where the user moved it."""
+    window.geolocator = FakeGeolocator("A, Somewhere")
+    window.map_bridge.on_map_clicked(48.85, 2.35)
+    window.map_bridge.on_view_changed(45.5, 4.25, 9)
+    window.map_bridge.on_map_clicked(50.63, 3.06)
+    assert "[45.5, 4.25]" in window.rendered_pages[-1]
+    assert '"zoom": 9' in window.rendered_pages[-1]
+
+
+def test_new_journey_resets_the_map_view(window):
+    window.map_bridge.on_view_changed(45.5, 4.25, 9)
+    window.set_journey(main.Journey(), None)
+    assert '"zoom": 9' not in window.rendered_pages[-1]
+    assert window.map_view_state is None

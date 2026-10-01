@@ -87,3 +87,15 @@ def test_escape_closes_popup(window, qtbot):
     search(window, "Louvre")
     qtbot.keyClick(window.search_popup, Qt.Key_Escape)
     assert not window.search_popup.isVisible()
+
+
+def test_place_added_from_search_is_shown(window):
+    """The map keeps its view on redraws, except to show a place picked in the search."""
+    window.map_bridge.on_view_changed(48.86, 2.35, 15)
+    window.geolocator = FakeGeocoder([Place("Marseille", 43.2965, 5.3698)])
+    search(window, "Marseille")
+    pages = []
+    window.map_page.setHtml = pages.append
+    window.search_popup.itemClicked.emit(window.search_popup.item(0))
+    assert "[43.2965, 5.3698]" in pages[-1]
+    assert '"zoom": 15' in pages[-1]

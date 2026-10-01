@@ -36,7 +36,7 @@ try:
     from .limited_color_picker import LimitedColorPicker
     from .location import Location
     from .location_list_view import LocationListView
-    from .map_view import (MapBridge, build_map_html, downplay_marker_js, highlight_marker_js, move_map_js,
+    from .map_view import (DEFAULT_ZOOM, MapBridge, build_map_html, downplay_marker_js, highlight_marker_js, move_map_js,
                            update_marker_text_js)
     from .search_popup import SearchPopup
     from .config import ConfigDialog, load_nextcloud_password
@@ -50,7 +50,7 @@ except ImportError:
     from limited_color_picker import LimitedColorPicker
     from location import Location
     from location_list_view import LocationListView
-    from map_view import (MapBridge, build_map_html, downplay_marker_js, highlight_marker_js, move_map_js,
+    from map_view import (DEFAULT_ZOOM, MapBridge, build_map_html, downplay_marker_js, highlight_marker_js, move_map_js,
                           update_marker_text_js)
     from search_popup import SearchPopup
     from config import ConfigDialog, load_nextcloud_password
@@ -84,6 +84,9 @@ class MapApp(QMainWindow):
         self.channel.registerObject("mapBridge", self.map_bridge)
         self.map_bridge.mapClicked.connect(self.add_location_at)
         self.map_bridge.markerClicked.connect(self.handle_marker_click)
+        # Last view of the map (latitude, longitude, zoom), kept when it is redrawn
+        self.map_view_state = None
+        self.map_bridge.viewChanged.connect(self.map_view_changed)
 
         self.setGeometry(100, 100, 800, 600)
 
@@ -549,9 +552,16 @@ class MapApp(QMainWindow):
             if location is not None and location.label() != old_label:
                 self.map_page.runJavaScript(update_marker_text_js(location))
 
+    @Slot(float, float, int)
+    def map_view_changed(self, lat: float, lon: float, zoom: int):
+        self.map_view_state = (lat, lon, zoom)
+
     def update_map(self, fit_all: bool = False):
-        """Redraw the map; with fit_all, zoom it to show all the locations."""
-        self.map_page.setHtml(build_map_html(self.list_widget.locations(), fit_all=fit_all))
+        """Redraw the map, keeping its current view; with fit_all, zoom it to show all the locations."""
+        if fit_all:
+            self.map_view_state = None
+        self.map_page.setHtml(build_map_html(self.list_widget.locations(), fit_all=fit_all,
+                                             view=self.map_view_state))
 
     def handle_marker_click(self, marker_id):
         """ Handle marker click events in Python. """
@@ -793,6 +803,9 @@ class MapApp(QMainWindow):
     def handle_selected_location(self, location):
         """Handle the selected location"""
         # logger.info(f"Selected: {location}")
+        # The place may be anywhere: center the redrawn map on it, at the current zoom
+        zoom = self.map_view_state[2] if self.map_view_state is not None else DEFAULT_ZOOM
+        self.map_view_state = (location.latitude, location.longitude, zoom)
         self.add_location_at(location.latitude, location.longitude)
 
 

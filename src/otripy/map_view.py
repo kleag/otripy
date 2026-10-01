@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_CENTER = [48.8566, 2.3522]  # Paris
 DEFAULT_MARKER_ICON = "circle"
+DEFAULT_ZOOM = 12
 # Do not zoom closer than street level when fitting a few nearby locations
 FIT_MAX_ZOOM = 15
 DEFAULT_MARKER_COLOR = "blue"
@@ -32,6 +33,7 @@ class MapBridge(QObject):
     """Object exposed to the map page; relays its events as Qt signals."""
     mapClicked = Signal(float, float)  # latitude, longitude
     markerClicked = Signal(str)  # location id
+    viewChanged = Signal(float, float, int)  # center latitude, center longitude, zoom
 
     @Slot(float, float)
     def on_map_clicked(self, lat, lon):
@@ -40,6 +42,10 @@ class MapBridge(QObject):
     @Slot(str)
     def on_marker_clicked(self, marker_id):
         self.markerClicked.emit(marker_id)
+
+    @Slot(float, float, int)
+    def on_view_changed(self, lat, lon, zoom):
+        self.viewChanged.emit(lat, lon, zoom)
 
 
 def js_string(value) -> str:
@@ -98,15 +104,19 @@ def move_map_js(lat: float, lon: float) -> str:
     return f"moveMap({float(lat)}, {float(lon)});"
 
 
-def build_map_html(locations: Iterable[Location], fit_all: bool = False) -> str:
+def build_map_html(locations: Iterable[Location], fit_all: bool = False, view=None) -> str:
     """Return the full HTML page showing the locations.
 
-    The map is centered on the last location, or, with fit_all, zoomed to show
-    all of them.
+    With fit_all, the map is zoomed to show all the locations. Otherwise it shows
+    view, a (latitude, longitude, zoom) tuple, if given, else it is centered on
+    the last location.
     """
     locations = list(locations)
-    center = locations[-1].location() if locations else DEFAULT_CENTER
-    m = folium.Map(location=center, zoom_start=12)
+    if view is not None and not fit_all:
+        center, zoom = [float(view[0]), float(view[1])], int(view[2])
+    else:
+        center, zoom = (locations[-1].location() if locations else DEFAULT_CENTER), DEFAULT_ZOOM
+    m = folium.Map(location=center, zoom_start=zoom)
     if fit_all and len(locations) > 1:
         lats = [loc.lat for loc in locations]
         lons = [loc.lon for loc in locations]
@@ -125,10 +135,23 @@ def build_map_html(locations: Iterable[Location], fit_all: bool = False) -> str:
         }
     }
 
+    // Tell Python where the map is, so that redrawing it keeps the view.
+    function reportView() {
+        let mapElement = document.querySelector("div[id^='map_']");
+        let bridge = pywebchannel.objects && pywebchannel.objects.mapBridge;
+        if (mapElement && bridge) {
+            let map = window[mapElement.id];
+            let center = map.getCenter();
+            bridge.on_view_changed(center.lat, center.lng, map.getZoom());
+        }
+    }
+
     pywebchannel = new QWebChannel(qt.webChannelTransport, function(channel) {
         if (!channel.objects.mapBridge) {
             console.error("mapBridge is not available.");
         }
+        // The map may have settled before the channel was ready
+        reportView();
     });
 
     document.addEventListener("DOMContentLoaded", function() {
@@ -139,6 +162,7 @@ def build_map_html(locations: Iterable[Location], fit_all: bool = False) -> str:
             map.on("click", function(event) {
                 pywebchannel.objects.mapBridge.on_map_clicked(event.latlng.lat, event.latlng.lng);
             });
+            map.on("moveend", reportView);
     """
     for loc in locations:
         logger.debug(f"Adding location to map: {repr(loc)}")

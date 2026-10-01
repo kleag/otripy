@@ -17,6 +17,7 @@ Notable changes to Otripy. The format follows [Keep a Changelog](https://keepach
 
 - Nextcloud files are saved in the current file format, with its version information; Otripy 1.2.2 and earlier refuse to open them.
 - *Quit* asks the same question as closing the window: save, discard or cancel.
+- The map keeps its position and zoom when locations are added, changed or deleted, instead of jumping to the last location.
 - New images in notes are named `image_<identifier>` instead of `dropped_image_<number>`.
 - The license is declared as AGPL-3.0-or-later.
 - Fewer dependencies: smaller installation.
