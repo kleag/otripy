@@ -40,6 +40,8 @@ classifiers = [
 include = [    "src/otripy/**/*.py",
 "src/otripy/resources/icons/**/*.svg",
     "src/otripy/resources/icons/LICENSE.md",
+    "src/otripy/i18n/*.ts",
+    "src/otripy/i18n/*.qm",
     "src/otripy/resources/icon-*.png"]
 
 [tool.hatch.build.targets.wheel]
@@ -48,6 +50,8 @@ include = [
     "src/otripy/**/*.py",
     "src/otripy/resources/icons/**/*.svg",
     "src/otripy/resources/icons/LICENSE.md",
+    "src/otripy/i18n/*.ts",
+    "src/otripy/i18n/*.qm",
     "src/otripy/resources/icon-*.png"
 ]
 
@@ -58,6 +62,8 @@ allow-direct-references = true
 include = [    "src/otripy/**/*.py",
 "src/otripy/resources/icons/**/*.svg",
     "src/otripy/resources/icons/LICENSE.md",
+    "src/otripy/i18n/*.ts",
+    "src/otripy/i18n/*.qm",
     "src/otripy/resources/icon-*.png"]
 
 [project.gui-scripts]

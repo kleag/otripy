@@ -19,7 +19,7 @@ class NextcloudFilePicker(QDialog):
     def __init__(self, nextcloud, parent=None, save=False):
         super().__init__(parent)
         self.save = save
-        self.setWindowTitle("Save to Nextcloud" if save else "Select File from Nextcloud")
+        self.setWindowTitle(self.tr("Save to Nextcloud") if save else self.tr("Select File from Nextcloud"))
         self.nc = nextcloud
         self.selected_file = None
         self.current_dir = ""
@@ -31,7 +31,7 @@ class NextcloudFilePicker(QDialog):
         self.path_line_edit = QLineEdit()
         self.path_line_edit.setReadOnly(True)
         self.path_line_edit.setPlaceholderText(
-            "Enter directory on Nextcloud (e.g., /folder1/)")
+            self.tr("Enter directory on Nextcloud (e.g., /folder1/)"))
         layout.addWidget(self.path_line_edit)
 
         self.list_view = QListView()
@@ -44,7 +44,7 @@ class NextcloudFilePicker(QDialog):
 
         if self.save:
             self.name_line_edit = QLineEdit()
-            self.name_line_edit.setPlaceholderText("File name, e.g. trip.json")
+            self.name_line_edit.setPlaceholderText(self.tr("File name, e.g. trip.json"))
             self.name_line_edit.returnPressed.connect(self.accept_name)
             layout.addWidget(self.name_line_edit)
             buttons = QDialogButtonBox(QDialogButtonBox.Save | QDialogButtonBox.Cancel)

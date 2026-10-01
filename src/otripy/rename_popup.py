@@ -3,23 +3,23 @@ from PySide6.QtWidgets import QApplication, QDialog, QVBoxLayout, QLabel, QLineE
 class RenamePopup(QDialog):
     def __init__(self, parent: QWidget = None, old_name: str = ""):
         super().__init__(parent)
-        self.setWindowTitle("Choose a New Name")
+        self.setWindowTitle(self.tr("Choose a New Name"))
         self.setMinimumWidth(300)
 
         layout = QVBoxLayout(self)
 
-        self.label = QLabel("File has changed. Enter a new name:")
+        self.label = QLabel(self.tr("File has changed. Enter a new name:"))
         layout.addWidget(self.label)
 
         self.line_edit = QLineEdit()
         self.line_edit.setText(old_name)
         layout.addWidget(self.line_edit)
 
-        self.try_button = QPushButton("Try this new name")
+        self.try_button = QPushButton(self.tr("Try this new name"))
         self.try_button.setEnabled(False)  # Disabled until input is given
         layout.addWidget(self.try_button)
 
-        self.cancel_button = QPushButton("Cancel")
+        self.cancel_button = QPushButton(self.tr("Cancel"))
         layout.addWidget(self.cancel_button)
 
         self.line_edit.textChanged.connect(self.toggle_try_button)

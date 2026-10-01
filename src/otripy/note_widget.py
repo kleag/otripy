@@ -1,4 +1,4 @@
-from PySide6.QtCore import QUrl, QFileInfo, QMimeData, QIODevice, QByteArray, QBuffer, Qt
+from PySide6.QtCore import QT_TRANSLATE_NOOP, QUrl, QFileInfo, QMimeData, QIODevice, QByteArray, QBuffer, Qt
 from PySide6.QtGui import QDesktopServices, QImage, QImageReader, QPixmap, QTextCursor, QTextDocument, QTextFormat
 from PySide6.QtWidgets import QMenu, QMessageBox, QTextEdit, QToolTip
 import os
@@ -17,7 +17,8 @@ IMAGE_REF = re.compile(r"!\[[^\]]*\]\(([^)\s]+)")
 # Clipboard format carrying the data of the images in a cut or copied selection
 IMAGES_MIME_TYPE = "application/x-otripy-images"
 # Display widths offered for images in notes (issue #20); None is the original size
-IMAGE_SIZES = (("Small", 160), ("Medium", 320), ("Large", 640), ("Original Size", None))
+IMAGE_SIZES = ((QT_TRANSLATE_NOOP("NoteWidget", "Small"), 160), (QT_TRANSLATE_NOOP("NoteWidget", "Medium"), 320),
+               (QT_TRANSLATE_NOOP("NoteWidget", "Large"), 640), (QT_TRANSLATE_NOOP("NoteWidget", "Original Size"), None))
 # Web addresses typed as plain text, which are not links in the document
 BARE_URL = re.compile(r"(?:https?://|www\.)[^\s<>\"]+")
 
@@ -57,7 +58,7 @@ class NoteWidget(QTextEdit):
         else:
             self.viewport().setCursor(Qt.IBeamCursor)
         if link:
-            QToolTip.showText(event.globalPosition().toPoint(), f"Ctrl+click to open {link}", self)
+            QToolTip.showText(event.globalPosition().toPoint(), self.tr("Ctrl+click to open {url}").format(url=link), self)
 
     @override
     def mouseReleaseEvent(self, event):
@@ -182,10 +183,10 @@ class NoteWidget(QTextEdit):
         if image_cursor is not None:
             menu.addSeparator()
             # Parented to the menu: a submenu owned by Python would be deleted on return
-            size_menu = QMenu("Image Size", menu)
+            size_menu = QMenu(self.tr("Image Size"), menu)
             menu.addMenu(size_menu)
             for label, width in IMAGE_SIZES:
-                action = size_menu.addAction(label)
+                action = size_menu.addAction(self.tr(label))
                 action.triggered.connect(lambda checked=False, width=width: self.set_image_width(image_cursor, width))
         return menu
 
@@ -214,7 +215,7 @@ class NoteWidget(QTextEdit):
 
     def from_note(self, data):
         if "markdown" not in data:
-            QMessageBox.warning(self, "Invalid Note Data", "No markdown key in Json data")
+            QMessageBox.warning(self, self.tr("Invalid Note Data"), self.tr("No markdown key in Json data"))
             return
         self.clear()
         self.setMarkdown(data["markdown"])

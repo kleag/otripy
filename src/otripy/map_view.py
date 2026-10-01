@@ -12,7 +12,7 @@ from typing import Iterable
 import folium
 from branca.element import Element
 from folium.elements import JavascriptLink
-from PySide6.QtCore import QObject, Signal, Slot
+from PySide6.QtCore import QCoreApplication, QObject, Signal, Slot
 
 try:
     from .location import Location
@@ -229,7 +229,7 @@ def build_map_html(locations: Iterable[Location], fit_all: bool = False, view=No
     m.get_root().script.add_child(Element(script))
     if route:
         folium.PolyLine([[float(lat), float(lon)] for lat, lon in route], color=ROUTE_COLOR, weight=5, opacity=0.7).add_to(m)
-    m.add_child(folium.ClickForMarker(popup="Click location"))
+    m.add_child(folium.ClickForMarker(popup=QCoreApplication.translate("Map", "Click location")))
 
     data = io.BytesIO()
     m.save(data, close_file=False)

@@ -48,7 +48,7 @@ The [user guide](https://kleag.github.io/otripy/) explains how to [use Otripy](h
 
 ## Contributing
 
-Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for the development setup, the tests and the release process, and [ROADMAP.md](ROADMAP.md) for the planned work. Changes are listed in [CHANGELOG.md](CHANGELOG.md).
+Contributions are welcome! Translations into new languages are welcome too: see the [translators' guide](https://kleag.github.io/otripy/translating/). See [CONTRIBUTING.md](CONTRIBUTING.md) for the development setup, the tests and the release process, and [ROADMAP.md](ROADMAP.md) for the planned work. Changes are listed in [CHANGELOG.md](CHANGELOG.md).
 
 ## License
 

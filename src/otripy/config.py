@@ -45,20 +45,20 @@ class ConfigDialog(QDialog):
     def __init__(self, settings, parent=None):
         super().__init__(parent)
         self.settings = settings
-        self.setWindowTitle("Configure Otripy")
+        self.setWindowTitle(self.tr("Configure Otripy"))
 
         # Create widgets
-        self.url_label = QLabel("Nextcloud URL:")
+        self.url_label = QLabel(self.tr("Nextcloud URL:"))
         self.url_input = QLineEdit()
 
-        self.username_label = QLabel("Nextcloud Username:")
+        self.username_label = QLabel(self.tr("Nextcloud Username:"))
         self.username_input = QLineEdit()
 
-        self.password_label = QLabel("Nextcloud Password:")
+        self.password_label = QLabel(self.tr("Nextcloud Password:"))
         self.password_input = QLineEdit()
         self.password_input.setEchoMode(QLineEdit.Password)  # Hide password
 
-        self.save_button = QPushButton("Save")
+        self.save_button = QPushButton(self.tr("Save"))
         self.save_button.clicked.connect(self.save_settings)
 
         # Layout
