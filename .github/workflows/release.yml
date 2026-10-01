@@ -54,6 +54,24 @@ jobs:
             dist/*.msi
             dist/*.dmg
 
+  appimage:
+    name: Build Linux AppImage
+    # Ubuntu 22.04 (glibc 2.35) is the oldest base current PySide6 wheels
+    # support (glibc 2.34): the AppImage runs there and on newer distributions.
+    # When GitHub retires this runner image, run the same script in an
+    # ubuntu:22.04 container on ubuntu-latest (see build-appimage.sh).
+    runs-on: ubuntu-22.04
+    # Least proven of the bundles: never block PyPI or the other installers.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: packaging/linux/build-appimage.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bundle-linux
+          path: dist/*.AppImage
+
   publish-pypi:
     name: Publish to PyPI
     if: github.ref_type == 'tag'
@@ -71,8 +89,9 @@ jobs:
 
   github-release:
     name: Create GitHub release
-    if: github.ref_type == 'tag'
-    needs: [dist, bundles]
+    # Runs even if the AppImage failed, as long as the other builds succeeded.
+    if: ${{ !cancelled() && github.ref_type == 'tag' && needs.dist.result == 'success' && needs.bundles.result == 'success' }}
+    needs: [dist, bundles, appimage]
     runs-on: ubuntu-latest
     permissions:
       contents: write

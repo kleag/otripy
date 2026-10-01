@@ -1,4 +1,3 @@
-import ast
 import io
 import json
 import logging
@@ -9,8 +8,10 @@ from packaging.version import Version
 from pathlib import Path
 from PySide6.QtCore import QObject, Signal, QTimer
 try:
+    from . import __version__
     from .location import Location
 except ImportError:
+    from __init__ import __version__
     from location import Location
 
 logger = logging.getLogger(__name__)
@@ -128,7 +129,7 @@ class Journey(QObject):
         if not isinstance(journey, dict) or journey.get("format") != "otripy":
             raise ValueError("This is not an Otripy journey file.")
 
-        current_app_version = Version(self._get_version_from_init("__init__.py"))
+        current_app_version = Version(__version__)
         saved_app_version = Version(journey["app_version"])
         if current_app_version < saved_app_version:
             raise ValueError(f"Loading file from Otripy version {saved_app_version} while we are at version {current_app_version} is forbidden.\nPlease update Otripy.")
@@ -156,7 +157,6 @@ class Journey(QObject):
         Path(path).write_text(self.to_json_str(), encoding="utf-8")
 
     def write_to_file(self, file: TextIO):
-        app_version = self._get_version_from_init("__init__.py")
         iso_timestamp = datetime.now(timezone.utc).isoformat()
 
         locations = [loc.to_dict() for loc in self._locations]
@@ -165,7 +165,7 @@ class Journey(QObject):
             "format": "otripy",
             "description": "A Journey with Otripy",  # A brief description of the data.
             "format_version": CURRENT_FORMAT_VERSION,  # The version of the JSON format itself, which may evolve separately from the application.
-            "app_version": app_version,  # The version of the application that generated the file.
+            "app_version": __version__,  # The version of the application that generated the file.
             "app_name": "Otripy",  # The name of the application that created the file.
             "created_at": self._created_at if self._created_at is not None else iso_timestamp,  # Timestamp when the file was created (ISO 8601 format).
             "updated_at": iso_timestamp,  # Timestamp of the last update.
@@ -182,15 +182,3 @@ class Journey(QObject):
     # "checksum": "",  # A hash (e.g., SHA-256) of the data to verify integrity.
     # "compression": "",  # If data is compressed, specify the method (e.g., "gzip").
     # "dependencies": "",  # If the file depends on external resources or plugins, list them.
-
-    def _get_version_from_init(self, init_file):
-        # Get the directory of the current Python file
-        current_dir = Path(__file__).parent
-
-        # Open __init__.py in the same directory
-        init_file = current_dir / init_file
-
-        with init_file.open("r", encoding="utf-8") as f:
-            for line in f:
-                if line.startswith("__version__"):
-                    return ast.literal_eval(line.split("=")[1].strip())
