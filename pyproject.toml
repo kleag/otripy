@@ -44,13 +44,15 @@ classifiers = [
 
 [tool.hatch.build.targets.sdist]
 include = [    "src/otripy/**/*.py",
-"src/otripy/resources/icons/**/*.svg"]
+"src/otripy/resources/icons/**/*.svg",
+    "src/otripy/resources/icon-*.png"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/otripy"]
 include = [
     "src/otripy/**/*.py",
-    "src/otripy/resources/icons/**/*.svg"
+    "src/otripy/resources/icons/**/*.svg",
+    "src/otripy/resources/icon-*.png"
 ]
 
 [tool.hatch.metadata]
@@ -58,7 +60,8 @@ allow-direct-references = true
 
 [tool.hatch.build]
 include = [    "src/otripy/**/*.py",
-"src/otripy/resources/icons/**/*.svg"]
+"src/otripy/resources/icons/**/*.svg",
+    "src/otripy/resources/icon-*.png"]
 
 [project.gui-scripts]
 otripy = "otripy.main:main"

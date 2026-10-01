@@ -6,7 +6,7 @@ import nc_py_api
 import sys
 
 from PySide6.QtCore import QSettings, QObject, Signal, Slot
-from PySide6.QtGui import QAction, QDoubleValidator, QKeySequence, QTextCursor, QFont, QTextCharFormat, QTextFormat
+from PySide6.QtGui import QAction, QDoubleValidator, QIcon, QKeySequence, QTextCursor, QFont, QTextCharFormat, QTextFormat
 from PySide6.QtWidgets import (
     QApplication,
     QDialog,
@@ -27,6 +27,7 @@ from PySide6.QtWebEngineWidgets import QWebEngineView
 from branca.element import Element
 from folium.elements import JavascriptLink
 from geopy.geocoders import Nominatim
+from importlib import resources
 from pathlib import Path
 from typing import Dict, List, Any
 
@@ -956,6 +957,10 @@ class MapApp(QMainWindow):
 def main():
     # sys.argv.append("--disable-web-security")
     app = QApplication(sys.argv)
+    app_icon = QIcon()
+    for size in (16, 32, 64, 128, 256, 512):
+        app_icon.addFile(str(resources.files("otripy.resources") / f"icon-{size}.png"))
+    app.setWindowIcon(app_icon)
     window = MapApp()
     window.show()
     sys.exit(app.exec())

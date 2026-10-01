@@ -35,6 +35,7 @@ Feature requests and bugs are tracked as [GitHub issues](https://github.com/klea
 - [ ] `docs/file-format.md`: the `.json` journey format and its versioning rules
 - [ ] `CONTRIBUTING.md`: dev setup, running tests, release procedure
 - [ ] `CHANGELOG.md`
+- [ ] Credit Font Awesome Free (icons are CC BY 4.0, attribution required) in the README and next to `resources/icons/`
 - [ ] Docstrings for the model classes (`Location`, `Journey`, list model)
 
 ## Phase 4 — Features
@@ -49,7 +50,7 @@ Feature requests and bugs are tracked as [GitHub issues](https://github.com/klea
 - [ ] #28 "Save as…" to Nextcloud
 - [ ] #29 Resizable side panels
 - [ ] #30 Confirm/validate button for location addition
-- [ ] #31 Create and add an application icon
+- [x] #31 Create and add an application icon
 
 ### File handling
 - [ ] #10 Improve handling of changed file check
