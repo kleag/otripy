@@ -17,3 +17,6 @@ logs/
 
 # MkDocs
 site/
+
+# Exported by the release workflow for Briefcase
+constraints.txt
