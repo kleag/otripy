@@ -14,16 +14,17 @@ Feature requests and bugs are tracked as [GitHub issues](https://github.com/klea
 
 ## Phase 1 — Tests
 
-- [ ] Add `pytest`, `pytest-qt` and a `ruff` configuration; run Qt tests headless (`QT_QPA_PLATFORM=offscreen`)
-- [ ] Unit tests for `Location` and `Journey` using `tests/fixtures/`: JSON round-trip, legacy list format, rejection of newer app/format versions, `dirty` signal emission
-- [ ] Extract map HTML/JS generation from `MapApp.update_map` into a pure function and test it (including escaping)
-- [ ] Replace the `pyObj` web channel registration of the whole `MapApp` window with a small bridge object exposing only `receiveData` (registering the window floods the log with "has no notify signal" warnings)
-- [ ] Extract load/save logic from `MapApp` so it can be tested without the GUI
-- [ ] `pytest-qt` tests for `LocationListModel` and `NoteWidget` note round-trip (markdown + images, see #21)
-- [ ] Mock Nominatim geocoding and Nextcloud in tests
+- [x] Add `pytest`, `pytest-qt` and a `ruff` configuration (error and bugbear rules; style rules to add later); run Qt tests headless (`QT_QPA_PLATFORM=offscreen`)
+- [x] Unit tests for `Location` and `Journey` using `tests/fixtures/`: JSON round-trip, legacy list format, rejection of newer app/format versions, `dirty` signal emission
+- [x] Extract map HTML/JS generation from `MapApp.update_map` into a pure function and test it (including escaping)
+- [x] Replace the `pyObj` web channel registration of the whole `MapApp` window with a small bridge object exposing only `receiveData` (registering the window floods the log with "has no notify signal" warnings)
+- [x] Extract load/save logic from `MapApp` so it can be tested without the GUI
+- [x] `pytest-qt` tests for `LocationListModel` and `NoteWidget` note round-trip (markdown + images, see #21)
+- [x] Mock Nominatim geocoding and Nextcloud in tests
 
 ## Phase 2 — CI and deployment
 
+- [ ] Commit a rewritten `.github/workflows/release.yml` (never committed so far; its `v*.*.*` trigger does not match bumpver's `1.2.3` tags)
 - [ ] CI workflow on push/PR: ruff + pytest on Linux/macOS/Windows and supported Python versions
 - [ ] Publish to PyPI on version tag using trusted publishing (replace manual `uv publish`)
 - [ ] Fix macOS release job: notarize and attach a zip/DMG rather than a bare `.app` directory
@@ -42,7 +43,7 @@ Feature requests and bugs are tracked as [GitHub issues](https://github.com/klea
 ## Phase 4 — Features
 
 ### Bugs
-- [ ] #21 Moved (cut and paste) images are duplicated
+- [x] #21 Moved (cut and paste) images are duplicated
 - [ ] #26 Text popup over markers is not always updated
 
 ### Quick wins
