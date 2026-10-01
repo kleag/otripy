@@ -3,19 +3,16 @@ import io
 import json
 import logging
 import nc_py_api
-import os
 import sys
 
-from PySide6.QtCore import QSettings, QUrl, QObject, Signal, Slot
-from PySide6.QtGui import QAction, QColor, QDoubleValidator, QKeySequence, QTextCursor, QFont, QTextCharFormat, QTextFormat
+from PySide6.QtCore import QSettings, QObject, Signal, Slot
+from PySide6.QtGui import QAction, QDoubleValidator, QKeySequence, QTextCursor, QFont, QTextCharFormat, QTextFormat
 from PySide6.QtWidgets import (
     QApplication,
-    QColorDialog,
     QDialog,
     QFileDialog,
     QHBoxLayout,
     QLineEdit,
-    QListWidget,
     QMainWindow,
     QMessageBox,
     QPushButton,
@@ -28,12 +25,17 @@ from PySide6.QtWebEngineCore import QWebEnginePage
 from PySide6.QtWebEngineWidgets import QWebEngineView
 
 from branca.element import Element
-from folium.elements import *
+from folium.elements import JavascriptLink
 from geopy.geocoders import Nominatim
 from pathlib import Path
-from typing import TYPE_CHECKING, Dict, List, Any
+from typing import Dict, List, Any
+
+
+
+
 
 try:
+    from .export_html2 import export_html
     from .icon_picker import IconPickerWidget
     from .journey import Journey
     from .limited_color_picker import LimitedColorPicker
@@ -46,6 +48,7 @@ try:
     from .toolbar import ToolBar
     from .note_widget import NoteWidget
 except ImportError:
+    from export_html2 import export_html
     from icon_picker import IconPickerWidget
     from journey import Journey
     from limited_color_picker import LimitedColorPicker
@@ -251,6 +254,8 @@ class MapApp(QMainWindow):
         # file_menu.addAction(save_as_nc_action)
         file_menu.addSeparator()
         file_menu.addAction(quit_action)
+        # export_action = file_menu.addAction("Export as HTML Map…")
+        # export_action.triggered.connect(self.export_as_html)
 
         config_menu = menu_bar.addMenu("Settings")
 
@@ -258,6 +263,26 @@ class MapApp(QMainWindow):
         config_action = QAction("Configure Otripy", self)
         config_action.triggered.connect(self.open_config_dialog)
         config_menu.addAction(config_action)
+
+    # def export_as_html(self):
+    #     if not self.model or not getattr(self.model, "trip_data", None):
+    #         QMessageBox.warning(self, "No Trip Loaded", "Please load a trip before exporting.")
+    #         return
+    #
+    #     file_path, _ = QFileDialog.getSaveFileName(
+    #         self,
+    #         "Save HTML Map",
+    #         str(Path.home() / "map.html"),
+    #         "HTML Files (*.html)"
+    #     )
+    #     if not file_path:
+    #         return
+    #
+    #     try:
+    #         export_html(self.model.trip_data, Path(file_path))
+    #         QMessageBox.information(self, "Export Complete", f"Map saved to:\n{file_path}")
+    #     except Exception as e:
+    #         QMessageBox.critical(self, "Export Failed", str(e))
 
     def get_toolbar_actions(self) -> List[Dict[str, Any]]:
         """
@@ -439,7 +464,7 @@ class MapApp(QMainWindow):
         self.note_input.setTextCursor(cursor)
 
     def action_marker_color_picker(self):
-        logger.info(f"action_marker_color_picker")
+        logger.info("action_marker_color_picker")
         selected_indexes = self.list_widget.selectedIndexes()
         if selected_indexes:
             selected_item = selected_indexes[0]
@@ -449,7 +474,7 @@ class MapApp(QMainWindow):
                 location.color = color
                 self.update_map()
         else:
-            logger.warning(f"Marker chosen {icon_name} while no location is selected")
+            logger.warning("Marker color picker hit while no location is selected")
 
         cursor = self.note_input.textCursor()
 
@@ -520,7 +545,7 @@ class MapApp(QMainWindow):
             self.note_input.from_note(note)
             self.note_input.textChanged.connect(self.note_changed)
             self.add_location()
-        except json.JSONDecodeError as e:
+        except json.JSONDecodeError as _:
             pass
 
     @Slot()
@@ -669,7 +694,7 @@ class MapApp(QMainWindow):
             }});
             """
         else:
-            icon_js = f"""var icon = new L.Icon.Default;"""
+            icon_js = """var icon = new L.Icon.Default;"""
         js_code = f"""
         {icon_js}
         if (window.markerMap["{marker_id}"]) {{
@@ -757,7 +782,7 @@ class MapApp(QMainWindow):
                 QMessageBox.critical(
                     self,
                     "Error",
-                    f"Please set Nextcloud data in settings before connecting.")
+                    "Please set Nextcloud data in settings before connecting.")
                 return
             try:
                 self.nc = nc_py_api.Nextcloud(nextcloud_url=base_url,
@@ -779,19 +804,26 @@ class MapApp(QMainWindow):
                 json_bytes = self.nc.files.download(selected_file)
                 # Convert bytes to a string
                 json_str = json_bytes.decode('utf-8')
-
-                # Complete missing data
-                self.list_widget.clear()
-                self.current_file = node  # keep nc_py_api FsNode instead of string
-                self.list_widget.setLocations(Journey.from_json_str(json_str))
-                self.list_widget.model.locations.dirty.connect(self.set_window_title)
-                self.set_window_title(dirty=False)
-                self.update_map()
+                try:
+                    new_journey = Journey.from_json_str(json_str)
+                    # Complete missing data
+                    self.list_widget.clear()
+                    # keep nc_py_api FsNode instead of string
+                    self.current_file = node
+                    self.list_widget.setLocations(new_journey)
+                    self.list_widget.model.locations.dirty.connect(
+                        self.set_window_title)
+                    self.set_window_title(dirty=False)
+                    self.update_map()
+                except Exception as e:
+                    QMessageBox.critical(self,
+                                         "Error",
+                                         f"Failed to load file: {str(e)}")
 
     def save_file(self):
         if not self.current_file:
             self.save_file_as()
-        elif type(self.current_file) == nc_py_api.FsNode:
+        elif type(self.current_file) is nc_py_api.FsNode:
             locations = [loc.to_dict() for loc in self.list_widget.locations()]
             data = json.dumps(locations, indent=4)
             file_id  = self.current_file.file_id
@@ -806,7 +838,7 @@ class MapApp(QMainWindow):
                         self.nc.files.by_path(new_name)
                         QMessageBox.critical(self, "Error", f"File {new_name} already exist. Abort.")
                         return
-                    except nc_py_api.NextcloudException as e:
+                    except nc_py_api.NextcloudException as _:
                         self.current_file = self.nc.files.upload(new_name, data)
                         return
                 else:
@@ -828,7 +860,7 @@ class MapApp(QMainWindow):
         self.list_widget.model.locations.clean()
 
     def save_file_as_nc(self):
-        logger.error(f"MapApp.save_file_as_nc NOT IMPLEMENTED")
+        logger.error("MapApp.save_file_as_nc NOT IMPLEMENTED")
         pass
 
     def write_to_file(self, file_name):

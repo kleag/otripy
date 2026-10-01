@@ -31,7 +31,7 @@ class Journey(QObject):
     def from_json_str(cls, json_str: str):
         journey = Journey()
         journey.load_from_json(json_str)
-        return  journey
+        return journey
 
     def __getitem__(self, index):
         """Enable indexing and slicing."""
@@ -130,11 +130,11 @@ class Journey(QObject):
         current_app_version = Version(self._get_version_from_init("__init__.py"))
         saved_app_version = Version(journey["app_version"])
         if current_app_version < saved_app_version:
-            raise ValueError(f"Loading file from Otripy version {saved_app_version} while we are at version {current_app_version} is forbidden.")
+            raise ValueError(f"Loading file from Otripy version {saved_app_version} while we are at version {current_app_version} is forbidden.\nPlease update Otripy.")
 
         saved_format_version = Version(journey["format_version"])
         if Version(CURRENT_FORMAT_VERSION) < saved_format_version:
-            raise ValueError(f"Loading file from Otripy file format version {saved_app_version} while we are at format version {CURRENT_FORMAT_VERSION} is forbidden.")
+            raise ValueError(f"Loading file from Otripy file format version {saved_app_version} while we are at format version {CURRENT_FORMAT_VERSION} is forbidden.\nPlease update Otripy.")
 
         self._created_at = journey["created_at"]
 
