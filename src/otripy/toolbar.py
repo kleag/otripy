@@ -24,7 +24,7 @@ from importlib import resources
 from typing import TYPE_CHECKING
 
 from PySide6.QtCore import QSettings, QSize, Qt
-from PySide6.QtGui import QAction, QColor, QIcon, QPixmap, QPainter, QFont
+from PySide6.QtGui import QAction, QIcon, QPixmap, QPainter, QFont
 from PySide6.QtWidgets import QToolBar, QWidget, QMenu, QToolButton, QSizePolicy
 
 
@@ -125,7 +125,6 @@ class ToolBar(QToolBar):
             theme_icon = f"{RESOURCE_DIR}/{conf['theme_icon']}" if 'theme_icon' in conf else None
         # logger.info(f"append_toolbar_icon {conf}. theme_icon: {theme_icon}")
         text_icon = conf['text_icon'] if 'text_icon' in conf else None
-        width = height = max(self.BASE_ICON_SIZE, 11)
         # logger.info(f"append_toolbar_icon {system_icon}, {theme_icon}, {text_icon}")
         icon = (QIcon(theme_icon) if theme_icon
                 else (QIcon.fromTheme(system_icon) if system_icon
@@ -177,7 +176,7 @@ class ToolBar(QToolBar):
         context_menu = QMenu(self)
 
         _weights = 0
-        for index, label in enumerate(self.actions, 1):
+        for label in self.actions:
             if 'type' not in label or label['type'] != 'action':
                 context_menu.addSeparator()
                 continue

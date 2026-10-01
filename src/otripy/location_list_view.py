@@ -87,8 +87,6 @@ class LocationListModel(QAbstractListModel):
 
         row = index.row()  # Get the row from the QModelIndex
         if 0 <= row < len(self.locations):
-            location = self.locations[row]
-            # logger.info(f"Deleting location {location.lid}: {location}")
 
             # Notify the view that rows are about to be removed
             self.beginRemoveRows(index.parent(), row, row)
@@ -143,26 +141,20 @@ class LocationListModel(QAbstractListModel):
             return False
 
         old_index = int(data.data("application/x-mylistmodel").data().decode())
-        # logger.info(f"LocationListModel.dropMimeData old_index: {old_index}")
-        if parent.isValid():
-            drop_index = parent
-            row = drop_index.row()
-            column = drop_index.column()
+        # Qt gives the insertion row for drops between items, or the target
+        # item as parent for drops onto an item, which takes its place.
+        if row != -1:
+            destination = row
+        elif parent.isValid():
+            destination = parent.row() + 1 if parent.row() > old_index else parent.row()
         else:
-            drop_index = self.indexAt(parent)
-            if drop_index.isValid():
-                row = drop_index.row()
-                column = drop_index.column()
-            else:
-                row = self.model().rowCount()
-                column = 0  # Default to column 0
+            destination = self.rowCount()
 
-        # logger.info(f"Dropping at row {row}, column {column}")
-
-        self.beginMoveRows(QModelIndex(), old_index, old_index, QModelIndex(), row)
+        # beginMoveRows refuses moves that leave the item in place
+        if not self.beginMoveRows(QModelIndex(), old_index, old_index, QModelIndex(), destination):
+            return False
         item = self.locations.pop(old_index)
-        # logger.info(f"LocationListModel.dropMimeData dropping: {item} at {row}")
-        self.locations.insert(row, item)
+        self.locations.insert(destination - 1 if destination > old_index else destination, item)
         self.endMoveRows()
         return True
 
@@ -178,7 +170,8 @@ class LocationListView(QListView):
         self.setDragDropMode(QListView.InternalMove)
         self.setSelectionMode(QAbstractItemView.SingleSelection)
 
-    def dataChanged(self,topLeft, bottomRight, roles=list()):
+    def dataChanged(self, topLeft, bottomRight, roles=()):
+        super().dataChanged(topLeft, bottomRight, roles)
         self.model.locations.dirty.emit(True)
 
     def setLocations(self, locations):

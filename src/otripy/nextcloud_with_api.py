@@ -1,22 +1,9 @@
-import json
 import logging
-import nc_py_api
-import os
-import sys
 
-from lxml import etree
-from PySide6.QtCore import QSettings, QUrl, QObject, Signal, Slot
-from PySide6.QtWidgets import (QApplication, QMainWindow, QVBoxLayout,
-    QPushButton, QDialog, QLineEdit, QFileDialog, QLabel, QListView,
-    QMessageBox, QAbstractItemView, QWidget)
+from PySide6.QtWidgets import (QVBoxLayout,
+    QDialog, QLineEdit, QListView,
+    QAbstractItemView)
 from PySide6.QtGui import QStandardItemModel, QStandardItem
-
-try:
-    from .journey import Journey
-    from .location import Location
-except ImportError:
-    from journey import Journey
-    from location import Location
 
 logger = logging.getLogger(__name__)
 

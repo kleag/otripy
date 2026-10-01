@@ -28,7 +28,7 @@ def export_html(trip_data: dict, output_file: Path):
         if "markdown" in note:
             note_html += note["markdown"].replace("\n", "<br>")
 
-        for img_id, img_b64 in note.get("images", {}).items():
+        for img_b64 in note.get("images", {}).values():
             note_html += f'<br><img src="data:image/png;base64,{img_b64}" style="max-width:200px;">'
 
         popup = folium.Popup(note_html, max_width=300)

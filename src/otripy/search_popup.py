@@ -1,7 +1,6 @@
 import logging
-import time
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QRect, Qt
 from PySide6.QtWidgets import (
     QListWidget,
     QListWidgetItem,
@@ -24,10 +23,8 @@ class SearchPopup(QListWidget):
         # logger.info(f"SearchPopup.show_popup {len(locations if locations else '')}, {search_entry}")
         self.clear()
 
-        no_location = False
         # Populate list with location items
         if not locations:
-            no_location = True
             locations = ["<No Result>"]
         for loc in locations:
             item = QListWidgetItem(str(loc))

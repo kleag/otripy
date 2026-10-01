@@ -1,3 +1,4 @@
+import html
 import logging
 import re
 import uuid
@@ -6,11 +7,14 @@ from typing import Dict
 
 logger = logging.getLogger(__name__)
 
+# A backslash before an ASCII punctuation character, as written by QTextDocument.toMarkdown
+MARKDOWN_ESCAPE = r'\\([!-/:-@\[-`{-~])'
+
 class Location:
     def __init__(self,
                  lat: float = 0.0,
                  lon: float = 0.0,
-                 note: Dict[str, str] = {"markdown": ""},
+                 note: Dict[str, str] = None,
                  id: str = None,
                  marker: str = None,
                  color: str = None):
@@ -18,7 +22,7 @@ class Location:
         self.lid = id if id is not None else str(uuid.uuid4())
         self.lat = lat
         self.lon = lon
-        self.note = note
+        self.note = note if note is not None else {"markdown": ""}
         self.marker = marker
         self.color = color
 
@@ -29,7 +33,7 @@ class Location:
         return f"{self.lid}: [{self.lat}, {self.lon}]\n{self.marker}, {self.color}\n{self.note}"
 
     @classmethod
-    def from_data(cls, data: Dict[str, str | dict] = {}):
+    def from_data(cls, data: Dict[str, str | dict]):
         logger.info(f"Location.from_data({data})")
         lat = float(data["lat"]) if "lat" in data else 0.0
         lon = float(data["lon"]) if "lon" in data else 0.0
@@ -42,14 +46,13 @@ class Location:
         return cls(lat, lon, note, id, marker, color)
 
     def label(self):
+        """Return the first line of the note as plain text: heading marks and markdown escapes removed."""
         the_label = self.note["markdown"].split('\n')[0]
         the_label = re.sub(r'^#+ ?', '', the_label)
-        return the_label
+        return re.sub(MARKDOWN_ESCAPE, r'\1', the_label)
 
     def to_html(self):
-        the_html = self.note["markdown"].split('\n')[0].replace("\n", "<br>")
-        the_html = re.sub(r'^#+ ?', '', the_html)
-        return the_html
+        return html.escape(self.label())
 
     def location(self):
         return [self.lat, self.lon]

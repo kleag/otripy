@@ -1,6 +1,4 @@
 from PySide6.QtWidgets import QApplication, QColorDialog
-from PySide6.QtGui import QColor
-import colorsys
 import math
 
 class LimitedColorPicker:
@@ -48,7 +46,7 @@ class LimitedColorPicker:
     @staticmethod
     def color_difference(lab1, lab2):
         """Computes CIE76 color difference (simplified CIEDE2000) between two Lab colors."""
-        return math.sqrt(sum((a - b) ** 2 for a, b in zip(lab1, lab2)))
+        return math.sqrt(sum((a - b) ** 2 for a, b in zip(lab1, lab2, strict=True)))
 
     @staticmethod
     def find_closest_color(rgb):
