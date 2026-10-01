@@ -135,3 +135,7 @@ src = ["src", "tests"]
 [tool.ruff.lint]
 # Errors and likely bugs only; style rules can be added once the code base is cleaner.
 select = ["E4", "E7", "E9", "F", "B"]
+
+[tool.briefcase.app.otripy.macOS]
+# PySide6 wheels (6.11) require macOS 13; Briefcase's default target is macOS 11.
+min_os_version = "13.0"

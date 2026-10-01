@@ -27,7 +27,7 @@ Feature requests and bugs are tracked as [GitHub issues](https://github.com/klea
 - [x] Commit a rewritten `.github/workflows/release.yml` (never committed so far; its `v*.*.*` trigger does not match bumpver's `1.2.3` tags)
 - [x] CI workflow on push/PR: ruff + pytest on Linux/macOS/Windows and supported Python versions
 - [x] Publish to PyPI on version tag using trusted publishing (replace manual `uv publish`); needs the trusted publisher configured on pypi.org
-- [x] Fix macOS release job: ad-hoc signed DMG (no Apple Developer ID, so no notarization)
+- [x] Fix macOS release job: ad-hoc signed DMG (no Apple Developer ID, so no notarization), macOS 13+ as required by PySide6
 - [ ] Run the release workflow by hand (workflow_dispatch) and test the Windows `.msi` and macOS `.dmg` on real machines
 - [ ] Add a Linux bundle (AppImage or Flatpak via Briefcase); a native `linux system` build needs the distribution's own Python
 - [x] Declare the license as an SPDX expression (PEP 639): AGPL-3.0-or-later
