@@ -11,6 +11,15 @@ logger = logging.getLogger(__name__)
 MARKDOWN_ESCAPE = r'\\([!-/:-@\[-`{-~])'
 
 class Location:
+    """A place of a journey: coordinates, a note, and how its marker looks.
+
+    The note is a dict with the note's text in "markdown" and its images in
+    "images" (name -> base64 PNG); the first line of the text is the location's
+    label. marker is a Font Awesome icon name without its "fa-" prefix and color
+    a Leaflet.awesome-markers color; None means the defaults (a blue circle).
+    See docs/file-format.md for the saved form.
+    """
+
     def __init__(self,
                  lat: float = 0.0,
                  lon: float = 0.0,
