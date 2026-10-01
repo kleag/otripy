@@ -1,12 +1,7 @@
 from PySide6.QtCore import QUrl, QFileInfo, QMimeData, QIODevice, QByteArray, QBuffer
-from PySide6.QtGui import QTextCursor, QImageReader, QImage, QTextDocument
-from PySide6.QtWidgets import QTextEdit
+from PySide6.QtGui import QImageReader, QImage, QTextDocument
+from PySide6.QtWidgets import QMessageBox, QTextEdit
 import os
-import zipfile
-import markdown
-import tempfile
-from PIL import Image
-import io
 import logging
 import json
 
@@ -26,7 +21,7 @@ class NoteWidget(QTextEdit):
 
     @override
     def insertFromMimeData(self, source: QMimeData):
-        logger.info(f"NoteWidget.insertFromMimeData")
+        logger.info("NoteWidget.insertFromMimeData")
         if source.hasImage():
             self.dropImage(QUrl(f"dropped_image_{self._image_counter}"), source.imageData())
             self._image_counter += 1
@@ -46,7 +41,7 @@ class NoteWidget(QTextEdit):
             if url.toString() not in self.image_urls:
                 self.document().addResource(QTextDocument.ImageResource, url, image)
                 self.image_urls.append(url.toString())
-                if not url.toString() in self.toMarkdown():
+                if url.toString() not in self.toMarkdown():
                     self.textCursor().insertImage(url.toString())
 
     def dropTextFile(self, url: QUrl):
@@ -56,7 +51,7 @@ class NoteWidget(QTextEdit):
                 self.textCursor().insertText(file.read())
 
     def to_note(self):
-        logger.info(f"NoteWidget.to_note")
+        logger.info("NoteWidget.to_note")
         data = {}
         markdown_text = self.toMarkdown()
         data["markdown"] = markdown_text
@@ -89,8 +84,8 @@ class NoteWidget(QTextEdit):
         return image_data
 
     def from_note(self, data):
-        if not "markdown" in data:
-            QMessageBox.warning(this, "Invalid Note Data", "No markdown key in Json data")
+        if "markdown" not in data:
+            QMessageBox.warning(self, "Invalid Note Data", "No markdown key in Json data")
             return
         logger.info(f"NoteWidget.from_note {data['markdown']}, {len(data['images'] if 'images' in data else '')}")
         self.clear()

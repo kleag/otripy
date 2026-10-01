@@ -1,9 +1,7 @@
 from importlib import resources
 import logging
 import os
-import sys
-import time
-from PySide6.QtWidgets import QWidget, QPushButton, QGridLayout, QVBoxLayout, QDialog
+from PySide6.QtWidgets import QPushButton, QGridLayout, QVBoxLayout, QDialog
 from PySide6.QtGui import QIcon
 from PySide6.QtCore import QSize, Signal
 

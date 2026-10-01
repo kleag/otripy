@@ -10,7 +10,7 @@ class Location:
     def __init__(self,
                  lat: float = 0.0,
                  lon: float = 0.0,
-                 note: Dict[str, str] = {"markdown": ""},
+                 note: Dict[str, str] = None,
                  id: str = None,
                  marker: str = None,
                  color: str = None):
@@ -18,7 +18,7 @@ class Location:
         self.lid = id if id is not None else str(uuid.uuid4())
         self.lat = lat
         self.lon = lon
-        self.note = note
+        self.note = note if note is not None else {"markdown": ""}
         self.marker = marker
         self.color = color
 
@@ -29,7 +29,7 @@ class Location:
         return f"{self.lid}: [{self.lat}, {self.lon}]\n{self.marker}, {self.color}\n{self.note}"
 
     @classmethod
-    def from_data(cls, data: Dict[str, str | dict] = {}):
+    def from_data(cls, data: Dict[str, str | dict]):
         logger.info(f"Location.from_data({data})")
         lat = float(data["lat"]) if "lat" in data else 0.0
         lon = float(data["lon"]) if "lon" in data else 0.0

@@ -87,8 +87,6 @@ class LocationListModel(QAbstractListModel):
 
         row = index.row()  # Get the row from the QModelIndex
         if 0 <= row < len(self.locations):
-            location = self.locations[row]
-            # logger.info(f"Deleting location {location.lid}: {location}")
 
             # Notify the view that rows are about to be removed
             self.beginRemoveRows(index.parent(), row, row)
@@ -147,15 +145,12 @@ class LocationListModel(QAbstractListModel):
         if parent.isValid():
             drop_index = parent
             row = drop_index.row()
-            column = drop_index.column()
         else:
             drop_index = self.indexAt(parent)
             if drop_index.isValid():
                 row = drop_index.row()
-                column = drop_index.column()
             else:
                 row = self.model().rowCount()
-                column = 0  # Default to column 0
 
         # logger.info(f"Dropping at row {row}, column {column}")
 
@@ -178,7 +173,7 @@ class LocationListView(QListView):
         self.setDragDropMode(QListView.InternalMove)
         self.setSelectionMode(QAbstractItemView.SingleSelection)
 
-    def dataChanged(self,topLeft, bottomRight, roles=list()):
+    def dataChanged(self, topLeft, bottomRight, roles=()):
         self.model.locations.dirty.emit(True)
 
     def setLocations(self, locations):

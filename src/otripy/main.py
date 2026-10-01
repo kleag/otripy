@@ -28,7 +28,6 @@ from branca.element import Element
 from folium.elements import JavascriptLink
 from geopy.geocoders import Nominatim
 from importlib import resources
-from pathlib import Path
 from typing import Dict, List, Any
 
 
@@ -36,7 +35,6 @@ from typing import Dict, List, Any
 
 
 try:
-    from .export_html2 import export_html
     from .icon_picker import IconPickerWidget
     from .journey import Journey
     from .limited_color_picker import LimitedColorPicker
@@ -49,7 +47,6 @@ try:
     from .toolbar import ToolBar
     from .note_widget import NoteWidget
 except ImportError:
-    from export_html2 import export_html
     from icon_picker import IconPickerWidget
     from journey import Journey
     from limited_color_picker import LimitedColorPicker
