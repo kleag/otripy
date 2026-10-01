@@ -76,7 +76,7 @@ def test_french_interface(french, qtbot, monkeypatch):
     qtbot.addWidget(window)
     monkeypatch.setattr(window.map_page, "setHtml", lambda html: None)
     assert [a.text() for a in window.menuBar().actions()] == ["Fichier", "Outils", "Paramètres"]
-    assert window.del_btn.text() == "Supprimer le lieu"
+    assert window.del_btn.text() == "Supprimer"
     assert routing.mode_label("bike") == "Vélo"
     assert routing.format_duration(93_600) == "1 j 2 h 00"
     assert "corriger la carte" in routing.attribution_html()

@@ -125,6 +125,16 @@ def move_map_js(lat: float, lon: float) -> str:
     return f"moveMap({float(lat)}, {float(lon)});"
 
 
+def fit_points_js(points) -> str:
+    """Return JavaScript zooming the map to show all the (latitude, longitude) points."""
+    points = [[float(lat), float(lon)] for lat, lon in points]
+    if not points:
+        return ""
+    if len(points) == 1:
+        return move_map_js(*points[0])
+    return f"fitPoints({points});"
+
+
 def build_map_html(locations: Iterable[Location], fit_all: bool = False, view=None, route=None) -> str:
     """Return the full HTML page showing the locations.
 
@@ -156,6 +166,14 @@ def build_map_html(locations: Iterable[Location], fit_all: bool = False, view=No
         if (mapElement) {
             let map = window[mapElement.id]; // Folium stores the map as a global variable with its ID
             map.setView([lat, lng], zoom);
+        }
+    }
+
+    // Show all the points, e.g. the locations of a group
+    function fitPoints(points) {
+        let mapElement = document.querySelector("div[id^='map_']");
+        if (mapElement) {
+            window[mapElement.id].fitBounds(L.latLngBounds(points), {padding: [30, 30], maxZoom: 15});
         }
     }
 

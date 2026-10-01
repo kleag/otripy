@@ -10,6 +10,9 @@ from otripy.map_view import (DEFAULT_CENTER, MapBridge, build_map_html, downplay
                              highlight_marker_js, js_string, marker_icon_js, move_map_js,
                              hover_marker_js, tooltip_html, update_marker_text_js)
 
+# folium's fit_bounds call, with literal bounds (the page's fitPoints function calls fitBounds too)
+FIT_ALL = re.compile(r"\.fitBounds\(\s*\[\[")
+
 
 def inline_scripts(html):
     return re.findall(r"<script>(.*?)</script>", html, re.S)
@@ -89,17 +92,17 @@ def test_marker_texts_are_escaped_html():
 def test_fit_all_frames_every_location():
     locations = [Location(48.85, 2.35), Location(43.30, 5.37), Location(50.63, 3.06)]
     html = build_map_html(locations, fit_all=True)
-    assert "fitBounds" in html
+    assert FIT_ALL.search(html)
     assert "[[43.3, 2.35], [50.63, 5.37]]" in html
 
 
 @pytest.mark.parametrize("locations", [[], [Location(48.85, 2.35)]])
 def test_fit_all_needs_two_locations(locations):
-    assert "fitBounds" not in build_map_html(locations, fit_all=True)
+    assert not FIT_ALL.search(build_map_html(locations, fit_all=True))
 
 
 def test_map_does_not_fit_by_default():
-    assert "fitBounds" not in build_map_html([Location(48.85, 2.35), Location(43.30, 5.37)])
+    assert not FIT_ALL.search(build_map_html([Location(48.85, 2.35), Location(43.30, 5.37)]))
 
 
 def test_map_keeps_given_view():
@@ -110,7 +113,7 @@ def test_map_keeps_given_view():
 
 def test_fit_all_overrides_view():
     html = build_map_html([Location(48.85, 2.35), Location(43.30, 5.37)], fit_all=True, view=(45.5, 4.25, 9))
-    assert "fitBounds" in html
+    assert FIT_ALL.search(html)
     assert '"zoom": 9' not in html
 
 

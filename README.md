@@ -21,6 +21,7 @@ Otripy is already usable but would be better with a lot of other features. Some 
 * Add a location by clicking on the map: its note starts with the place's name and address
 * Search places by name and add them from the results
 * List of locations, reorderable by drag and drop; the first line of a note is the location's title
+* Groups of locations, such as the days of the trip, and notes about the whole trip
 * Notes with formatting (headings, bold, italic, underline, strikethrough) and images
 * Marker icon and color for each location
 * Open and save trips as local files

@@ -37,9 +37,9 @@ try:
     from .icon_picker import IconPickerWidget
     from .journey import Journey
     from .limited_color_picker import LimitedColorPicker
-    from .location import Location
+    from .location import Group, Location, TripNotes
     from .location_list_view import LocationListView
-    from .map_view import (DEFAULT_ZOOM, MapBridge, hover_marker_js, tooltip_html, build_map_html, downplay_marker_js, highlight_marker_js, move_map_js,
+    from .map_view import (DEFAULT_ZOOM, MapBridge, fit_points_js, hover_marker_js, tooltip_html, build_map_html, downplay_marker_js, highlight_marker_js, move_map_js,
                            update_marker_text_js)
     from .search_popup import SearchPopup
     from . import routing, settings
@@ -54,9 +54,9 @@ except ImportError:
     from icon_picker import IconPickerWidget
     from journey import Journey
     from limited_color_picker import LimitedColorPicker
-    from location import Location
+    from location import Group, Location, TripNotes
     from location_list_view import LocationListView
-    from map_view import (DEFAULT_ZOOM, MapBridge, hover_marker_js, tooltip_html, build_map_html, downplay_marker_js, highlight_marker_js, move_map_js,
+    from map_view import (DEFAULT_ZOOM, MapBridge, fit_points_js, hover_marker_js, tooltip_html, build_map_html, downplay_marker_js, highlight_marker_js, move_map_js,
                           update_marker_text_js)
     from search_popup import SearchPopup
     import routing
@@ -141,8 +141,8 @@ class MapApp(QMainWindow):
         self.list_widget = LocationListView(self)
         self.list_widget.model.locations.dirty.connect(self.set_window_title)
 
-        self.list_widget.locationClicked.connect(self.on_item_selected)
-        self.list_widget.model.rowsMoved.connect(lambda *args: self.schedule_autosave())
+        self.list_widget.entryClicked.connect(self.on_entry_selected)
+        self.list_widget.model.arranged.connect(self.schedule_autosave)
         # Hovering a location in the list or on the map highlights it in the other (issue #22)
         self._hovered_marker = None
         self.list_widget.locationHovered.connect(self.hover_marker)
@@ -196,7 +196,11 @@ class MapApp(QMainWindow):
         # self.add_button = QPushButton("Save Location", self)
         # self.add_button.clicked.connect(self.add_location)
 
-        self.del_btn = QPushButton(self.tr("Delete Location"))
+        self.new_group_btn = QPushButton(self.tr("New Group"))
+        self.new_group_btn.setToolTip(self.tr("Add a group, a titled section of the list, e.g. a day of the trip"))
+        self.new_group_btn.clicked.connect(self.new_group)
+        self.del_btn = QPushButton(self.tr("Delete"))
+        self.del_btn.setToolTip(self.tr("Delete the selected location or group"))
         self.del_btn.clicked.connect(self.delete_item)
 
         self.create_icons_toolbar()
@@ -207,7 +211,10 @@ class MapApp(QMainWindow):
         list_layout = QVBoxLayout(list_panel)
         list_layout.setContentsMargins(0, 0, 0, 0)
         list_layout.addWidget(self.list_widget)
-        list_layout.addWidget(self.del_btn)
+        list_buttons = QHBoxLayout()
+        list_buttons.addWidget(self.new_group_btn)
+        list_buttons.addWidget(self.del_btn)
+        list_layout.addLayout(list_buttons)
 
         note_panel = QWidget()
         note_layout = QVBoxLayout(note_panel)
@@ -436,6 +443,7 @@ class MapApp(QMainWindow):
              'color': 'red',
              'label': self.tr('Marker'),
              'accessible_name': 'marker',
+             'var_name': 'marker_icon_button',
              'action': self.action_marker_icon},
             {'type': 'action',
              'weight': 13,
@@ -444,6 +452,7 @@ class MapApp(QMainWindow):
              'color': 'red',
              'label': self.tr('Color'),
              'accessible_name': 'color',
+             'var_name': 'marker_color_button',
              'action': self.action_marker_color_picker},
             # {'type': 'delimiter'},
         ]
@@ -739,7 +748,8 @@ class MapApp(QMainWindow):
             lon = float(self.lon_input.text())
             note = self.note_input.to_note()
             new_location = Location(lat=lat, lon=lon, note=note)
-            self.list_widget.addLocation(new_location)
+            # Into the selected group, or the selected location's (issue #18)
+            self.list_widget.addLocation(new_location, self.list_widget.current_group())
             # self.current_location = new_location
             self.update_map()
             self.handle_marker_click(new_location.lid)
@@ -1007,20 +1017,69 @@ class MapApp(QMainWindow):
 
     def delete_item(self):
         selected_indexes = self.list_widget.selectedIndexes()
-        if selected_indexes:
-            selected_item = selected_indexes[0]
-            self.list_widget.deleteItemAtIndex(selected_item)
-            self.update_map()
-            self.schedule_autosave()
+        if not selected_indexes:
+            return
+        entry = self.list_widget.model.getEntry(selected_indexes[0])
+        if isinstance(entry, TripNotes):
+            return  # the trip's notes cannot be deleted
+        if isinstance(entry, Group):
+            answer = QMessageBox.question(
+                self, self.tr("Delete Group"),
+                self.tr("Delete the group \"{title}\"? Its locations are kept, outside of any group.").format(
+                    title=entry.label()),
+                QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+            if answer != QMessageBox.Yes:
+                return
+        self.list_widget.deleteItemAtIndex(selected_indexes[0])
+        self.update_map()
+        self.schedule_autosave()
+
+    def new_group(self):
+        """Add a group at the end of the list, and edit its title (issue #18)."""
+        group = Group({"markdown": "# " + self.tr("New group") + "\n\n", "images": {}})
+        self.list_widget.model.addGroup(group)
+        self.list_widget.select_entry(group)
+        self.on_entry_selected(group)
+        self.note_input.setFocus()
+        self.note_input.selectAll()  # typing replaces the default title
+
+    def load_note(self, note):
+        """Show a note in the editor without treating it as an edit."""
+        self.note_input.textChanged.disconnect(self.note_changed)
+        try:
+            self.note_input.from_note(note)
+        finally:
+            self.note_input.textChanged.connect(self.note_changed)
+
+    def on_entry_selected(self, entry):
+        """Show the selected entry of the list: the trip's notes, a group or a location."""
+        if isinstance(entry, Location):
+            self.on_item_selected(entry)
+            return
+        self.lat_input.clear()
+        self.lon_input.clear()
+        self.load_note(entry.note)
+        self.set_marker_buttons_enabled(False)
+        for loc in self.list_widget.locations():
+            self.downplay_marker(loc.lid)
+        if isinstance(entry, Group):
+            # Show the group's locations on the map
+            points = [loc.location() for loc in self.list_widget.locations().group_locations(entry)]
+            self.map_page.runJavaScript(fit_points_js(points))
+
+    def set_marker_buttons_enabled(self, enabled: bool):
+        """Marker icon and color only apply to locations."""
+        for name in ("marker_icon_button", "marker_color_button"):
+            button = getattr(self.toolbar, name, None)
+            if button is not None:
+                button.setEnabled(enabled)
 
     def on_item_selected(self, loc: Location):
         # logger.info(f"MapApp.on_item_selected {loc}")
         self.lat_input.setText(str(loc.lat))
         self.lon_input.setText(str(loc.lon))
-        self.note_input.textChanged.disconnect()
-        self.note_input.from_note(loc.note)
-        self.note_input.textChanged.connect(self.note_changed)
-        # logger.info(f"MapApp.on_item_selected {item} after from_note")
+        self.load_note(loc.note)
+        self.set_marker_buttons_enabled(True)
         for a_loc in self.list_widget.locations():
             (self.highlight_marker(loc.lid) if loc.lid == a_loc.lid
              else self.downplay_marker(a_loc.lid))

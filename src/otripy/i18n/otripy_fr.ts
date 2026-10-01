@@ -81,9 +81,32 @@
     </message>
 </context>
 <context>
+    <name>LocationListModel</name>
+    <message>
+        <location filename="../location_list_view.py" line="+120"/>
+        <source>Trip notes</source>
+        <translation>Notes du voyage</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>General notes about the trip</source>
+        <translation>Notes générales sur le voyage</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>(untitled group)</source>
+        <translation>(groupe sans titre)</translation>
+    </message>
+    <message>
+        <location line="+7"/>
+        <source>Double-click to collapse or expand</source>
+        <translation>Double-cliquer pour replier ou déplier</translation>
+    </message>
+</context>
+<context>
     <name>Map</name>
     <message>
-        <location filename="../map_view.py" line="+232"/>
+        <location filename="../map_view.py" line="+250"/>
         <source>Click location</source>
         <translation>Lieu cliqué</translation>
     </message>
@@ -91,7 +114,7 @@
 <context>
     <name>MapApp</name>
     <message>
-        <location filename="../main.py" line="+160"/>
+        <location filename="../main.py" line="+161"/>
         <source>Search…</source>
         <translation>Rechercher…</translation>
     </message>
@@ -117,11 +140,26 @@
     </message>
     <message>
         <location line="+6"/>
-        <source>Delete Location</source>
-        <translation>Supprimer le lieu</translation>
+        <source>New Group</source>
+        <translation>Nouveau groupe</translation>
     </message>
     <message>
-        <location line="+59"/>
+        <location line="+1"/>
+        <source>Add a group, a titled section of the list, e.g. a day of the trip</source>
+        <translation>Ajouter un groupe, une section titrée de la liste, par exemple une journée du voyage</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Delete</source>
+        <translation>Supprimer</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Delete the selected location or group</source>
+        <translation>Supprimer le lieu ou le groupe sélectionné</translation>
+    </message>
+    <message>
+        <location line="+62"/>
         <source>File</source>
         <translation>Fichier</translation>
     </message>
@@ -147,17 +185,18 @@
     </message>
     <message>
         <location line="+4"/>
-        <location line="+670"/>
+        <location line="+673"/>
         <source>Save As…</source>
         <translation>Enregistrer sous…</translation>
     </message>
     <message>
-        <location line="-666"/>
+        <location line="-669"/>
         <source>Save As Nextcloud…</source>
         <translation>Enregistrer sous dans Nextcloud…</translation>
     </message>
     <message>
         <location line="+4"/>
+        <location filename="../self_test.py" line="+60"/>
         <source>Quit</source>
         <translation>Quitter</translation>
     </message>
@@ -247,12 +286,12 @@
         <translation>Marqueur</translation>
     </message>
     <message>
-        <location line="+8"/>
+        <location line="+9"/>
         <source>Color</source>
         <translation>Couleur</translation>
     </message>
     <message>
-        <location line="+180"/>
+        <location line="+181"/>
         <source>New Location</source>
         <translation>Nouveau lieu</translation>
     </message>
@@ -297,13 +336,13 @@
         <translation>{mode}&#xa0;: {distance}, {duration}</translation>
     </message>
     <message>
-        <location line="+58"/>
-        <location line="+288"/>
+        <location line="+59"/>
+        <location line="+337"/>
         <source>Journey Modified</source>
         <translation>Voyage modifié</translation>
     </message>
     <message>
-        <location line="-287"/>
+        <location line="-336"/>
         <source>Do you really want to lose your changes?</source>
         <translation>Voulez-vous vraiment perdre vos modifications&#xa0;?</translation>
     </message>
@@ -326,12 +365,12 @@
         <location line="+5"/>
         <location line="+64"/>
         <location line="+11"/>
-        <location line="+64"/>
+        <location line="+113"/>
         <source>Error</source>
         <translation>Erreur</translation>
     </message>
     <message>
-        <location line="-273"/>
+        <location line="-322"/>
         <location line="+47"/>
         <source>Failed to load file: {error}</source>
         <translation>Impossible d&apos;ouvrir le fichier&#xa0;: {error}</translation>
@@ -422,7 +461,22 @@
         <translation>Impossible d&apos;enregistrer le fichier&#xa0;: {error}</translation>
     </message>
     <message>
-        <location line="+46"/>
+        <location line="+14"/>
+        <source>Delete Group</source>
+        <translation>Supprimer le groupe</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Delete the group &quot;{title}&quot;? Its locations are kept, outside of any group.</source>
+        <translation>Supprimer le groupe « {title} »&#xa0;? Ses lieux sont conservés, hors de tout groupe.</translation>
+    </message>
+    <message>
+        <location line="+11"/>
+        <source>New group</source>
+        <translation>Nouveau groupe</translation>
+    </message>
+    <message>
+        <location line="+69"/>
         <source>You have unsaved changes. Do you want to save them?</source>
         <translation>Vous avez des modifications non enregistrées. Voulez-vous les enregistrer&#xa0;?</translation>
     </message>
