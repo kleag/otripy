@@ -22,20 +22,20 @@ def fixture_text():
 
 
 @pytest.fixture(autouse=True)
-def isolated_settings(tmp_path):
-    """Keep tests away from the user's real Otripy settings (QSettings("Kleag", "Otripy")).
+def isolated_settings(tmp_path, monkeypatch):
+    """Give each test fresh settings and keyring, never the user's real ones.
 
-    On Linux, settings are files and go to a temporary directory. On Windows
-    and macOS native settings (registry, preferences) ignore QSettings.setPath:
-    there tests use the real ones, which is harmless on CI runners.
+    Settings go to a temporary INI file on every platform: on Windows and macOS
+    native settings (registry, preferences) would ignore QSettings.setPath and
+    leak from one test to the next.
     """
     from PySide6.QtCore import QSettings
 
-    for scope in (QSettings.UserScope, QSettings.SystemScope):
-        QSettings.setPath(QSettings.NativeFormat, scope, str(tmp_path / "settings"))
-        QSettings.setPath(QSettings.IniFormat, scope, str(tmp_path / "settings"))
-    # Do not let keyring touch the user's real keyring either
+    from otripy import settings
+
+    path = str(tmp_path / "otripy.ini")
+    monkeypatch.setattr(settings, "app_settings", lambda: QSettings(path, QSettings.IniFormat))
     import keyring
     from keyring.backends.fail import Keyring as FailKeyring
     keyring.set_keyring(FailKeyring())
-    yield tmp_path / "settings"
+    yield path

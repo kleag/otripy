@@ -45,9 +45,14 @@ import logging
 from importlib import resources
 from typing import TYPE_CHECKING
 
-from PySide6.QtCore import QSettings, QSize, Qt
+from PySide6.QtCore import QSize, Qt
 from PySide6.QtGui import QAction, QIcon, QPixmap, QPainter, QFont
 from PySide6.QtWidgets import QToolBar, QWidget, QMenu, QToolButton, QSizePolicy
+
+try:
+    from . import settings
+except ImportError:
+    import settings
 
 
 if TYPE_CHECKING:
@@ -82,7 +87,7 @@ class ToolBar(QToolBar):
         self.actions = actions if actions else {}
         self.refresh = refresh
 
-        self.settings = QSettings("Kleag", "Otripy")
+        self.settings = settings.app_settings()
 
         self.toolbar_save_button = None  # type: Union[QToolButton, None]
         self.toolbar_edit_button = None  # type: Union[QToolButton, None]

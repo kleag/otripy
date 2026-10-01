@@ -2,7 +2,7 @@ import logging
 import nc_py_api
 import sys
 
-from PySide6.QtCore import QSettings, Qt, QTimer, Slot
+from PySide6.QtCore import Qt, QTimer, Slot
 from PySide6.QtGui import QAction, QDoubleValidator, QIcon, QKeySequence, QTextCursor, QFont, QTextCharFormat, QTextFormat
 from PySide6.QtWidgets import (
     QApplication,
@@ -42,7 +42,7 @@ try:
     from .map_view import (DEFAULT_ZOOM, MapBridge, hover_marker_js, tooltip_html, build_map_html, downplay_marker_js, highlight_marker_js, move_map_js,
                            update_marker_text_js)
     from .search_popup import SearchPopup
-    from . import routing
+    from . import routing, settings
     from .config import ConfigDialog, load_nextcloud_password
     from .distance_dialog import DistanceDialog
     from .nextcloud_with_api import NextcloudFilePicker
@@ -60,6 +60,7 @@ except ImportError:
                           update_marker_text_js)
     from search_popup import SearchPopup
     import routing
+    import settings
     from config import ConfigDialog, load_nextcloud_password
     from distance_dialog import DistanceDialog
     from nextcloud_with_api import NextcloudFilePicker
@@ -90,7 +91,7 @@ class MapApp(QMainWindow):
         super().__init__()
         # self.current_location = None
         # QSettings initialization
-        self.settings = QSettings("Kleag", "Otripy")
+        self.settings = settings.app_settings()
 
         self.channel = QWebChannel()
         self.map_bridge = MapBridge()

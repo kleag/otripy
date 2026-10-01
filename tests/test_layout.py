@@ -1,8 +1,8 @@
 import pytest
-from PySide6.QtCore import QSettings, Qt
+from PySide6.QtCore import Qt
 from PySide6.QtGui import QCloseEvent
 
-from otripy import main
+from otripy import main, settings
 from otripy.main import MapApp
 
 
@@ -42,7 +42,7 @@ def test_panel_sizes_are_remembered(make_window):
     window.map_splitter.setSizes([300, 350])
     wanted = (window.main_splitter.sizes(), window.map_splitter.sizes())
     window.closeEvent(QCloseEvent())
-    assert QSettings("Kleag", "Otripy").contains("window/mainSplitter")
+    assert settings.app_settings().contains("window/mainSplitter")
 
     again = make_window()
     assert (again.main_splitter.sizes(), again.map_splitter.sizes()) == wanted
