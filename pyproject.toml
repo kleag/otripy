@@ -87,6 +87,8 @@ version_pattern = "MAJOR.MINOR.PATCH"
 commit = true
 tag = true
 push = true  # Set to true if you want to push automatically
+# Files the changelog's Unreleased entries under the new version, see the script
+pre_commit_hook = "scripts/release_changelog.py"
 
 [bumpver.file_patterns]
 "pyproject.toml" = [

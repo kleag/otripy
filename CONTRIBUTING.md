@@ -62,7 +62,7 @@ Versions are managed with [bumpver](https://github.com/mbarkhau/bumpver), which 
 uv run --with bumpver bumpver update --patch   # or --minor, --major
 ```
 
-Before, move the *Unreleased* entries of the changelog under the new version.
+The changelog's *Unreleased* section must list the release's changes: bumpver's pre-commit hook (`scripts/release_changelog.py`) files them under the new version and date, and stops the release if the section is empty. If it stops, undo the version changes with `git checkout -- pyproject.toml src/otripy/__init__.py`.
 
 The tag (`MAJOR.MINOR.PATCH`) starts the release workflow, which:
 
