@@ -1,134 +1,70 @@
 # Otripy - An open trip planning tool
 
-
 [![PyPI Version](https://img.shields.io/pypi/v/otripy)](https://pypi.org/project/otripy)
 [![License](https://img.shields.io/pypi/l/otripy)](https://github.com/kleag/otripy/blob/main/AGPL.md)
 [![Downloads](https://static.pepy.tech/badge/otripy/month)](https://pepy.tech/project/otripy)
 [![Supported Versions](https://img.shields.io/pypi/pyversions/otripy)](https://pypi.org/project/otripy)
+[![CI](https://img.shields.io/github/actions/workflow/status/kleag/otripy/ci.yml?branch=main&label=CI)](https://github.com/kleag/otripy/actions/workflows/ci.yml)
 [![Contributors](https://img.shields.io/github/contributors/kleag/otripy)](https://github.com/kleag/otripy/graphs/contributors)
-
-<!--
-![Python Versions](https://img.shields.io/pypi/pyversions/otripy)
-![Build Status](https://img.shields.io/github/actions/workflow/status/kleag/otripy/ci.yml)
--->
 
 ## Description
 
-Otripy is a GUI application for trip planning, providing an intuitive user interface for organizing travel visits efficiently. Otripy allows to plan a trip by adding markers on a map (based on OpenStreetMap) associated with a note.
+Otripy is a desktop application for trip planning. You plan a trip by adding locations on an [OpenStreetMap](https://www.openstreetmap.org) map, each with a note: text with formatting and images. Trips are saved as files on your computer or on a [Nextcloud](https://nextcloud.com) server.
 
-Otripy is developed and daily tested on Linux. It should work on any platform. It has already been tested on MacOS.
+Otripy is developed and used daily on Linux, and packaged for Windows and macOS too.
 
-Otripy is already usable but would be better with a lot of other features. Some wanted features are listed [here](https://github.com/kleag/otripy/issues). Don't hesitate to create a new issue if you think at other features. And contribute them if you can!
+Otripy is already usable but would be better with a lot of other features. Some wanted features are listed [in the issues](https://github.com/kleag/otripy/issues). Don't hesitate to open a new issue with your ideas, and to contribute them if you can!
 
-### Current features:
+### Features
 
-* Display OpenStreetMap map
-* Zoom and pan the map
-* Adding location markers on the map
-* List existing location on the left part of the GUI
-* Associate a note to a location. The first line of the note is used as the title in the list
-* Search location by name, and add a new marker when selecting an entry in the list
-* Delete markers
-* Open and save local files
-* Open and save files on any Nextcloud server you have access to
-* Note text formatting (heading, bold, …)
-* Image insertion (copy paste only currently)
-* Change location markers icon and color
+* OpenStreetMap map, with zoom and pan
+* Add a location by clicking on the map: its note starts with the place's name and address
+* Search places by name and add them from the results
+* List of locations, reorderable by drag and drop; the first line of a note is the location's title
+* Notes with formatting (headings, bold, italic, underline, strikethrough) and images
+* Marker icon and color for each location
+* Open and save trips as local files
+* Open and save trips on any Nextcloud server you have access to
 
 ## Screenshots
 
-![Otripy GUI snapshot](https://github.com/kleag/otripy/blob/main/pics/otripy-snapshot.png "Otripy GUI")
+![Otripy GUI snapshot](https://raw.githubusercontent.com/kleag/otripy/main/docs/assets/screenshot.png "Otripy GUI")
 
 ## Installation
 
-### For users familiar with Python
-
-Otripy is on PyPi. To install it, run:
+Ready-to-use installers for Windows, macOS (13 or later) and Linux (AppImage) are attached to each [release](https://github.com/kleag/otripy/releases/latest). Otripy is also on [PyPI](https://pypi.org/project/otripy); with [uv](https://docs.astral.sh/uv/):
 
 ```sh
-pip install otripy
-```
-
-### For all others
-
-If you are not used to installing Python packages, the simplest method is probably to use [uv](https://docs.astral.sh/uv/). Please [install it](https://docs.astral.sh/uv/getting-started/installation/) first. Then, open a terminal and create an uv virtual environment and activate it:
-
-
-```sh
-uv venv otripy
-source otripy/bin/activate
-```
-
-Then install Otripy and run it:
-
-```sh
-uv pip install otripy
+uv tool install otripy
 otripy
 ```
 
-When you want to restart Otripy later, open your terminal, and run:
+See the [installation guide](https://kleag.github.io/otripy/installation/) for each platform's details.
 
-```sh
-source otripy/bin/activate
-otripy
-```
+## Documentation
 
-Finally, to upgrade Otripy, to a new version, run:
-
-```sh
-source otripy/bin/activate
-uv pip install otripy --upgrade
-```
-
-## Usage
-
-To launch the application:
-```bash
-otripy
-```
-
-## Building and publishing
-
-Otripy uses [uv](https://docs.astral.sh/uv/), please [install it](https://docs.astral.sh/uv/getting-started/installation/) if not already available.
-
-If you just cloned this repository, cd to it and then:
-
-```sh
-uv venv
-uv sync --all-extras
-uv pip install -r pyproject.toml --extra build
-install -d dist
-```
-
-Then, to build and publish:
-
-```sh
-rm dist/otripy-*
-bumpver update --patch # or --minor or --major
-uv build
-uv publish
-uv sync --all-extras
-git add uv.lock
-git commit -m "Update lock to new package version"
-```
-
+The [user guide](https://kleag.github.io/otripy/) explains how to [use Otripy](https://kleag.github.io/otripy/usage/), including Nextcloud, and describes its [file format](https://kleag.github.io/otripy/file-format/).
 
 ## Contributing
 
-Contributions are welcome! Please follow these steps:
-1. Fork the repository.
-2. Create a new branch (`git checkout -b feature-name`).
-3. Commit changes (`git commit -m "Add feature"`).
-4. Push to your branch (`git push origin feature-name`).
-5. Open a pull request.
+Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for the development setup, the tests and the release process, and [ROADMAP.md](ROADMAP.md) for the planned work. Changes are listed in [CHANGELOG.md](CHANGELOG.md).
 
 ## License
-This project is Free Software, licensed under the AGPL License. See the [AGPL](https://github.com/kleag/otripy/blob/main/AGPL.md) file for details. In summary: you can use it, share it, change it, redistribute your changes, but any version you offer, with or without changes must be under the same (or a compatible) license.
+
+Otripy is Free Software, licensed under the GNU Affero General Public License, version 3 or later. See the [AGPL](AGPL.md) file for details. In summary: you can use it, share it, change it, redistribute your changes, but any version you offer, with or without changes, must be under the same (or a compatible) license.
 
 ## Credits
+
 Otripy is developed and maintained by [Kleag](https://github.com/kleag). Special thanks to all contributors!
+
+Otripy builds on:
+
+* Map data © [OpenStreetMap contributors](https://www.openstreetmap.org/copyright), available under the Open Database License. Place search and addresses come from OpenStreetMap's [Nominatim](https://nominatim.org) service, used under its [usage policy](https://operations.osmfoundation.org/policies/nominatim/).
+* Maps are displayed with [Leaflet](https://leafletjs.com), through [folium](https://python-visualization.github.io/folium/), with markers from [Leaflet.awesome-markers](https://github.com/lennardv2/Leaflet.awesome-markers).
+* Marker and toolbar icons are [Font Awesome Free](https://fontawesome.com) icons by Fonticons, Inc., licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) (see [the icons' license notice](src/otripy/resources/icons/LICENSE.md)).
+* The toolbar code comes from [Notolog Editor](https://github.com/notolog/notolog-editor) by Vadim Bakhrenkov, under the MIT License (see the notice in [toolbar.py](src/otripy/toolbar.py)).
+* The user interface uses [Qt](https://www.qt.io) through [PySide6](https://doc.qt.io/qtforpython-6/).
 
 ---
 
 For more information, visit the [GitHub repository](https://github.com/kleag/otripy) or the [PyPI page](https://pypi.org/project/otripy/).
-

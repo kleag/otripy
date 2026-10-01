@@ -1,0 +1,45 @@
+site_name: Otripy
+site_description: An open trip planning tool, on OpenStreetMap maps
+site_url: https://kleag.github.io/otripy/
+repo_url: https://github.com/kleag/otripy
+repo_name: kleag/otripy
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  logo: assets/icon.png
+  favicon: assets/favicon.png
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: teal
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: teal
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - content.action.edit
+
+nav:
+  - Home: index.md
+  - Installation: installation.md
+  - Usage: usage.md
+  - File format: file-format.md
+  - Contributing: contributing.md
+  - Changelog: changelog.md
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - tables
+  - pymdownx.superfences
+  # Includes CONTRIBUTING.md and CHANGELOG.md from the repository root
+  - pymdownx.snippets:
+      check_paths: true
