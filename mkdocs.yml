@@ -33,6 +33,7 @@ nav:
   - Usage: usage.md
   - File format: file-format.md
   - Contributing: contributing.md
+  - Translating: translating.md
   - Changelog: changelog.md
 
 markdown_extensions:

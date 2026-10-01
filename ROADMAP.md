@@ -76,6 +76,6 @@ Feature requests and bugs are tracked as [GitHub issues](https://github.com/klea
 - [ ] #3 Public transport routes and electric car charging stops (no free service found)
 
 ### Cross-cutting
-- [ ] #8 Make the GUI translatable
+- [x] #8 Make the GUI translatable (English, French)
 
 Items marked *file format change* should wait until the format is documented and covered by tests, and must bump `CURRENT_FORMAT_VERSION` in `journey.py`.

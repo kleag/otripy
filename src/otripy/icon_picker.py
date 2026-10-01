@@ -86,7 +86,7 @@ class IconPickerWidget(QDialog):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Pick an Icon")
+        self.setWindowTitle(self.tr("Pick an Icon"))
         self.setFixedSize(300, 300)
 
         self.layout = QVBoxLayout(self)

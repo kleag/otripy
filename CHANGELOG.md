@@ -6,6 +6,7 @@ Notable changes to Otripy. The format follows [Keep a Changelog](https://keepach
 
 ### Added
 
+- French translation; Otripy follows the system's language ([#8](https://github.com/kleag/otripy/issues/8)). A [translators' guide](https://kleag.github.io/otripy/translating/) explains how to add languages.
 - Installers for Windows (`.msi`), macOS 13 and later (`.dmg`) and Linux (AppImage), attached to each GitHub release.
 - Application icon.
 - Opening a trip zooms the map to show all its locations ([#25](https://github.com/kleag/otripy/issues/25)).

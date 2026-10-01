@@ -53,6 +53,8 @@ Briefcase starts the app with `python -m otripy` (`__main__.py`) and installs `[
 
 ## Conventions
 
+- User-visible texts must be translatable (issue #8): `self.tr("…")` in Qt classes, `QCoreApplication.translate("Context", "…")` elsewhere, `QT_TRANSLATE_NOOP` for module constants; never f-strings, use `.format()` with named placeholders. Then run `uv run python scripts/translations.py` and translate the new texts in `src/otripy/i18n/otripy_fr.ts` (tests fail on missing, unfinished or stale translations). `translations.install_translators()` loads Otripy's and Qt's `.qm` for the system language or `OTRIPY_LANGUAGE`. See `docs/translating.md`.
+
 - Every intra-package import uses a `try: from .x import ...` / `except ImportError: from x import ...` pair so modules run both as a package and as scripts. Keep this pattern when adding imports.
 - Logging goes through `logging.getLogger(__name__)`. Many debug log calls are left commented out rather than removed.
 
