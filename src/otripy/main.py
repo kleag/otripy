@@ -824,8 +824,9 @@ class MapApp(QMainWindow):
         if not self.current_file:
             self.save_file_as()
         elif type(self.current_file) is nc_py_api.FsNode:
-            locations = [loc.to_dict() for loc in self.list_widget.locations()]
-            data = json.dumps(locations, indent=4)
+            buffer = io.StringIO()
+            self.list_widget.locations().write_to_file(buffer)
+            data = buffer.getvalue()
             file_id  = self.current_file.file_id
             current_remote_node = self.nc.files.by_id(file_id)
             if current_remote_node.etag != self.current_file.etag:
