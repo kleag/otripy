@@ -5,14 +5,22 @@
 * **Add a location** by clicking on the map. Otripy looks up the address of the clicked point: the place's name becomes the note's title, followed by its address. To avoid adding locations by mistake, check *Settings* → *Confirm New Locations*: Otripy then shows the address and asks before adding the location.
 * **Search** a place by typing its name in the search field and pressing *Enter*; click a result to add it, or press *Escape* to close the list.
 * **Select a location** by clicking it in the list or its marker on the map: the map centers on it, and its note opens below the map.
+* **Hover** a location in the list to highlight its marker on the map, or a marker to highlight its entry in the list. Their tooltips show the title and the beginning of the note.
 * **Reorder** locations by dragging them in the list. Locations with a custom marker show its icon there.
 * **Delete** the selected location with *Delete Location*.
 
 The map stays where you moved it while you edit, and shows all the locations when you open a trip. Drag the separators between the list, the map and the note to resize them; Otripy remembers their sizes.
 
+## Distances and routes
+
+* *Tools* → *Distances…* shows the straight-line distance between two locations, the selected one and the next by default. Choose a mode (car, bicycle or foot) and click *Compute Route* for the route's length and duration.
+* *Tools* → *Show Route* draws the route through all the locations, in the list's order, by car, bicycle or foot; the status bar shows its length and duration. It disappears when the locations change; *Tools* → *Hide Route* removes it.
+
+Routes are computed by the [FOSSGIS](https://routing.openstreetmap.de/about.html) routing servers behind openstreetmap.org, from OpenStreetMap data: they need an Internet connection. If a route looks wrong, you can [fix the map](https://www.openstreetmap.org/fixthemap). Public transport and electric car charging are not available.
+
 ## Notes
 
-The first line of a note is the location's title, shown in the list and on the map. The toolbar above the note sets headings (H1 to H3), bold, italic, underline and strikethrough. Add images by pasting them, or by dragging image files into the note.
+The first line of a note is the location's title, shown in the list and on the map. The toolbar above the note sets headings (H1 to H3), bold, italic, underline and strikethrough. Add images by pasting them, or by dragging image files into the note. Right-click an image to change its size: *Image Size* → *Small*, *Medium*, *Large* or *Original Size*. Links and web addresses (`https://…`, `www.…`) open in your browser with Ctrl+click; a plain click just places the cursor.
 
 The two last toolbar buttons change the selected location's marker: its icon, chosen among the [Font Awesome](https://fontawesome.com) icons, and its color.
 
@@ -28,13 +36,17 @@ The two last toolbar buttons change the selected location's marker: its icon, ch
 | Save as a new file on Nextcloud | Ctrl+Alt+S |
 | Quit | Ctrl+Q |
 
+With *Settings* → *Auto Save* checked, Otripy saves the trip after each action on its locations: adding, deleting, reordering or changing a marker, and selecting another location, which saves the note you were editing. It does not save while you type, nor trips that were never saved, which need a file name first.
+
+*File* → *Open Recent* lists the last trips you opened or saved, on your computer or on Nextcloud.
+
 Otripy asks before closing or opening another trip when there are unsaved changes; the window title starts with `*` while there are. Trips are JSON files, described in [the file format page](file-format.md).
 
 ## Nextcloud
 
 In *Settings* → *Configure Otripy*, enter your Nextcloud server's URL, your user name and your password. If you use two-factor authentication, create an *app password* in Nextcloud's security settings and use it here. Otripy stores the password in your system's keyring (GNOME Keyring, KWallet, macOS Keychain or Windows Credential Manager).
 
-*File* → *Open Nextcloud…* then lets you browse your Nextcloud files and open a trip. *Save* writes it back to Nextcloud. If the file was changed on the server since you opened it, Otripy asks for a new name instead of overwriting it.
+*File* → *Open Nextcloud…* then lets you browse your Nextcloud files and open a trip. *Save* writes it back to Nextcloud. If the file was changed or deleted on the server since you opened it, for instance by someone you share it with, Otripy asks whether to save your version under another name or to overwrite the file.
 
 *File* → *Save As Nextcloud…* saves the trip to a new file on Nextcloud: browse to a folder, type a file name (`.json` is added if missing) and click *Save*. Clicking an existing file reuses its name; Otripy asks before replacing it.
 

@@ -2,13 +2,14 @@ import logging
 import nc_py_api
 import sys
 
-from PySide6.QtCore import QSettings, Qt, Slot
+from PySide6.QtCore import QSettings, Qt, QTimer, Slot
 from PySide6.QtGui import QAction, QDoubleValidator, QIcon, QKeySequence, QTextCursor, QFont, QTextCharFormat, QTextFormat
 from PySide6.QtWidgets import (
     QApplication,
     QDialog,
     QFileDialog,
     QHBoxLayout,
+    QLabel,
     QLineEdit,
     QMainWindow,
     QMessageBox,
@@ -25,6 +26,7 @@ from PySide6.QtWebEngineWidgets import QWebEngineView
 from geopy.exc import GeopyError
 from geopy.geocoders import Nominatim
 from importlib import resources
+from pathlib import Path
 from typing import Dict, List, Any
 
 
@@ -37,13 +39,16 @@ try:
     from .limited_color_picker import LimitedColorPicker
     from .location import Location
     from .location_list_view import LocationListView
-    from .map_view import (DEFAULT_ZOOM, MapBridge, build_map_html, downplay_marker_js, highlight_marker_js, move_map_js,
+    from .map_view import (DEFAULT_ZOOM, MapBridge, hover_marker_js, tooltip_html, build_map_html, downplay_marker_js, highlight_marker_js, move_map_js,
                            update_marker_text_js)
     from .search_popup import SearchPopup
+    from . import routing
     from .config import ConfigDialog, load_nextcloud_password
+    from .distance_dialog import DistanceDialog
     from .nextcloud_with_api import NextcloudFilePicker
     from .rename_popup import RenamePopup
     from .toolbar import ToolBar
+    from .translations import install_translators
     from .note_widget import NoteWidget
 except ImportError:
     from icon_picker import IconPickerWidget
@@ -51,16 +56,23 @@ except ImportError:
     from limited_color_picker import LimitedColorPicker
     from location import Location
     from location_list_view import LocationListView
-    from map_view import (DEFAULT_ZOOM, MapBridge, build_map_html, downplay_marker_js, highlight_marker_js, move_map_js,
+    from map_view import (DEFAULT_ZOOM, MapBridge, hover_marker_js, tooltip_html, build_map_html, downplay_marker_js, highlight_marker_js, move_map_js,
                           update_marker_text_js)
     from search_popup import SearchPopup
+    import routing
     from config import ConfigDialog, load_nextcloud_password
+    from distance_dialog import DistanceDialog
     from nextcloud_with_api import NextcloudFilePicker
     from rename_popup import RenamePopup
     from toolbar import ToolBar
+    from translations import install_translators
     from note_widget import NoteWidget
 
 logger = logging.getLogger(__name__)
+
+RECENT_FILES_KEY = "recentFiles"
+MAX_RECENT_FILES = 10
+NEXTCLOUD_PREFIX = "nextcloud:"
 logging.basicConfig(level=logging.INFO)
 logging.root.setLevel(logging.INFO)
 
@@ -88,6 +100,11 @@ class MapApp(QMainWindow):
         # Last view of the map (latitude, longitude, zoom), kept when it is redrawn
         self.map_view_state = None
         self.map_bridge.viewChanged.connect(self.map_view_changed)
+        self._autosave_pending = False
+        # Route drawn on the map: (locations it goes through, routing.Route, mode), or None
+        self.route = None
+        self.route_label = QLabel()
+        self.route_label.setOpenExternalLinks(True)
 
         self.setGeometry(100, 100, 800, 600)
 
@@ -124,6 +141,11 @@ class MapApp(QMainWindow):
         self.list_widget.model.locations.dirty.connect(self.set_window_title)
 
         self.list_widget.locationClicked.connect(self.on_item_selected)
+        self.list_widget.model.rowsMoved.connect(lambda *args: self.schedule_autosave())
+        # Hovering a location in the list or on the map highlights it in the other (issue #22)
+        self._hovered_marker = None
+        self.list_widget.locationHovered.connect(self.hover_marker)
+        self.map_bridge.markerHovered.connect(lambda lid: self.list_widget.model.setHovered(lid or None))
         # self.list_widget.setLocations(self.locations)
 
         # Main widget (Text editor for simplicity)
@@ -135,9 +157,9 @@ class MapApp(QMainWindow):
 
         # Search interface : line edit + button at its right
         self.search_entry = QLineEdit()
-        self.search_entry.setPlaceholderText("Search…")
+        self.search_entry.setPlaceholderText(self.tr("Search…"))
         self.search_entry.returnPressed.connect(self.search_location)
-        self.search_btn = QPushButton("Search")
+        self.search_btn = QPushButton(self.tr("Search"))
         self.search_btn.clicked.connect(self.search_location)
         search_layout = QHBoxLayout()
         search_layout.addWidget(self.search_entry)
@@ -152,14 +174,14 @@ class MapApp(QMainWindow):
         lat_val = QDoubleValidator(-90, 90, 3)
         lat_val.setNotation(QDoubleValidator.Notation.StandardNotation)
         self.lat_input = QLineEdit()
-        self.lat_input.setPlaceholderText("Enter Latitude")
+        self.lat_input.setPlaceholderText(self.tr("Enter Latitude"))
         self.lat_input.setValidator(lat_val)
         self.lat_input.setReadOnly(True)
 
         lon_val = QDoubleValidator(-180, 180, 3)
         lon_val.setNotation(QDoubleValidator.Notation.StandardNotation)
         self.lon_input = QLineEdit()
-        self.lon_input.setPlaceholderText("Enter Longitude")
+        self.lon_input.setPlaceholderText(self.tr("Enter Longitude"))
         self.lon_input.setValidator(lon_val)
         self.lon_input.setReadOnly(True)
 
@@ -167,13 +189,13 @@ class MapApp(QMainWindow):
         btn_layout.addWidget(self.lon_input)
 
         self.note_input = NoteWidget(self)
-        self.note_input.setPlaceholderText("Enter Note")
+        self.note_input.setPlaceholderText(self.tr("Enter Note"))
         self.note_input.textChanged.connect(self.note_changed)
         self.note_input.setAutoFormatting(QTextEdit.AutoFormatting.AutoAll)
         # self.add_button = QPushButton("Save Location", self)
         # self.add_button.clicked.connect(self.add_location)
 
-        self.del_btn = QPushButton("Delete Location")
+        self.del_btn = QPushButton(self.tr("Delete Location"))
         self.del_btn.clicked.connect(self.delete_item)
 
         self.create_icons_toolbar()
@@ -232,33 +254,33 @@ class MapApp(QMainWindow):
 
     def createMenu(self):
         menu_bar = self.menuBar()
-        file_menu = menu_bar.addMenu("File")
+        file_menu = menu_bar.addMenu(self.tr("File"))
 
-        new_action = QAction("New", self)
+        new_action = QAction(self.tr("New"), self)
         new_action.setShortcut(QKeySequence("Ctrl+N"))
         new_action.triggered.connect(self.new)
 
-        load_action = QAction("Open…", self)
+        load_action = QAction(self.tr("Open…"), self)
         load_action.setShortcut(QKeySequence("Ctrl+O"))
         load_action.triggered.connect(self.load_file)
 
-        load_nc_action = QAction("Open Nextcloud…", self)
+        load_nc_action = QAction(self.tr("Open Nextcloud…"), self)
         load_nc_action.setShortcut(QKeySequence("Ctrl+Alt+O"))
         load_nc_action.triggered.connect(self.load_nc_file)
 
-        save_action = QAction("Save", self)
+        save_action = QAction(self.tr("Save"), self)
         save_action.setShortcut(QKeySequence("Ctrl+S"))
         save_action.triggered.connect(self.save_file)
 
-        save_as_action = QAction("Save As…", self)
+        save_as_action = QAction(self.tr("Save As…"), self)
         save_as_action.setShortcut(QKeySequence("Ctrl+Shift+S"))
         save_as_action.triggered.connect(self.save_file_as)
 
-        save_as_nc_action = QAction("Save As Nextcloud…", self)
+        save_as_nc_action = QAction(self.tr("Save As Nextcloud…"), self)
         save_as_nc_action.setShortcut(QKeySequence("Ctrl+Alt+S"))
         save_as_nc_action.triggered.connect(self.save_file_as_nc)
 
-        quit_action = QAction("Quit", self)
+        quit_action = QAction(self.tr("Quit"), self)
         quit_action.setShortcut(QKeySequence("Ctrl+Q"))
         quit_action.triggered.connect(self.close)
 
@@ -266,6 +288,9 @@ class MapApp(QMainWindow):
         file_menu.addSeparator()
         file_menu.addAction(load_action)
         file_menu.addAction(load_nc_action)
+        self.recent_menu = file_menu.addMenu(self.tr("Open Recent"))
+        self.recent_menu.aboutToShow.connect(self.update_recent_menu)
+        self.update_recent_menu()
         file_menu.addSeparator()
         file_menu.addAction(save_action)
         file_menu.addAction(save_as_action)
@@ -275,20 +300,40 @@ class MapApp(QMainWindow):
         # export_action = file_menu.addAction("Export as HTML Map…")
         # export_action.triggered.connect(self.export_as_html)
 
-        config_menu = menu_bar.addMenu("Settings")
+        tools_menu = menu_bar.addMenu(self.tr("Tools"))
+        distances_action = QAction(self.tr("Distances…"), self)
+        distances_action.triggered.connect(self.open_distance_dialog)
+        tools_menu.addAction(distances_action)
+        route_menu = tools_menu.addMenu(self.tr("Show Route"))
+        for mode in routing.MODES:
+            action = route_menu.addAction(routing.mode_label(mode))
+            action.triggered.connect(lambda checked=False, mode=mode: self.show_route(mode))
+        self.hide_route_action = QAction(self.tr("Hide Route"), self)
+        self.hide_route_action.setEnabled(False)
+        self.hide_route_action.triggered.connect(self.hide_route)
+        tools_menu.addAction(self.hide_route_action)
+
+        config_menu = menu_bar.addMenu(self.tr("Settings"))
 
         # Configuration action
-        config_action = QAction("Configure Otripy", self)
+        config_action = QAction(self.tr("Configure Otripy"), self)
         config_action.triggered.connect(self.open_config_dialog)
         config_menu.addAction(config_action)
 
         # Clicking the map adds a location at once, unless this is checked (issue #30)
-        self.confirm_locations_action = QAction("Confirm New Locations", self)
+        self.confirm_locations_action = QAction(self.tr("Confirm New Locations"), self)
         self.confirm_locations_action.setCheckable(True)
         self.confirm_locations_action.setChecked(self.settings.value("map/confirmNewLocations", False, type=bool))
         self.confirm_locations_action.toggled.connect(
             lambda checked: self.settings.setValue("map/confirmNewLocations", checked))
         config_menu.addAction(self.confirm_locations_action)
+
+        # Save after each action on locations, not on each key typed (issue #12)
+        self.autosave_action = QAction(self.tr("Auto Save"), self)
+        self.autosave_action.setCheckable(True)
+        self.autosave_action.setChecked(self.settings.value("files/autoSave", False, type=bool))
+        self.autosave_action.toggled.connect(lambda checked: self.settings.setValue("files/autoSave", checked))
+        config_menu.addAction(self.autosave_action)
 
     # def export_as_html(self):
     #     if not self.model or not getattr(self.model, "trip_data", None):
@@ -320,7 +365,7 @@ class MapApp(QMainWindow):
              'name': 'toolbar_toolbar_icon_header1',
              'text_icon': 'h1',
              'color': 'red',
-             'label': 'Header1',
+             'label': self.tr('Header1'),
              'accessible_name': 'h1',
              'action': self.action_text_h1,
              'switched_off_check': lambda: False},
@@ -328,7 +373,7 @@ class MapApp(QMainWindow):
              'name': 'toolbar_toolbar_icon_header2',
              'text_icon': 'h2',
              'color': 'red',
-             'label': 'Header2',
+             'label': self.tr('Header2'),
              'accessible_name': 'h2',
              'action': self.action_text_h2,
              'switched_off_check': lambda: False},
@@ -336,7 +381,7 @@ class MapApp(QMainWindow):
              'name': 'toolbar_toolbar_icon_header3',
              'text_icon': 'h3',
              'color': 'red',
-             'label': 'Header3',
+             'label': self.tr('Header3'),
              'accessible_name': 'h3',
              'action': self.action_text_h3,
              'switched_off_check': lambda: False},
@@ -345,7 +390,7 @@ class MapApp(QMainWindow):
              'system_icon': 'format-text-bold',
              'theme_icon': 'bold.svg',
              'color': 'red',
-             'label': 'Bold',
+             'label': self.tr('Bold'),
              'accessible_name': 'bold',
              'action': self.action_text_bold,
              'switched_off_check': lambda: False},
@@ -354,7 +399,7 @@ class MapApp(QMainWindow):
              'system_icon': 'format-text-italic',
              'theme_icon': 'italic.svg',
              'color': 'red',
-             'label': 'Italic',
+             'label': self.tr('Italic'),
              'accessible_name': 'italic',
              'action': self.action_text_italic,
              'switched_off_check': lambda: False},
@@ -363,7 +408,7 @@ class MapApp(QMainWindow):
              'system_icon': 'format-text-underline',
              'theme_icon': 'underline.svg',
              'color': 'red',
-             'label': 'Underline',
+             'label': self.tr('Underline'),
              'accessible_name': 'underline',
              'action': self.action_text_underline,
              'switched_off_check': lambda: False},
@@ -372,7 +417,7 @@ class MapApp(QMainWindow):
              'system_icon': 'format-text-strikethrough',
              'theme_icon': 'strikethrough.svg',
              'color': 'red',
-             'label': 'Strikethrough',
+             'label': self.tr('Strikethrough'),
              'accessible_name': 'strikethrough',
              'action': self.action_text_strikethrough,
              'switched_off_check': lambda: False},
@@ -388,7 +433,7 @@ class MapApp(QMainWindow):
              'name': 'toolbar_actions_marker_icon',
              'theme_icon': 'location-dot.svg',
              'color': 'red',
-             'label': 'Marker',
+             'label': self.tr('Marker'),
              'accessible_name': 'marker',
              'action': self.action_marker_icon},
             {'type': 'action',
@@ -396,7 +441,7 @@ class MapApp(QMainWindow):
              'name': 'toolbar_actions_label_color',
              'theme_icon': 'eye-dropper.svg',
              'color': 'red',
-             'label': 'Color',
+             'label': self.tr('Color'),
              'accessible_name': 'color',
              'action': self.action_marker_color_picker},
             # {'type': 'delimiter'},
@@ -500,6 +545,7 @@ class MapApp(QMainWindow):
                     return  # cancelled: keep the current color
                 self.list_widget.model.setMarkerStyle(selected_item, color=color)
                 self.update_map()
+                self.schedule_autosave()
         else:
             logger.warning("Marker color picker hit while no location is selected")
 
@@ -527,6 +573,7 @@ class MapApp(QMainWindow):
             if self.list_widget.model.getLocation(selected_item) is not None:
                 self.list_widget.model.setMarkerStyle(selected_item, marker=icon_name)
                 self.update_map()
+                self.schedule_autosave()
         else:
             logger.warning(f"Marker chosen {icon_name} while no location is selected")
 
@@ -574,7 +621,8 @@ class MapApp(QMainWindow):
             place = None
         if confirm:
             where = place.address if place is not None else f"[{lat:.5f}, {lon:.5f}]"
-            answer = QMessageBox.question(self, "New Location", f"Add a location here?\n\n{where}",
+            answer = QMessageBox.question(self, self.tr("New Location"),
+                                          self.tr("Add a location here?\n\n{place}").format(place=where),
                                           QMessageBox.Yes | QMessageBox.No, QMessageBox.Yes)
             if answer != QMessageBox.Yes:
                 return
@@ -582,7 +630,7 @@ class MapApp(QMainWindow):
         self.lon_input.setText(str(lon))
         # The place name becomes the note title (its first paragraph)
         address = (place.address.replace(", ", "\n\n", 1) if place is not None
-                   else f"Unknown place at [{lat}, {lon}]")
+                   else self.tr("Unknown place at [{latitude}, {longitude}]").format(latitude=lat, longitude=lon))
         self.note_input.textChanged.disconnect(self.note_changed)
         try:
             self.note_input.from_note({"markdown": address})
@@ -596,11 +644,19 @@ class MapApp(QMainWindow):
         selected_indexes = self.list_widget.selectedIndexes()
         if selected_indexes:
             location = self.list_widget.model.getLocation(selected_indexes[0])
-            old_label = location.label() if location is not None else None
+            old_tooltip = tooltip_html(location) if location is not None else None
             self.list_widget.updateLocationNoteAtIndex(selected_indexes[0], self.note_input.to_note())
             # The list shows the new title at once; the map's marker needs updating too
-            if location is not None and location.label() != old_label:
+            if location is not None and tooltip_html(location) != old_tooltip:
                 self.map_page.runJavaScript(update_marker_text_js(location))
+
+    def hover_marker(self, location_id: str):
+        """Highlight the marker of the location hovered in the list ("" for none)."""
+        if self._hovered_marker:
+            self.map_page.runJavaScript(hover_marker_js(self._hovered_marker, False))
+        self._hovered_marker = location_id or None
+        if self._hovered_marker:
+            self.map_page.runJavaScript(hover_marker_js(self._hovered_marker, True))
 
     @Slot(float, float, int)
     def map_view_changed(self, lat: float, lon: float, zoom: int):
@@ -610,8 +666,52 @@ class MapApp(QMainWindow):
         """Redraw the map, keeping its current view; with fit_all, zoom it to show all the locations."""
         if fit_all:
             self.map_view_state = None
-        self.map_page.setHtml(build_map_html(self.list_widget.locations(), fit_all=fit_all,
-                                             view=self.map_view_state))
+        locations = self.list_widget.locations()
+        # A route stays drawn only while the locations it goes through are unchanged
+        if self.route is not None and self.route[0] != tuple((loc.lid, loc.lat, loc.lon) for loc in locations):
+            self.hide_route(redraw=False)
+        self.map_page.setHtml(build_map_html(locations, fit_all=fit_all, view=self.map_view_state,
+                                             route=self.route[1].geometry if self.route else None))
+
+    def open_distance_dialog(self):
+        """Measure the distance between two locations (issue #6)."""
+        locations = list(self.list_widget.locations())
+        if len(locations) < 2:
+            QMessageBox.information(self, self.tr("Distances"), self.tr("Add at least two locations to measure distances."))
+            return
+        selected = self.list_widget.selectedIndexes()
+        DistanceDialog(locations, first=selected[0].row() if selected else 0, parent=self).exec()
+
+    def show_route(self, mode: str):
+        """Draw the route through all the locations, in list order (issue #3)."""
+        locations = list(self.list_widget.locations())
+        if len(locations) < 2:
+            QMessageBox.information(self, self.tr("Route"), self.tr("Add at least two locations to show a route."))
+            return
+        QApplication.setOverrideCursor(Qt.WaitCursor)
+        try:
+            route = routing.fetch_route([loc.location() for loc in locations], mode)
+        except routing.RoutingError as e:
+            QMessageBox.critical(self, self.tr("Route"), str(e))
+            return
+        finally:
+            QApplication.restoreOverrideCursor()
+        self.route = (tuple((loc.lid, loc.lat, loc.lon) for loc in locations), route, mode)
+        self.hide_route_action.setEnabled(True)
+        self.route_label.setText(self.tr("{mode}: {distance}, {duration}").format(
+            mode=routing.mode_label(mode), distance=routing.format_distance(route.distance),
+            duration=routing.format_duration(route.duration)) + " — " + routing.attribution_html())
+        self.statusBar().addPermanentWidget(self.route_label)
+        self.route_label.show()
+        self.update_map()
+
+    def hide_route(self, redraw: bool = True):
+        self.route = None
+        self.hide_route_action.setEnabled(False)
+        self.statusBar().removeWidget(self.route_label)
+        self.route_label.clear()
+        if redraw:
+            self.update_map()
 
     def handle_marker_click(self, marker_id):
         """ Handle marker click events in Python. """
@@ -656,8 +756,8 @@ class MapApp(QMainWindow):
             return True
         answer = QMessageBox.question(
             self,
-            "Journey Modified",
-            "Do you really want to lose your changes?",
+            self.tr("Journey Modified"),
+            self.tr("Do you really want to lose your changes?"),
             QMessageBox.Yes | QMessageBox.No)
         return answer == QMessageBox.Yes
 
@@ -668,6 +768,7 @@ class MapApp(QMainWindow):
         journey.dirty.connect(self.set_window_title)
         self.set_window_title(dirty=False)
         self.update_map(fit_all=True)
+        self.remember_current_file()
 
     def new(self):
         if self.confirm_discard():
@@ -678,17 +779,21 @@ class MapApp(QMainWindow):
             return
         file_name, _ = QFileDialog.getOpenFileName(
             self,
-            "Open JSON File",
+            self.tr("Open JSON File"),
             "",
-            "JSON Files (*.json);;All files (*.*)")
-        if not file_name:
-            return
+            self.tr("JSON Files (*.json);;All files (*.*)"))
+        if file_name:
+            self.open_local_file(file_name)
+
+    def open_local_file(self, file_name) -> bool:
+        """Open a journey file, without asking about unsaved changes. Return True on success."""
         try:
             journey = Journey.from_file(file_name)
         except (OSError, ValueError, KeyError) as e:
-            QMessageBox.critical(self, "Error", f"Failed to load file: {e}")
-            return
+            QMessageBox.critical(self, self.tr("Error"), self.tr("Failed to load file: {error}").format(error=e))
+            return False
         self.set_journey(journey, file_name)
+        return True
 
     def connect_nextcloud(self) -> bool:
         """Connect to the Nextcloud server configured in the settings, if not done yet."""
@@ -700,8 +805,8 @@ class MapApp(QMainWindow):
         if not base_url or not username or not password:
             QMessageBox.critical(
                 self,
-                "Error",
-                "Please set Nextcloud data in settings before connecting.")
+                self.tr("Error"),
+                self.tr("Please set Nextcloud data in settings before connecting."))
             return False
         try:
             self.nc = nc_py_api.Nextcloud(nextcloud_url=base_url,
@@ -710,8 +815,8 @@ class MapApp(QMainWindow):
         except nc_py_api.NextcloudException as e:
             QMessageBox.critical(
                 self,
-                "Error",
-                f"Error connecting to Nextcloud:\n\n{e}")
+                self.tr("Error"),
+                self.tr("Error connecting to Nextcloud:\n\n{error}").format(error=e))
             return False
         return True
 
@@ -722,24 +827,77 @@ class MapApp(QMainWindow):
         if file_picker.exec() != QDialog.DialogCode.Accepted:
             return
         selected_file = file_picker.get_selected_file()
-        if not selected_file:
-            return
+        if selected_file:
+            self.open_nc_file(selected_file)
+
+    def open_nc_file(self, path) -> bool:
+        """Open a journey file from Nextcloud, without asking about unsaved changes. Return True on success."""
         try:
             # keep the nc_py_api FsNode: its etag detects remote changes on save
-            node = self.nc.files.by_path(selected_file)
+            node = self.nc.files.by_path(path)
             journey = Journey.from_json_str(self.nc.files.download(node).decode("utf-8"))
         except (nc_py_api.NextcloudException, ValueError, KeyError) as e:
-            QMessageBox.critical(self, "Error", f"Failed to load file: {e}")
-            return
+            QMessageBox.critical(self, self.tr("Error"), self.tr("Failed to load file: {error}").format(error=e))
+            return False
         self.set_journey(journey, node)
+        return True
+
+    # Recent files (issue #11): local paths, and Nextcloud paths with a prefix
+    def recent_files(self) -> List[str]:
+        files = self.settings.value(RECENT_FILES_KEY, [])
+        return [files] if isinstance(files, str) else list(files or [])
+
+    def remember_current_file(self):
+        """Put the current file first in the recent files."""
+        if not self.current_file:
+            return
+        entry = (NEXTCLOUD_PREFIX + self.current_file.user_path if isinstance(self.current_file, nc_py_api.FsNode)
+                 else str(Path(self.current_file).resolve()))
+        files = [entry] + [f for f in self.recent_files() if f != entry]
+        self.settings.setValue(RECENT_FILES_KEY, files[:MAX_RECENT_FILES])
+
+    def forget_recent_file(self, entry):
+        self.settings.setValue(RECENT_FILES_KEY, [f for f in self.recent_files() if f != entry])
+
+    def update_recent_menu(self):
+        """Rebuild the Open Recent menu from the settings."""
+        self.recent_menu.clear()
+        files = self.recent_files()
+        for entry in files:
+            if entry.startswith(NEXTCLOUD_PREFIX):
+                label = self.tr("{path} (Nextcloud)").format(path=entry[len(NEXTCLOUD_PREFIX):])
+            else:
+                label = entry
+            action = self.recent_menu.addAction(label)
+            action.triggered.connect(lambda checked=False, entry=entry: self.open_recent_file(entry))
+        if files:
+            self.recent_menu.addSeparator()
+        clear_action = self.recent_menu.addAction(self.tr("Clear Recent Files"))
+        clear_action.setEnabled(bool(files))
+        clear_action.triggered.connect(lambda: self.settings.setValue(RECENT_FILES_KEY, []))
+
+    def open_recent_file(self, entry) -> bool:
+        if not self.confirm_discard():
+            return False
+        if entry.startswith(NEXTCLOUD_PREFIX):
+            if not self.connect_nextcloud():
+                return False
+            opened = self.open_nc_file(entry[len(NEXTCLOUD_PREFIX):])
+        else:
+            opened = self.open_local_file(entry)
+        if not opened:
+            self.forget_recent_file(entry)
+        return opened
 
     def save_file(self) -> bool:
         """Save to the current file, asking for one if needed. Return True if the journey was saved."""
         if not self.current_file:
             return self.save_file_as()
-        if isinstance(self.current_file, nc_py_api.FsNode):
-            return self.save_nc_file()
-        return self.save_local_file(self.current_file)
+        saved = (self.save_nc_file() if isinstance(self.current_file, nc_py_api.FsNode)
+                 else self.save_local_file(self.current_file))
+        if saved:
+            self.remember_current_file()  # may have been saved under a new name
+        return saved
 
     def save_nc_file(self) -> bool:
         data = self.list_widget.locations().to_json_str()
@@ -747,21 +905,49 @@ class MapApp(QMainWindow):
             remote_node = self.nc.files.by_id(self.current_file.file_id)
             if remote_node is not None and remote_node.etag == self.current_file.etag:
                 self.current_file = self.nc.files.upload(self.current_file, data)
+                choice = None
             else:
-                # The file changed (or vanished) on the server since it was opened: save under a new name
+                # The file changed (or vanished) on the server since it was opened (issue #10)
+                choice = self.ask_save_conflict(self.current_file.user_path, deleted=remote_node is None)
+            if choice == "cancel":
+                return False
+            if choice == "overwrite":
+                self.current_file = self.nc.files.upload(self.current_file.user_path, data)
+            elif choice == "rename":
                 popup = RenamePopup(self, self.current_file.user_path)
                 if not popup.exec():
                     return False
                 new_name = popup.line_edit.text().strip()
                 if self.nc_file_exists(new_name):
-                    QMessageBox.critical(self, "Error", f"File {new_name} already exists. Abort.")
+                    QMessageBox.critical(self, self.tr("Error"),
+                                         self.tr("File {path} already exists. Abort.").format(path=new_name))
                     return False
                 self.current_file = self.nc.files.upload(new_name, data)
         except nc_py_api.NextcloudException as e:
-            QMessageBox.critical(self, "Error", f"Failed to save file on Nextcloud: {e}")
+            QMessageBox.critical(self, self.tr("Error"), self.tr("Failed to save file on Nextcloud: {error}").format(error=e))
             return False
         self.list_widget.locations().clean()
         return True
+
+    def ask_save_conflict(self, path: str, deleted: bool) -> str:
+        """Ask what to do with a Nextcloud file changed or deleted since it was opened.
+
+        Return "rename" (save under another name), "overwrite" or "cancel".
+        """
+        box = QMessageBox(self)
+        box.setIcon(QMessageBox.Warning)
+        box.setWindowTitle(self.tr("File Changed on Nextcloud"))
+        if deleted:
+            box.setText(self.tr("{path} was deleted since you opened it.").format(path=path))
+        else:
+            box.setText(self.tr("{path} was changed by someone else since you opened it.").format(path=path))
+        box.setInformativeText(self.tr("Save your version under another name, or replace the file with it?"))
+        rename = box.addButton(self.tr("Save As…"), QMessageBox.AcceptRole)
+        overwrite = box.addButton(self.tr("Overwrite"), QMessageBox.DestructiveRole)
+        box.addButton(QMessageBox.Cancel)
+        box.setDefaultButton(rename)
+        box.exec()
+        return {rename: "rename", overwrite: "overwrite"}.get(box.clickedButton(), "cancel")
 
     def nc_file_exists(self, path) -> bool:
         try:
@@ -772,15 +958,16 @@ class MapApp(QMainWindow):
 
     def save_file_as(self) -> bool:
         file_name, _ = QFileDialog.getSaveFileName(self,
-                                                   "Save JSON File",
+                                                   self.tr("Save JSON File"),
                                                    "",
-                                                   "JSON Files (*.json)")
+                                                   self.tr("JSON Files (*.json)"))
         if not file_name:
             return False
         if not self.save_local_file(file_name):
             return False
         self.current_file = file_name
         self.set_window_title(dirty=False)
+        self.remember_current_file()
         return True
 
     def save_file_as_nc(self) -> bool:
@@ -794,23 +981,25 @@ class MapApp(QMainWindow):
         try:
             if self.nc_file_exists(path):
                 answer = QMessageBox.question(
-                    self, "File Exists", f"{path} already exists on Nextcloud. Replace it?",
+                    self, self.tr("File Exists"),
+                    self.tr("{path} already exists on Nextcloud. Replace it?").format(path=path),
                     QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
                 if answer != QMessageBox.Yes:
                     return False
             self.current_file = self.nc.files.upload(path, self.list_widget.locations().to_json_str())
         except nc_py_api.NextcloudException as e:
-            QMessageBox.critical(self, "Error", f"Failed to save file on Nextcloud: {e}")
+            QMessageBox.critical(self, self.tr("Error"), self.tr("Failed to save file on Nextcloud: {error}").format(error=e))
             return False
         self.list_widget.locations().clean()
         self.set_window_title(dirty=False)
+        self.remember_current_file()
         return True
 
     def save_local_file(self, file_name) -> bool:
         try:
             self.list_widget.locations().save(file_name)
         except OSError as e:
-            QMessageBox.critical(self, "Error", f"Failed to save file: {e}")
+            QMessageBox.critical(self, self.tr("Error"), self.tr("Failed to save file: {error}").format(error=e))
             return False
         self.list_widget.locations().clean()
         return True
@@ -821,6 +1010,7 @@ class MapApp(QMainWindow):
             selected_item = selected_indexes[0]
             self.list_widget.deleteItemAtIndex(selected_item)
             self.update_map()
+            self.schedule_autosave()
 
     def on_item_selected(self, loc: Location):
         # logger.info(f"MapApp.on_item_selected {loc}")
@@ -834,14 +1024,28 @@ class MapApp(QMainWindow):
             (self.highlight_marker(loc.lid) if loc.lid == a_loc.lid
              else self.downplay_marker(a_loc.lid))
         self.map_page.runJavaScript(move_map_js(loc.lat, loc.lon))
+        # Selecting another location ends the editing of the previous one's note
+        self.schedule_autosave()
+
+    def schedule_autosave(self):
+        """With Auto Save on, save a named trip once the current action is over."""
+        if self.autosave_action.isChecked() and not self._autosave_pending:
+            self._autosave_pending = True
+            QTimer.singleShot(0, self.autosave)
+
+    def autosave(self):
+        self._autosave_pending = False
+        # An unnamed trip would need a file dialog: only save trips that have a file
+        if self.autosave_action.isChecked() and self.dirty and self.current_file:
+            self.save_file()
 
     def closeEvent(self, event):
         self.save_layout()
         if not self.dirty:
             event.accept()
             return
-        reply = QMessageBox.question(self, 'Journey Modified',
-                                     'You have unsaved changes. Do you want to save them?',
+        reply = QMessageBox.question(self, self.tr('Journey Modified'),
+                                     self.tr('You have unsaved changes. Do you want to save them?'),
                                      QMessageBox.Save | QMessageBox.Discard | QMessageBox.Cancel,
                                      QMessageBox.Save)
         if reply == QMessageBox.Discard or (reply == QMessageBox.Save and self.save_file()):
@@ -859,7 +1063,7 @@ class MapApp(QMainWindow):
             locations = self.geolocator.geocode(query, exactly_one=False)
         except GeopyError as e:
             self.search_popup.hide()
-            QMessageBox.critical(self, "Error", f"Search failed: {e}")
+            QMessageBox.critical(self, self.tr("Error"), self.tr("Search failed: {error}").format(error=e))
             return
 
         # logger.info(f"Found: {locations}")
@@ -888,6 +1092,7 @@ def main():
             from self_test import run
         sys.exit(run(sys.argv[2] if len(sys.argv) > 2 else None))
     app = QApplication(sys.argv)
+    install_translators(app)
     app_icon = QIcon()
     for size in (16, 32, 64, 128, 256, 512):
         app_icon.addFile(str(resources.files("otripy.resources") / f"icon-{size}.png"))

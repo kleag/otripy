@@ -25,6 +25,7 @@ Otripy is already usable but would be better with a lot of other features. Some 
 * Marker icon and color for each location
 * Open and save trips as local files
 * Open and save trips on any Nextcloud server you have access to
+* Distances and routes between locations, by car, bicycle or foot
 
 ## Screenshots
 
@@ -47,7 +48,7 @@ The [user guide](https://kleag.github.io/otripy/) explains how to [use Otripy](h
 
 ## Contributing
 
-Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for the development setup, the tests and the release process, and [ROADMAP.md](ROADMAP.md) for the planned work. Changes are listed in [CHANGELOG.md](CHANGELOG.md).
+Contributions are welcome! Translations into new languages are welcome too: see the [translators' guide](https://kleag.github.io/otripy/translating/). See [CONTRIBUTING.md](CONTRIBUTING.md) for the development setup, the tests and the release process, and [ROADMAP.md](ROADMAP.md) for the planned work. Changes are listed in [CHANGELOG.md](CHANGELOG.md).
 
 ## License
 
@@ -60,6 +61,7 @@ Otripy is developed and maintained by [Kleag](https://github.com/kleag). Special
 Otripy builds on:
 
 * Map data © [OpenStreetMap contributors](https://www.openstreetmap.org/copyright), available under the Open Database License. Place search and addresses come from OpenStreetMap's [Nominatim](https://nominatim.org) service, used under its [usage policy](https://operations.osmfoundation.org/policies/nominatim/).
+* Routes are computed by the [FOSSGIS OSRM servers](https://routing.openstreetmap.de/about.html) behind openstreetmap.org, used under their usage policy.
 * Maps are displayed with [Leaflet](https://leafletjs.com), through [folium](https://python-visualization.github.io/folium/), with markers from [Leaflet.awesome-markers](https://github.com/lennardv2/Leaflet.awesome-markers).
 * Marker and toolbar icons are [Font Awesome Free](https://fontawesome.com) icons by Fonticons, Inc., licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) (see [the icons' license notice](src/otripy/resources/icons/LICENSE.md)).
 * The toolbar code comes from [Notolog Editor](https://github.com/notolog/notolog-editor) by Vadim Bakhrenkov, under the MIT License (see the notice in [toolbar.py](src/otripy/toolbar.py)).

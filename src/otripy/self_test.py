@@ -50,6 +50,20 @@ def map_page_generation():
 
 
 @check
+def translations():
+    """Otripy's compiled translations and Qt's own are data files too."""
+    from PySide6.QtCore import QLibraryInfo, QLocale, QTranslator
+
+    otripy = QTranslator()
+    with resources.as_file(resources.files("otripy") / "i18n") as directory:
+        assert otripy.load(QLocale("fr"), "otripy", "_", str(directory)), "missing otripy_fr.qm"
+    assert otripy.translate("MapApp", "Quit") == "Quitter"
+    qt = QTranslator()
+    assert qt.load(QLocale("fr"), "qtbase", "_", QLibraryInfo.path(QLibraryInfo.TranslationsPath)), \
+        "missing Qt translations (qtbase_fr.qm)"
+
+
+@check
 def keyring_backends():
     """keyring finds its backends through package metadata entry points."""
     assert metadata.entry_points(group="keyring.backends"), "no keyring backend entry points"

@@ -64,6 +64,7 @@ A journey (a trip) is saved as a UTF-8 JSON file, usually with the `.json` exten
 |---|---|---|
 | `markdown` | string | The note's text, in Markdown as written by Qt (`QTextDocument::toMarkdown`). Its first line, without heading marks, is the location's title. |
 | `images` | object | The images the note shows, by name: base64-encoded PNG data. |
+| `image_widths` | object | Optional. The display width, in pixels, of resized images, by name. Images not listed are shown at their original size. Written by Otripy 1.3 and later. |
 
 An image appears in the text as `![image](name)`, where `name` is a key of `images`. Otripy saves exactly the images the text references. Names are `image_` followed by a random hexadecimal identifier; files saved by Otripy 1.2.3 and earlier use `dropped_image_1`, `dropped_image_2`, and so on.
 
@@ -82,4 +83,9 @@ Before format 1.0.0 (Otripy 1.1 and earlier), a file is a bare JSON array of loc
 
 ## Changing the format
 
-Any change to this format must bump `CURRENT_FORMAT_VERSION` in `src/otripy/journey.py`, update this document, and add a file showing the new shape to `tests/fixtures/`.
+Otripy refuses files whose `format_version` is newer than its own. So:
+
+* A new **optional** field that older versions can ignore without losing meaning (like `image_widths`: they just show images at their original size) keeps the version, so that older Otripy versions still open the files.
+* Any other change bumps `CURRENT_FORMAT_VERSION` in `src/otripy/journey.py`.
+
+In both cases, update this document and add a file showing the new shape to `tests/fixtures/`.

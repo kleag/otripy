@@ -31,6 +31,9 @@
                 "images": {
                     "dropped_image_1": "iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAAFElEQVR4nGO0qTjBgA0wYRUdtBIALHMBjF3SPsYAAAAASUVORK5CYII=",
                     "dropped_image_2": "iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAAFElEQVR4nGO02RLFgA0wYRUdtBIABjUBWqD6iIUAAAAASUVORK5CYII="
+                },
+                "image_widths": {
+                    "dropped_image_1": 160
                 }
             },
             "marker": "",

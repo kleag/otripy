@@ -59,22 +59,23 @@ Feature requests and bugs are tracked as [GitHub issues](https://github.com/klea
 - [x] #31 Create and add an application icon
 
 ### File handling
-- [ ] #10 Improve handling of changed file check
-- [ ] #11 Recent Files menu
-- [ ] #12 Auto-save option
+- [x] #10 Improve handling of changed file check (merging changes left for later)
+- [x] #11 Recent Files menu
+- [x] #12 Auto-save option
 
 ### Notes
-- [ ] #5 Clickable links in notes
-- [ ] #20 Resizable images in notes
+- [x] #5 Clickable links in notes
+- [x] #20 Resizable images in notes
 - [ ] #19 General notes page not linked to a location (file format change)
 
 ### Map and organization
-- [ ] #22 Highlight marker on hover
+- [x] #22 Highlight marker on hover
 - [ ] #18 Group locations under a common title (file format change)
-- [ ] #6 Distance measurement tool
-- [ ] #3 Route calculation between locations
+- [x] #6 Distance measurement tool
+- [x] #3 Route calculation between locations: car, bicycle, foot (FOSSGIS OSRM)
+- [ ] #3 Public transport routes and electric car charging stops (no free service found)
 
 ### Cross-cutting
-- [ ] #8 Make the GUI translatable
+- [x] #8 Make the GUI translatable (English, French)
 
 Items marked *file format change* should wait until the format is documented and covered by tests, and must bump `CURRENT_FORMAT_VERSION` in `journey.py`.

@@ -40,6 +40,10 @@ GitHub Actions runs the lint and the tests on Linux, Windows and macOS, with Pyt
 
 Changes to the journey file format must follow the rules at the end of [the file format description](https://kleag.github.io/otripy/file-format/).
 
+## Translations
+
+Texts shown to users must be translatable, with `self.tr()` or `QCoreApplication.translate()`; after changing them, run `uv run python scripts/translations.py` to update the translation files. The [translators' guide](https://kleag.github.io/otripy/translating/) explains how to translate Otripy and how to write translatable code.
+
 ## Documentation
 
 The user guide is published at <https://kleag.github.io/otripy/> from the `docs/` directory with [MkDocs Material](https://squidfunk.github.io/mkdocs-material/). To preview it:

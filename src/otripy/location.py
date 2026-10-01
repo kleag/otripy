@@ -63,6 +63,21 @@ class Location:
     def to_html(self):
         return html.escape(self.label())
 
+    def preview(self, max_lines: int = 3, max_chars: int = 200) -> str:
+        """Return the first lines of the note after its title, as plain text."""
+        lines = []
+        for line in self.note["markdown"].split("\n")[1:]:
+            line = re.sub(r"!\[[^\]]*\]\([^)]*\)", "", line)  # images
+            line = re.sub(r"^\s*(#+|[-*+]|\d+\.)\s+", "", line)  # headings, list marks
+            line = re.sub(r"(\*\*|__|~~|\*|_)", "", line)  # emphasis marks
+            line = re.sub(MARKDOWN_ESCAPE, r"\1", line).strip()
+            if line:
+                lines.append(line)
+            if len(lines) == max_lines:
+                break
+        text = "\n".join(lines)
+        return text if len(text) <= max_chars else text[:max_chars - 1].rstrip() + "…"
+
     def location(self):
         return [self.lat, self.lon]
 

@@ -2,6 +2,7 @@ import json
 
 import nc_py_api
 import pytest
+from PySide6.QtCore import QModelIndex, Qt
 from PySide6.QtGui import QCloseEvent
 from PySide6.QtWidgets import QMessageBox
 
@@ -221,6 +222,7 @@ def test_nextcloud_conflict_saves_under_new_name(window, nextcloud, fixture_text
             return True
 
     monkeypatch.setattr(main, "RenamePopup", FakeRename)
+    monkeypatch.setattr(window, "ask_save_conflict", lambda path, deleted: "rename")
     assert window.save_file()
     assert nextcloud.contents["paris.json"] == b"changed elsewhere"
     assert json.loads(nextcloud.contents["paris-2.json"])["format"] == "otripy"
@@ -298,3 +300,182 @@ def test_save_as_nextcloud_error_keeps_changes_unsaved(window, nextcloud, dialog
     assert not window.save_file_as_nc()
     assert dialogs.errors
     assert window.dirty
+
+
+def open_then_change_remotely(window, nextcloud, fixture_text, remote_change):
+    nextcloud.put("paris.json", fixture_text("journey-1.0.0.json"))
+    nextcloud.pick("paris.json")
+    window.load_nc_file()
+    remote_change()
+    add_location(window, "Mine")
+
+
+@pytest.mark.parametrize("choice, saved", [("overwrite", True), ("cancel", False)])
+def test_nextcloud_conflict_overwrite_or_cancel(window, nextcloud, fixture_text, monkeypatch, choice, saved):
+    """Issue #10: a file changed on the server can be overwritten."""
+    open_then_change_remotely(window, nextcloud, fixture_text, lambda: nextcloud.put("paris.json", "theirs"))
+    asked = []
+    monkeypatch.setattr(window, "ask_save_conflict", lambda path, deleted: asked.append((path, deleted)) or choice)
+    assert window.save_file() == saved
+    assert asked == [("paris.json", False)]
+    content = nextcloud.contents["paris.json"]
+    assert (content != b"theirs") == saved
+    if saved:
+        assert json.loads(content)["locations"][-1]["note"]["markdown"] == "# Mine"
+    assert window.dirty != saved
+
+
+def test_nextcloud_deleted_file_can_be_recreated(window, nextcloud, fixture_text, monkeypatch):
+    def delete():
+        del nextcloud.contents["paris.json"]
+        del nextcloud.etags["paris.json"]
+    open_then_change_remotely(window, nextcloud, fixture_text, delete)
+    asked = []
+    monkeypatch.setattr(window, "ask_save_conflict", lambda path, deleted: asked.append(deleted) or "overwrite")
+    assert window.save_file()
+    assert asked == [True]
+    assert json.loads(nextcloud.contents["paris.json"])["format"] == "otripy"
+    assert window.save_file(), "later saves go to the recreated file without asking again"
+    assert asked == [True]
+
+
+def test_save_conflict_dialog_buttons(window, monkeypatch):
+    """The real dialog maps its buttons to the choices."""
+    for label, expected in (("Save As…", "rename"), ("Overwrite", "overwrite"), (None, "cancel")):
+        def fake_exec(box, label=label):
+            buttons = {b.text(): b for b in box.buttons()}
+            box_clicked = buttons[label] if label else box.button(QMessageBox.Cancel)
+            monkeypatch.setattr(box, "clickedButton", lambda: box_clicked)
+        monkeypatch.setattr(main.QMessageBox, "exec", fake_exec)
+        assert window.ask_save_conflict("paris.json", deleted=False) == expected
+
+
+def recent_labels(window):
+    window.update_recent_menu()
+    return [a.text() for a in window.recent_menu.actions() if a.text() and a.text() != "Clear Recent Files"]
+
+
+def test_opened_and_saved_files_become_recent(window, dialogs, fixture_text, tmp_path):
+    """Issue #11: File > Open Recent lists opened and saved trips, most recent first."""
+    first = tmp_path / "first.json"
+    first.write_text(fixture_text("journey-1.0.0.json"), encoding="utf-8")
+    dialogs.open_path = first
+    window.load_file()
+    add_location(window)
+    dialogs.save_path = tmp_path / "second.json"
+    assert window.save_file_as()
+    assert recent_labels(window) == [str(tmp_path / "second.json"), str(first)]
+
+
+def test_open_recent_file(window, dialogs, fixture_text, tmp_path):
+    trip = tmp_path / "trip.json"
+    trip.write_text(fixture_text("journey-1.0.0.json"), encoding="utf-8")
+    dialogs.open_path = trip
+    window.load_file()
+    window.new()
+    window.update_recent_menu()  # done by the menu when it opens
+    [action] = [a for a in window.recent_menu.actions() if a.text() == str(trip)]
+    action.trigger()
+    assert labels(window)[0] == "Tour Eiffel"
+    assert window.current_file == str(trip)
+
+
+def test_missing_recent_file_is_forgotten(window, dialogs, fixture_text, tmp_path):
+    trip = tmp_path / "trip.json"
+    trip.write_text(fixture_text("journey-1.0.0.json"), encoding="utf-8")
+    dialogs.open_path = trip
+    window.load_file()
+    trip.unlink()
+    assert not window.open_recent_file(str(trip))
+    assert dialogs.errors
+    assert recent_labels(window) == []
+
+
+def test_recent_files_are_limited_and_clearable(window):
+    for i in range(main.MAX_RECENT_FILES + 3):
+        window.current_file = f"/trips/{i}.json"
+        window.remember_current_file()
+    assert len(recent_labels(window)) == main.MAX_RECENT_FILES
+    assert recent_labels(window)[0] == str(main.Path("/trips/12.json").resolve())
+    [clear] = [a for a in window.recent_menu.actions() if a.text() == "Clear Recent Files"]
+    clear.trigger()
+    assert recent_labels(window) == []
+
+
+def test_recent_nextcloud_file(window, nextcloud, fixture_text):
+    nextcloud.put("Trips/paris.json", fixture_text("journey-1.0.0.json"))
+    nextcloud.pick("Trips/paris.json")
+    window.load_nc_file()
+    assert recent_labels(window) == ["Trips/paris.json (Nextcloud)"]
+    window.new()
+    assert window.open_recent_file(main.NEXTCLOUD_PREFIX + "Trips/paris.json")
+    assert window.current_file.user_path == "Trips/paris.json"
+
+
+@pytest.fixture
+def autosaved_trip(window, dialogs, fixture_text, tmp_path, qtbot):
+    trip = tmp_path / "trip.json"
+    trip.write_text(fixture_text("journey-1.0.0.json"), encoding="utf-8")
+    dialogs.open_path = trip
+    window.load_file()
+    window.autosave_action.setChecked(True)
+    return trip
+
+
+def saved_labels(trip):
+    return [loc.label() for loc in Journey.from_file(trip)]
+
+
+def test_autosave_after_adding_a_location(window, autosaved_trip, qtbot):
+    """Issue #12: with Auto Save, actions on locations save the trip."""
+    window.geolocator = type("G", (), {"reverse": lambda self, q: None})()
+    window.map_bridge.on_map_clicked(45.0, 5.0)
+    qtbot.waitUntil(lambda: not window.dirty)
+    assert len(saved_labels(autosaved_trip)) == 7
+
+
+def test_autosave_not_on_each_key(window, autosaved_trip, qtbot):
+    window.list_widget.selectById(window.list_widget.locations()[0].lid)
+    window.on_item_selected(window.list_widget.locations()[0])
+    qtbot.wait(10)
+    window.note_input.setPlainText("Typed title")
+    qtbot.wait(50)
+    assert window.dirty, "typing in a note must not save"
+    assert saved_labels(autosaved_trip)[0] == "Tour Eiffel"
+    # Selecting another location saves the edited note
+    window.on_item_selected(window.list_widget.locations()[1])
+    qtbot.waitUntil(lambda: not window.dirty)
+    assert saved_labels(autosaved_trip)[0] == "Typed title"
+
+
+def test_autosave_after_delete_and_reorder(window, autosaved_trip, qtbot):
+    window.list_widget.setCurrentIndex(window.list_widget.model.index(0, 0))
+    window.delete_item()
+    qtbot.waitUntil(lambda: not window.dirty)
+    assert len(saved_labels(autosaved_trip)) == 5
+    model = window.list_widget.model
+    data = model.mimeData([model.index(0, 0)])
+    model.dropMimeData(data, Qt.MoveAction, 3, 0, QModelIndex())
+    qtbot.waitUntil(lambda: not window.dirty)
+    assert saved_labels(autosaved_trip)[2] == "Musée du Louvre"
+
+
+def test_autosave_off_by_default(window, dialogs, fixture_text, tmp_path, qtbot):
+    trip = tmp_path / "trip.json"
+    trip.write_text(fixture_text("journey-1.0.0.json"), encoding="utf-8")
+    dialogs.open_path = trip
+    window.load_file()
+    window.list_widget.setCurrentIndex(window.list_widget.model.index(0, 0))
+    window.delete_item()
+    qtbot.wait(50)
+    assert window.dirty
+    assert len(saved_labels(trip)) == 6
+
+
+def test_autosave_skips_unnamed_trip(window, dialogs, qtbot):
+    window.autosave_action.setChecked(True)
+    add_location(window)
+    window.on_item_selected(window.list_widget.locations()[0])
+    qtbot.wait(50)
+    assert window.dirty
+    assert window.current_file is None
