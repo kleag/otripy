@@ -1,0 +1,53 @@
+[
+    {
+        "id": "0b1e6a52-6f1c-4c55-9a7e-2f0d1c3a4b01",
+        "lat": 48.8584,
+        "lon": 2.2945,
+        "note": {
+            "markdown": "# Tour Eiffel\n\nChamp de Mars, 5 Avenue Anatole France, 75007 Paris, France\n\n",
+            "images": {}
+        }
+    },
+    {
+        "id": "0b1e6a52-6f1c-4c55-9a7e-2f0d1c3a4b02",
+        "lat": 48.8606,
+        "lon": 2.3376,
+        "note": {
+            "markdown": "# Musée du Louvre\n\nRue de Rivoli, 75001 Paris, France\n\n",
+            "images": {}
+        }
+    },
+    {
+        "id": "0b1e6a52-6f1c-4c55-9a7e-2f0d1c3a4b03",
+        "lat": 48.853,
+        "lon": 2.3499,
+        "note": {
+            "markdown": "Cathédrale Notre-Dame de Paris\n\n6 Parvis Notre-Dame, 75004 Paris, France\n\n",
+            "images": {}
+        }
+    },
+    {
+        "id": "0b1e6a52-6f1c-4c55-9a7e-2f0d1c3a4b04",
+        "lat": 48.8867,
+        "lon": 2.3431,
+        "note": {
+            "markdown": "# Basilique du \"Sacré-Cœur\" \\ Montmartre\n\nQuotes and a backslash in the title: regression case for map script escaping.\n\n",
+            "images": {}
+        }
+    },
+    {
+        "id": "0b1e6a52-6f1c-4c55-9a7e-2f0d1c3a4b05",
+        "lat": 48.8462,
+        "lon": 2.3464,
+        "note": {
+            "markdown": "# Panthéon\n\nPlace du Panthéon, 75005 Paris, France\n\n",
+            "images": {}
+        }
+    },
+    {
+        "id": "0b1e6a52-6f1c-4c55-9a7e-2f0d1c3a4b06",
+        "lat": 48.8738,
+        "lon": 2.295,
+        "note": "# Arc de Triomphe\n\nPlace Charles de Gaulle, 75008 Paris, France\n\n"
+    }
+]

@@ -6,7 +6,7 @@ import nc_py_api
 import sys
 
 from PySide6.QtCore import QSettings, QObject, Signal, Slot
-from PySide6.QtGui import QAction, QDoubleValidator, QKeySequence, QTextCursor, QFont, QTextCharFormat, QTextFormat
+from PySide6.QtGui import QAction, QDoubleValidator, QIcon, QKeySequence, QTextCursor, QFont, QTextCharFormat, QTextFormat
 from PySide6.QtWidgets import (
     QApplication,
     QDialog,
@@ -27,6 +27,7 @@ from PySide6.QtWebEngineWidgets import QWebEngineView
 from branca.element import Element
 from folium.elements import JavascriptLink
 from geopy.geocoders import Nominatim
+from importlib import resources
 from pathlib import Path
 from typing import Dict, List, Any
 
@@ -42,7 +43,7 @@ try:
     from .location import Location
     from .location_list_view import LocationListView
     from .search_popup import SearchPopup
-    from .config import ConfigDialog
+    from .config import ConfigDialog, load_nextcloud_password
     from .nextcloud_with_api import NextcloudFilePicker
     from .rename_popup import RenamePopup
     from .toolbar import ToolBar
@@ -55,7 +56,7 @@ except ImportError:
     from location import Location
     from location_list_view import LocationListView
     from search_popup import SearchPopup
-    from config import ConfigDialog
+    from config import ConfigDialog, load_nextcloud_password
     from nextcloud_with_api import NextcloudFilePicker
     from rename_popup import RenamePopup
     from toolbar import ToolBar
@@ -64,6 +65,11 @@ except ImportError:
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 logging.root.setLevel(logging.INFO)
+
+
+def js_string(value) -> str:
+    """Return value as a JavaScript string literal, safe to embed in a <script> element."""
+    return json.dumps(str(value)).replace("</", "<\\/")
 
 
 class MarkerHandler(QObject):
@@ -539,7 +545,7 @@ class MapApp(QMainWindow):
             self.note_input.textChanged.disconnect()
             self.lat_input.setText(str(data["lat"]).strip())
             self.lon_input.setText(str(data["lon"]).strip())
-            location = self.geolocator.reverse(f"{data["lat"]}, {data["lon"]}")
+            location = self.geolocator.reverse(f"{data['lat']}, {data['lon']}")
             address = location.address.replace(", ", "\n", 1) if location is not None else f"Unknown place at [{self.lat_input.text().strip()}, {self.lon_input.text().strip()}]"
             note = {"markdown": address}
             self.note_input.from_note(note)
@@ -611,35 +617,35 @@ class MapApp(QMainWindow):
             if loc.marker is not None:
                 icon = f"""
                 var icon = L.AwesomeMarkers.icon({{
-                    icon: 'fa-{loc.marker}',  // Icône FontAwesome (ex: fa-coffee, fa-car, fa-bicycle)
-                    markerColor: '{loc.color if loc.color is not None else "blue"}', // Couleurs disponibles : red, blue, green, orange, purple, darkred, lightred, darkblue, lightblue, darkgreen, lightgreen, cadetblue, white, pink, gray, black
+                    icon: {js_string("fa-" + loc.marker)},  // Icône FontAwesome (ex: fa-coffee, fa-car, fa-bicycle)
+                    markerColor: {js_string(loc.color if loc.color is not None else "blue")}, // Couleurs disponibles : red, blue, green, orange, purple, darkred, lightred, darkblue, lightblue, darkgreen, lightgreen, cadetblue, white, pink, gray, black
                     prefix: 'fa'        // Indique que l'on utilise FontAwesome
                 }});
                 """
                 script += icon
                 script += f"""
-                var marker = L.marker([{loc.lat}, {loc.lon}], {{ icon: icon }}).addTo(map).bindTooltip("{tooltip}", {{permanent: false}}).bindPopup("{popup}");
+                var marker = L.marker([{loc.lat}, {loc.lon}], {{ icon: icon }}).addTo(map).bindTooltip({js_string(tooltip)}, {{permanent: false}}).bindPopup({js_string(popup)});
                 """
             else:
                 icon = f"""
                 var icon = L.AwesomeMarkers.icon({{
                     icon: 'fa-circle',  // Icône FontAwesome (ex: fa-coffee, fa-car, fa-bicycle)
-                    markerColor: '{loc.color if loc.color is not None else "blue"}', // Couleurs disponibles : red, blue, green, orange, yellow, purple, darkred, lightred, darkblue, lightblue, darkgreen, lightgreen, cadetblue, white, pink, gray, black
+                    markerColor: {js_string(loc.color if loc.color is not None else "blue")}, // Couleurs disponibles : red, blue, green, orange, yellow, purple, darkred, lightred, darkblue, lightblue, darkgreen, lightgreen, cadetblue, white, pink, gray, black
                     prefix: 'fa'        // Indique que l'on utilise FontAwesome
                 }});
                 """
                 script += icon
                 script += f"""
-                var marker = L.marker([{loc.lat}, {loc.lon}], {{ icon: icon }}).addTo(map).bindTooltip("{tooltip}", {{permanent: false}}).bindPopup("{popup}");
+                var marker = L.marker([{loc.lat}, {loc.lon}], {{ icon: icon }}).addTo(map).bindTooltip({js_string(tooltip)}, {{permanent: false}}).bindPopup({js_string(popup)});
                 """
                 # script += f"""
-                # var marker = L.marker([{loc.lat}, {loc.lon}]).addTo(map).bindTooltip("{tooltip}", {{permanent: false}}).bindPopup("{popup}");
+                # var marker = L.marker([{loc.lat}, {loc.lon}]).addTo(map).bindTooltip({js_string(tooltip)}, {{permanent: false}}).bindPopup({js_string(popup)});
                 # """
             script += f"""
-            window.markerMap["{loc.lid}"] = marker;
+            window.markerMap[{js_string(loc.lid)}] = marker;
             marker.on("click", function() {{
                 if (pywebchannel.objects.markerHandler) {{
-                    pywebchannel.objects.markerHandler.on_marker_clicked("{loc.lid}");
+                    pywebchannel.objects.markerHandler.on_marker_clicked({js_string(loc.lid)});
                 }}
             }});
             """
@@ -668,8 +674,8 @@ class MapApp(QMainWindow):
         """ Change marker color dynamically without modifying tooltip """
         logger.info(f"MapApp.highlight_marker {marker_id}")
         js_code = f"""
-        if (window.markerMap["{marker_id}"]) {{
-            window.markerMap["{marker_id}"].setIcon(
+        if (window.markerMap[{js_string(marker_id)}]) {{
+            window.markerMap[{js_string(marker_id)}].setIcon(
                 L.icon({{
                     iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
                     iconSize: [35, 55],  // Larger icon
@@ -688,8 +694,8 @@ class MapApp(QMainWindow):
         if loc and loc.marker is not None:
             icon_js = f"""
             var icon = L.AwesomeMarkers.icon({{
-                icon: 'fa-{loc.marker}',  // Icône FontAwesome (ex: fa-coffee, fa-car, fa-bicycle)
-                markerColor: '{loc.color if loc.color is not None else "blue"}', // Couleurs disponibles : red, blue, green, orange, yellow, purple, darkred, lightred, darkblue, lightblue, darkgreen, lightgreen, cadetblue, white, pink, gray, black
+                icon: {js_string("fa-" + loc.marker)},  // Icône FontAwesome (ex: fa-coffee, fa-car, fa-bicycle)
+                markerColor: {js_string(loc.color if loc.color is not None else "blue")}, // Couleurs disponibles : red, blue, green, orange, yellow, purple, darkred, lightred, darkblue, lightblue, darkgreen, lightgreen, cadetblue, white, pink, gray, black
                 prefix: 'fa'        // Indique que l'on utilise FontAwesome
             }});
             """
@@ -697,8 +703,8 @@ class MapApp(QMainWindow):
             icon_js = """var icon = new L.Icon.Default;"""
         js_code = f"""
         {icon_js}
-        if (window.markerMap["{marker_id}"]) {{
-            window.markerMap["{marker_id}"].setIcon(icon);
+        if (window.markerMap[{js_string(marker_id)}]) {{
+            window.markerMap[{js_string(marker_id)}].setIcon(icon);
         }}
         """
         self.map_page.runJavaScript(js_code)
@@ -777,7 +783,7 @@ class MapApp(QMainWindow):
         if self.nc is None:
             base_url = self.settings.value("nextcloud/url", "")
             username = self.settings.value("nextcloud/username", "")
-            password = self.settings.value("nextcloud/password", "")
+            password = load_nextcloud_password(self.settings)
             if not base_url or not username or not password:
                 QMessageBox.critical(
                     self,
@@ -824,8 +830,9 @@ class MapApp(QMainWindow):
         if not self.current_file:
             self.save_file_as()
         elif type(self.current_file) is nc_py_api.FsNode:
-            locations = [loc.to_dict() for loc in self.list_widget.locations()]
-            data = json.dumps(locations, indent=4)
+            buffer = io.StringIO()
+            self.list_widget.locations().write_to_file(buffer)
+            data = buffer.getvalue()
             file_id  = self.current_file.file_id
             current_remote_node = self.nc.files.by_id(file_id)
             if current_remote_node.etag != self.current_file.etag:
@@ -950,6 +957,10 @@ class MapApp(QMainWindow):
 def main():
     # sys.argv.append("--disable-web-security")
     app = QApplication(sys.argv)
+    app_icon = QIcon()
+    for size in (16, 32, 64, 128, 256, 512):
+        app_icon.addFile(str(resources.files("otripy.resources") / f"icon-{size}.png"))
+    app.setWindowIcon(app_icon)
     window = MapApp()
     window.show()
     sys.exit(app.exec())

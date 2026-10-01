@@ -10,7 +10,7 @@ import io
 import logging
 import json
 
-from typing import override
+from typing_extensions import override
 
 logger = logging.getLogger(__name__)
 
