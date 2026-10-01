@@ -487,10 +487,11 @@ class MapApp(QMainWindow):
         selected_indexes = self.list_widget.selectedIndexes()
         if selected_indexes:
             selected_item = selected_indexes[0]
-            location = self.list_widget.model.getLocation(selected_item)
-            if location is not None:
+            if self.list_widget.model.getLocation(selected_item) is not None:
                 color = LimitedColorPicker.get_color()
-                location.color = color
+                if color is None:
+                    return  # cancelled: keep the current color
+                self.list_widget.model.setMarkerStyle(selected_item, color=color)
                 self.update_map()
         else:
             logger.warning("Marker color picker hit while no location is selected")
@@ -516,9 +517,8 @@ class MapApp(QMainWindow):
         if selected_indexes:
             selected_item = selected_indexes[0]
 
-            location = self.list_widget.model.getLocation(selected_item)
-            if location is not None:
-                location.marker = icon_name
+            if self.list_widget.model.getLocation(selected_item) is not None:
+                self.list_widget.model.setMarkerStyle(selected_item, marker=icon_name)
                 self.update_map()
         else:
             logger.warning(f"Marker chosen {icon_name} while no location is selected")

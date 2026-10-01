@@ -52,7 +52,7 @@ Feature requests and bugs are tracked as [GitHub issues](https://github.com/klea
 
 ### Quick wins
 - [x] #25 Fit map to all markers when opening a file
-- [ ] #27 Show the location icon in the list entry
+- [x] #27 Show the location icon in the list entry
 - [ ] #28 "Save as…" to Nextcloud
 - [x] #29 Resizable side panels
 - [ ] #30 Confirm/validate button for location addition

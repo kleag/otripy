@@ -99,3 +99,34 @@ def test_new_journey_resets_the_map_view(window):
     window.set_journey(main.Journey(), None)
     assert '"zoom": 9' not in window.rendered_pages[-1]
     assert window.map_view_state is None
+
+
+def add_and_select(window):
+    window.geolocator = FakeGeolocator("Somewhere, Paris")
+    window.map_bridge.on_map_clicked(1.0, 2.0)
+    window.set_window_title(dirty=False)
+    return window.list_widget.locations()[0]
+
+
+def test_changing_marker_icon_marks_trip_modified(window):
+    loc = add_and_select(window)
+    window.marker_chosen("bed")
+    assert loc.marker == "bed"
+    assert window.dirty
+
+
+def test_changing_marker_color_marks_trip_modified(window, monkeypatch):
+    loc = add_and_select(window)
+    monkeypatch.setattr(main.LimitedColorPicker, "get_color", staticmethod(lambda: "purple"))
+    window.action_marker_color_picker()
+    assert loc.color == "purple"
+    assert window.dirty
+
+
+def test_cancelling_color_picker_keeps_color(window, monkeypatch):
+    loc = add_and_select(window)
+    loc.color = "red"
+    monkeypatch.setattr(main.LimitedColorPicker, "get_color", staticmethod(lambda: None))
+    window.action_marker_color_picker()
+    assert loc.color == "red"
+    assert not window.dirty
