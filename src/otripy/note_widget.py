@@ -1,6 +1,6 @@
-from PySide6.QtCore import QUrl, QFileInfo, QMimeData, QIODevice, QByteArray, QBuffer
-from PySide6.QtGui import QImage, QImageReader, QPixmap, QTextDocument
-from PySide6.QtWidgets import QMessageBox, QTextEdit
+from PySide6.QtCore import QUrl, QFileInfo, QMimeData, QIODevice, QByteArray, QBuffer, Qt
+from PySide6.QtGui import QDesktopServices, QImage, QImageReader, QPixmap, QTextDocument
+from PySide6.QtWidgets import QMessageBox, QTextEdit, QToolTip
 import os
 import logging
 import json
@@ -16,10 +16,55 @@ logger = logging.getLogger(__name__)
 IMAGE_REF = re.compile(r"!\[[^\]]*\]\(([^)\s]+)")
 # Clipboard format carrying the data of the images in a cut or copied selection
 IMAGES_MIME_TYPE = "application/x-otripy-images"
+# Web addresses typed as plain text, which are not links in the document
+BARE_URL = re.compile(r"(?:https?://|www\.)[^\s<>\"]+")
 
 
 class NoteWidget(QTextEdit):
-    """Rich text note editor. Images are document resources, saved as base64 PNG in the note."""
+    """Rich text note editor. Images are document resources, saved as base64 PNG in the note.
+
+    Ctrl+click opens links, and web addresses typed as plain text, in the browser.
+    """
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.viewport().setMouseTracking(True)  # to show when Ctrl+click would open a link
+
+    def link_at(self, pos) -> str | None:
+        """Return the URL of the link, or of the web address, at a viewport position."""
+        # Links, including the web addresses Qt turns into links when loading markdown
+        anchor = self.anchorAt(pos)
+        if anchor:
+            return anchor
+        # Web addresses typed since the note was loaded are still plain text
+        cursor = self.cursorForPosition(pos)
+        column = cursor.positionInBlock()
+        for match in BARE_URL.finditer(cursor.block().text()):
+            if match.start() <= column < match.end():
+                url = match.group().rstrip(".,;:!?)]}'")
+                # Like the links Qt makes from such addresses when loading a note
+                return url if "://" in url else "http://" + url
+        return None
+
+    @override
+    def mouseMoveEvent(self, event):
+        super().mouseMoveEvent(event)
+        link = self.link_at(event.position().toPoint())
+        if link and event.modifiers() & Qt.ControlModifier:
+            self.viewport().setCursor(Qt.PointingHandCursor)
+        else:
+            self.viewport().setCursor(Qt.IBeamCursor)
+        if link:
+            QToolTip.showText(event.globalPosition().toPoint(), f"Ctrl+click to open {link}", self)
+
+    @override
+    def mouseReleaseEvent(self, event):
+        link = self.link_at(event.position().toPoint())
+        if (link and event.button() == Qt.LeftButton and event.modifiers() & Qt.ControlModifier
+                and not self.textCursor().hasSelection()):
+            QDesktopServices.openUrl(QUrl(link))
+            return
+        super().mouseReleaseEvent(event)
 
     def canInsertFromMimeData(self, source: QMimeData) -> bool:
         return source.hasImage() or source.hasUrls() or super().canInsertFromMimeData(source)
