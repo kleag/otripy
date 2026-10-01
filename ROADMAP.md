@@ -6,10 +6,10 @@ Feature requests and bugs are tracked as [GitHub issues](https://github.com/klea
 
 ## Phase 0 — Stabilize
 
-- [ ] Nextcloud save writes the legacy bare-list format instead of the versioned format (`MapApp.save_file`); unify local and Nextcloud saving through `Journey.write_to_file`
-- [ ] Escape note labels/popups injected into the generated map JavaScript (quotes or newlines in a note break the map; possibly related to #26)
-- [ ] Fix Python version mismatch: `typing.override` (in `note_widget.py`) requires 3.12 but `requires-python = ">=3.10"`
-- [ ] Store the Nextcloud password in the system keyring instead of plaintext `QSettings`
+- [x] Nextcloud save writes the legacy bare-list format instead of the versioned format (`MapApp.save_file`); unify local and Nextcloud saving through `Journey.write_to_file`
+- [x] Escape note labels/popups injected into the generated map JavaScript (quotes or newlines in a note break the map; possibly related to #26)
+- [x] Fix Python version mismatch: `typing.override` (in `note_widget.py`) requires 3.12 but `requires-python = ">=3.10"`
+- [x] Store the Nextcloud password in the system keyring instead of plaintext `QSettings`
 - [x] Remove unused modules: `nextcloud.py`, `nextcloud_uuid.py`, `export_html.py`, `export_html3.py`–`export_html6.py`, `src/color_picker_demo.py`, `src/map_script.js`
 
 ## Phase 1 — Tests

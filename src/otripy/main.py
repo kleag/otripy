@@ -42,7 +42,7 @@ try:
     from .location import Location
     from .location_list_view import LocationListView
     from .search_popup import SearchPopup
-    from .config import ConfigDialog
+    from .config import ConfigDialog, load_nextcloud_password
     from .nextcloud_with_api import NextcloudFilePicker
     from .rename_popup import RenamePopup
     from .toolbar import ToolBar
@@ -55,7 +55,7 @@ except ImportError:
     from location import Location
     from location_list_view import LocationListView
     from search_popup import SearchPopup
-    from config import ConfigDialog
+    from config import ConfigDialog, load_nextcloud_password
     from nextcloud_with_api import NextcloudFilePicker
     from rename_popup import RenamePopup
     from toolbar import ToolBar
@@ -782,7 +782,7 @@ class MapApp(QMainWindow):
         if self.nc is None:
             base_url = self.settings.value("nextcloud/url", "")
             username = self.settings.value("nextcloud/username", "")
-            password = self.settings.value("nextcloud/password", "")
+            password = load_nextcloud_password(self.settings)
             if not base_url or not username or not password:
                 QMessageBox.critical(
                     self,

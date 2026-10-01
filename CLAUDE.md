@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-Otripy is a PySide6 desktop GUI for trip planning: locations are markers on an OpenStreetMap map (rendered with folium/Leaflet inside a `QWebEngineView`), each with a rich-text note. Journeys are saved as JSON locally or on a Nextcloud server. Licensed AGPL. Python >= 3.10 (note `note_widget.py` uses `typing.override`, which needs 3.12+).
+Otripy is a PySide6 desktop GUI for trip planning: locations are markers on an OpenStreetMap map (rendered with folium/Leaflet inside a `QWebEngineView`), each with a rich-text note. Journeys are saved as JSON locally or on a Nextcloud server. Licensed AGPL. Python >= 3.10: avoid 3.12-only syntax (e.g. reusing the same quote type inside f-strings) and take `override` from `typing_extensions`.
 
 ## Commands
 
@@ -37,7 +37,7 @@ Pushing a `v*.*.*` tag triggers `.github/workflows/release.yml`, which builds Wi
 - **Data model:** `Location` (`location.py`: `lid` UUID, `lat`, `lon`, `note` dict with a `"markdown"` key, optional `marker` FontAwesome icon name and `color`). The first line of the note markdown is the location's label. `Journey` (`journey.py`) is a `QObject` list of `Location`s that emits a `dirty` signal on mutation. That signal drives the `*` in the window title. `LocationListModel`/`LocationListView` (`location_list_view.py`) wrap a `Journey`. After replacing the journey (`setLocations`), `main.py` reconnects `dirty` to `set_window_title`.
 - **File format** (`Journey.write_to_file` / `load_from_json`): an object with `format: "otripy"`, `format_version` (`CURRENT_FORMAT_VERSION`), `app_version`, timestamps, and `locations`. A bare JSON list is accepted as the legacy pre-1.0.0 format. Loading refuses files whose app or format version is newer than the running one. The app version is read at runtime by parsing `__version__` in `src/otripy/__init__.py`. Caveat: `MapApp.save_file` for Nextcloud files still uploads the legacy bare-list format.
 - **Notes:** `NoteWidget` (`note_widget.py`, a `QTextEdit`) converts to and from the note dict via `toMarkdown`/`setMarkdown`. Pasted images are handled in `insertFromMimeData`.
-- **Nextcloud:** credentials are stored in `QSettings("Kleag", "Otripy")` under `nextcloud/*` (edited via `config.py` `ConfigDialog`). `nextcloud_with_api.py` (`nc_py_api`) is the file picker in use.
+- **Nextcloud:** URL and username are stored in `QSettings("Kleag", "Otripy")` under `nextcloud/*`; the password goes in the system keyring via `config.load_nextcloud_password`/`save_nextcloud_password`, which migrate an old plaintext `nextcloud/password` setting and fall back to it when no keyring backend is available. Settings are edited via `config.py` `ConfigDialog`. `nextcloud_with_api.py` (`nc_py_api`) is the file picker in use.
 - **Icons:** SVGs in `src/otripy/resources/icons/` (FontAwesome names) are loaded via `importlib.resources.files("otripy.resources.icons")`. The `__init__.py` files there are required. Hatch includes only `*.py` and `resources/icons/**/*.svg` in builds, so new asset types must be added to the `include` lists in `pyproject.toml`.
 - **`export_html2.py`** is an experiment for exporting a standalone HTML map. It is imported, but its menu action is commented out. Root-level untracked files (`map.html`, `index.html`, `script.js`, `test*.json`, …) are scratch artifacts, not part of the package.
 
