@@ -3,6 +3,7 @@
 The page talks back to Python through a QWebChannel on which a MapBridge is
 registered as "mapBridge".
 """
+import html
 import io
 import json
 import logging
@@ -33,6 +34,7 @@ class MapBridge(QObject):
     """Object exposed to the map page; relays its events as Qt signals."""
     mapClicked = Signal(float, float)  # latitude, longitude
     markerClicked = Signal(str)  # location id
+    markerHovered = Signal(str)  # location id, or "" when the mouse leaves the marker
     viewChanged = Signal(float, float, int)  # center latitude, center longitude, zoom
 
     @Slot(float, float)
@@ -42,6 +44,10 @@ class MapBridge(QObject):
     @Slot(str)
     def on_marker_clicked(self, marker_id):
         self.markerClicked.emit(marker_id)
+
+    @Slot(str)
+    def on_marker_hovered(self, marker_id):
+        self.markerHovered.emit(marker_id)
 
     @Slot(float, float, int)
     def on_view_changed(self, lat, lon, zoom):
@@ -87,14 +93,28 @@ def downplay_marker_js(loc: Location) -> str:
     """
 
 
-def update_marker_text_js(loc: Location) -> str:
-    """Return JavaScript updating a marker's tooltip and popup to the location's current title.
+def tooltip_html(loc: Location) -> str:
+    """Return a marker's tooltip: the location's title and a preview of its note, escaped."""
+    preview = loc.preview()
+    text = f"<b>{loc.to_html()}</b>"
+    if preview:
+        text += "<br>" + html.escape(preview).replace("\n", "<br>")
+    return text
 
-    Leaflet renders both as HTML: give them the escaped title.
+
+def hover_marker_js(marker_id: str, hovered: bool) -> str:
+    """Return JavaScript showing or hiding a marker's hover highlight and tooltip."""
+    return f"hoverMarker({js_string(marker_id)}, {'true' if hovered else 'false'});"
+
+
+def update_marker_text_js(loc: Location) -> str:
+    """Return JavaScript updating a marker's tooltip and popup to the location's current note.
+
+    Leaflet renders both as HTML: give them escaped text.
     """
     return f"""
     if (window.markerMap[{js_string(loc.lid)}]) {{
-        window.markerMap[{js_string(loc.lid)}].setTooltipContent({js_string(loc.to_html())});
+        window.markerMap[{js_string(loc.lid)}].setTooltipContent({js_string(tooltip_html(loc))});
         window.markerMap[{js_string(loc.lid)}].setPopupContent({js_string(loc.to_html())});
     }}
     """
@@ -123,6 +143,9 @@ def build_map_html(locations: Iterable[Location], fit_all: bool = False, view=No
         m.fit_bounds([[min(lats), min(lons)], [max(lats), max(lons)]], padding=(30, 30), max_zoom=FIT_MAX_ZOOM)
     m.get_root().html.add_child(
         JavascriptLink('qrc:///qtwebchannel/qwebchannel.js'))
+    # Hover highlight of markers (Leaflet positions them with transform: use a filter)
+    m.get_root().header.add_child(Element(
+        "<style>.otripy-hover { filter: drop-shadow(0 0 6px #ffd400) brightness(1.15); z-index: 10000 !important; }</style>"))
     m.get_root().html.add_child(
         JavascriptLink('https://cdnjs.cloudflare.com/ajax/libs/leaflet.awesome-markers/2.0.4/leaflet.awesome-markers.min.js'))
 
@@ -132,6 +155,23 @@ def build_map_html(locations: Iterable[Location], fit_all: bool = False, view=No
         if (mapElement) {
             let map = window[mapElement.id]; // Folium stores the map as a global variable with its ID
             map.setView([lat, lng], zoom);
+        }
+    }
+
+    // Hover highlight of a marker, when its location is hovered in the list
+    function hoverMarker(id, hovered) {
+        let marker = window.markerMap && window.markerMap[id];
+        if (!marker) {
+            return;
+        }
+        let element = marker.getElement();
+        if (element) {
+            element.classList.toggle("otripy-hover", hovered);
+        }
+        if (hovered) {
+            marker.openTooltip();
+        } else {
+            marker.closeTooltip();
         }
     }
 
@@ -168,9 +208,15 @@ def build_map_html(locations: Iterable[Location], fit_all: bool = False, view=No
         logger.debug(f"Adding location to map: {repr(loc)}")
         script += f"""
             var marker = L.marker([{float(loc.lat)}, {float(loc.lon)}], {{icon: {marker_icon_js(loc)}}}).addTo(map)
-                .bindTooltip({js_string(loc.to_html())}, {{permanent: false}})
+                .bindTooltip({js_string(tooltip_html(loc))}, {{permanent: false}})
                 .bindPopup({js_string(loc.to_html())});
             window.markerMap[{js_string(loc.lid)}] = marker;
+            marker.on("mouseover", function() {{
+                pywebchannel.objects.mapBridge.on_marker_hovered({js_string(loc.lid)});
+            }});
+            marker.on("mouseout", function() {{
+                pywebchannel.objects.mapBridge.on_marker_hovered("");
+            }});
             marker.on("click", function() {{
                 pywebchannel.objects.mapBridge.on_marker_clicked({js_string(loc.lid)});
             }});

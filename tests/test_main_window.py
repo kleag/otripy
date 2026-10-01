@@ -71,17 +71,20 @@ def test_editing_title_updates_marker_texts(window):
     window.note_input.setPlainText("New <title>\n\nbody")
     updates = [code for code in window.scripts_run if "setTooltipContent" in code]
     assert updates
-    assert '"New <title>"' not in updates[-1], "Leaflet renders tooltips as HTML: the title must be escaped"
-    assert updates[-1].count('"New &lt;title&gt;"') == 2
+    assert "New <title>" not in updates[-1], "Leaflet renders tooltips as HTML: the title must be escaped"
+    assert updates[-1].count("New &lt;title&gt;") == 2  # tooltip and popup
 
 
-def test_editing_note_body_does_not_touch_marker(window):
+def test_editing_note_body_updates_tooltip_preview(window):
+    """Tooltips preview the note (issue #22): body edits update them, not the popup title."""
     window.geolocator = FakeGeolocator("Title, Somewhere")
     window.map_bridge.on_map_clicked(1.0, 2.0)
     window.note_input.setPlainText("Title\n\nfirst body")
     window.scripts_run.clear()
     window.note_input.setPlainText("Title\n\nsecond body")
-    assert not [code for code in window.scripts_run if "setTooltipContent" in code]
+    [update] = [code for code in window.scripts_run if "setTooltipContent" in code]
+    assert "second body" in update
+    assert 'setPopupContent("Title")' in update
 
 
 def test_redrawing_keeps_the_map_view(window):
@@ -159,3 +162,19 @@ def test_confirmation_setting_is_remembered(window, qtbot):
     again = MapApp()
     qtbot.addWidget(again)
     assert again.confirm_locations_action.isChecked()
+
+
+def test_hover_sync_between_list_and_map(window):
+    """Issue #22: hovering a list entry highlights its marker, and conversely."""
+    window.geolocator = FakeGeolocator("A, Somewhere")
+    window.map_bridge.on_map_clicked(1.0, 2.0)
+    loc = window.list_widget.locations()[0]
+    window.scripts_run.clear()
+    window.list_widget.locationHovered.emit(loc.lid)
+    assert window.scripts_run[-1] == f'hoverMarker("{loc.lid}", true);'
+    window.list_widget.locationHovered.emit("")
+    assert window.scripts_run[-1] == f'hoverMarker("{loc.lid}", false);'
+    window.map_bridge.on_marker_hovered(loc.lid)
+    assert window.list_widget.model.hovered_id == loc.lid
+    window.map_bridge.on_marker_hovered("")
+    assert window.list_widget.model.hovered_id is None

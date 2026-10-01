@@ -9,6 +9,7 @@ Notable changes to Otripy. The format follows [Keep a Changelog](https://keepach
 - Installers for Windows (`.msi`), macOS 13 and later (`.dmg`) and Linux (AppImage), attached to each GitHub release.
 - Application icon.
 - Opening a trip zooms the map to show all its locations ([#25](https://github.com/kleag/otripy/issues/25)).
+- Hovering a location in the list highlights its marker on the map, and conversely; tooltips preview the note ([#22](https://github.com/kleag/otripy/issues/22)).
 - Images in notes can be resized from their context menu; their size is saved with the trip ([#20](https://github.com/kleag/otripy/issues/20)).
 - Ctrl+click opens links and web addresses in notes ([#5](https://github.com/kleag/otripy/issues/5)).
 - *Settings* → *Auto Save* saves the trip after each action on its locations, not on each key typed ([#12](https://github.com/kleag/otripy/issues/12)).

@@ -46,3 +46,14 @@ def test_label_removes_markdown_escapes():
 def test_popup_html_is_escaped():
     loc = Location(note={"markdown": "# Fish & <Chips>"})
     assert loc.to_html() == "Fish &amp; &lt;Chips&gt;"
+
+
+def test_preview_is_plain_text_after_title():
+    loc = Location(note={"markdown": "# Louvre\n\n## Hours\n\n- **9:00** to *18:00*\n\n![image](image_1)\n\nClosed on Tuesday\n\nMore"})
+    assert loc.preview() == "Hours\n9:00 to 18:00\nClosed on Tuesday"
+
+
+def test_preview_is_shortened():
+    loc = Location(note={"markdown": "T\n\n" + "word " * 100})
+    assert len(loc.preview()) <= 200
+    assert loc.preview().endswith("…")

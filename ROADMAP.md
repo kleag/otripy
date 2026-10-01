@@ -69,7 +69,7 @@ Feature requests and bugs are tracked as [GitHub issues](https://github.com/klea
 - [ ] #19 General notes page not linked to a location (file format change)
 
 ### Map and organization
-- [ ] #22 Highlight marker on hover
+- [x] #22 Highlight marker on hover
 - [ ] #18 Group locations under a common title (file format change)
 - [ ] #6 Distance measurement tool
 - [ ] #3 Route calculation between locations
