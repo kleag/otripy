@@ -12,7 +12,7 @@ The map stays where you moved it while you edit, and shows all the locations whe
 
 ## Notes
 
-The first line of a note is the location's title, shown in the list and on the map. The toolbar above the note sets headings (H1 to H3), bold, italic, underline and strikethrough. Add images by pasting them, or by dragging image files into the note. Links and web addresses (`https://…`, `www.…`) open in your browser with Ctrl+click; a plain click just places the cursor.
+The first line of a note is the location's title, shown in the list and on the map. The toolbar above the note sets headings (H1 to H3), bold, italic, underline and strikethrough. Add images by pasting them, or by dragging image files into the note. Right-click an image to change its size: *Image Size* → *Small*, *Medium*, *Large* or *Original Size*. Links and web addresses (`https://…`, `www.…`) open in your browser with Ctrl+click; a plain click just places the cursor.
 
 The two last toolbar buttons change the selected location's marker: its icon, chosen among the [Font Awesome](https://fontawesome.com) icons, and its color.
 
