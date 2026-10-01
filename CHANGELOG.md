@@ -4,6 +4,8 @@ Notable changes to Otripy. The format follows [Keep a Changelog](https://keepach
 
 ## Unreleased
 
+## 1.3.0 - 2026-10-01
+
 ### Added
 
 - French translation; Otripy follows the system's language ([#8](https://github.com/kleag/otripy/issues/8)). A [translators' guide](https://kleag.github.io/otripy/translating/) explains how to add languages.
