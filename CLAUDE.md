@@ -27,7 +27,7 @@ uv build && uv publish
 uv sync --all-extras && git add uv.lock && git commit -m "Update lock to new package version"
 ```
 
-Pushing a `v*.*.*` tag triggers `.github/workflows/release.yml`, which builds Windows (.msi) and macOS (.app, notarized) bundles with Briefcase (`[tool.briefcase]` in `pyproject.toml`) and attaches them to a GitHub release. The version also appears in `[tool.briefcase]`, which bumpver does not update.
+Pushing a `v*.*.*` tag triggers `.github/workflows/release.yml`, which builds Windows (.msi) and macOS (.app, notarized) bundles with Briefcase (`[tool.briefcase]` in `pyproject.toml`) and attaches them to a GitHub release. bumpver's `version = "{version}"` pattern updates both the `[project]` and `[tool.briefcase]` versions.
 
 ## Architecture
 
@@ -37,9 +37,9 @@ Pushing a `v*.*.*` tag triggers `.github/workflows/release.yml`, which builds Wi
 - **Data model:** `Location` (`location.py`: `lid` UUID, `lat`, `lon`, `note` dict with a `"markdown"` key, optional `marker` FontAwesome icon name and `color`). The first line of the note markdown is the location's label. `Journey` (`journey.py`) is a `QObject` list of `Location`s that emits a `dirty` signal on mutation. That signal drives the `*` in the window title. `LocationListModel`/`LocationListView` (`location_list_view.py`) wrap a `Journey`. After replacing the journey (`setLocations`), `main.py` reconnects `dirty` to `set_window_title`.
 - **File format** (`Journey.write_to_file` / `load_from_json`): an object with `format: "otripy"`, `format_version` (`CURRENT_FORMAT_VERSION`), `app_version`, timestamps, and `locations`. A bare JSON list is accepted as the legacy pre-1.0.0 format. Loading refuses files whose app or format version is newer than the running one. The app version is read at runtime by parsing `__version__` in `src/otripy/__init__.py`. Caveat: `MapApp.save_file` for Nextcloud files still uploads the legacy bare-list format.
 - **Notes:** `NoteWidget` (`note_widget.py`, a `QTextEdit`) converts to and from the note dict via `toMarkdown`/`setMarkdown`. Pasted images are handled in `insertFromMimeData`.
-- **Nextcloud:** credentials are stored in `QSettings("Kleag", "Otripy")` under `nextcloud/*` (edited via `config.py` `ConfigDialog`). `nextcloud_with_api.py` (`nc_py_api`) is the file picker in use. `nextcloud.py` (raw WebDAV) and `nextcloud_uuid.py` are older, unused variants.
+- **Nextcloud:** credentials are stored in `QSettings("Kleag", "Otripy")` under `nextcloud/*` (edited via `config.py` `ConfigDialog`). `nextcloud_with_api.py` (`nc_py_api`) is the file picker in use.
 - **Icons:** SVGs in `src/otripy/resources/icons/` (FontAwesome names) are loaded via `importlib.resources.files("otripy.resources.icons")`. The `__init__.py` files there are required. Hatch includes only `*.py` and `resources/icons/**/*.svg` in builds, so new asset types must be added to the `include` lists in `pyproject.toml`.
-- **`export_html*.py`** are successive experiments for exporting a standalone HTML map. Only `export_html2` is imported, and its menu action is commented out. Root-level untracked files (`map.html`, `index.html`, `script.js`, `test*.json`, …) are scratch artifacts, not part of the package.
+- **`export_html2.py`** is an experiment for exporting a standalone HTML map. It is imported, but its menu action is commented out. Root-level untracked files (`map.html`, `index.html`, `script.js`, `test*.json`, …) are scratch artifacts, not part of the package.
 
 ## Conventions
 

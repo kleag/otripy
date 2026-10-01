@@ -50,35 +50,3 @@ class ConfigDialog(QDialog):
         self.settings.setValue("nextcloud/username", self.username_input.text())
         self.settings.setValue("nextcloud/password", self.password_input.text())
         self.accept()  # Close the dialog
-
-
-class MainWindow(QMainWindow):
-    """Main Application Window"""
-    def __init__(self):
-        super().__init__()
-        self.setWindowTitle("MyApp")
-        self.setGeometry(100, 100, 800, 600)
-
-        # QSettings initialization
-        self.settings = QSettings("Kleag", "Otripy")
-
-        # Menu bar
-        menubar = self.menuBar()
-        config_menu = menubar.addMenu("Configuration")
-
-        # Configuration action
-        config_action = QAction("Configure MyApp", self)
-        config_action.triggered.connect(self.open_config_dialog)
-        config_menu.addAction(config_action)
-
-    def open_config_dialog(self):
-        """Open the configuration dialog"""
-        dialog = ConfigDialog(self.settings, self)
-        dialog.exec()
-
-
-if __name__ == "__main__":
-    app = QApplication([])
-    window = MainWindow()
-    window.show()
-    app.exec()

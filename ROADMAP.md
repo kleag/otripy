@@ -10,8 +10,7 @@ Feature requests and bugs are tracked as [GitHub issues](https://github.com/klea
 - [ ] Escape note labels/popups injected into the generated map JavaScript (quotes or newlines in a note break the map; possibly related to #26)
 - [ ] Fix Python version mismatch: `typing.override` (in `note_widget.py`) requires 3.12 but `requires-python = ">=3.10"`
 - [ ] Store the Nextcloud password in the system keyring instead of plaintext `QSettings`
-- [ ] Remove unused modules: `nextcloud.py`, `nextcloud_uuid.py`, `export_html.py`, `export_html3.py`–`export_html6.py`, `src/color_picker_demo.py`, `src/map_script.js`
-- [ ] Add `[tool.briefcase] version` to `bumpver` file patterns
+- [x] Remove unused modules: `nextcloud.py`, `nextcloud_uuid.py`, `export_html.py`, `export_html3.py`–`export_html6.py`, `src/color_picker_demo.py`, `src/map_script.js`
 
 ## Phase 1 — Tests
 
