@@ -83,7 +83,7 @@ class MapApp(QMainWindow):
         self.channel = QWebChannel()
         self.map_bridge = MapBridge()
         self.channel.registerObject("mapBridge", self.map_bridge)
-        self.map_bridge.mapClicked.connect(self.add_location_at)
+        self.map_bridge.mapClicked.connect(self.map_clicked)
         self.map_bridge.markerClicked.connect(self.handle_marker_click)
         # Last view of the map (latitude, longitude, zoom), kept when it is redrawn
         self.map_view_state = None
@@ -282,6 +282,14 @@ class MapApp(QMainWindow):
         config_action = QAction("Configure Otripy", self)
         config_action.triggered.connect(self.open_config_dialog)
         config_menu.addAction(config_action)
+
+        # Clicking the map adds a location at once, unless this is checked (issue #30)
+        self.confirm_locations_action = QAction("Confirm New Locations", self)
+        self.confirm_locations_action.setCheckable(True)
+        self.confirm_locations_action.setChecked(self.settings.value("map/confirmNewLocations", False, type=bool))
+        self.confirm_locations_action.toggled.connect(
+            lambda checked: self.settings.setValue("map/confirmNewLocations", checked))
+        config_menu.addAction(self.confirm_locations_action)
 
     # def export_as_html(self):
     #     if not self.model or not getattr(self.model, "trip_data", None):
@@ -551,15 +559,28 @@ class MapApp(QMainWindow):
         # self.addToolBar(self.toolbar)
 
     @Slot(float, float)
-    def add_location_at(self, lat: float, lon: float):
-        """Add a location at the given coordinates, its note initialized with the address found there."""
-        self.lat_input.setText(str(lat))
-        self.lon_input.setText(str(lon))
+    def map_clicked(self, lat: float, lon: float):
+        """Add a location where the map was clicked, after confirmation if the user asked for it."""
+        self.add_location_at(lat, lon, confirm=self.confirm_locations_action.isChecked())
+
+    def add_location_at(self, lat: float, lon: float, confirm: bool = False):
+        """Add a location at the given coordinates, its note initialized with the address found there.
+
+        With confirm, first ask the user, showing the address.
+        """
         try:
             place = self.geolocator.reverse(f"{lat}, {lon}")
         except GeopyError as e:
             logger.warning(f"Reverse geocoding failed: {e}")
             place = None
+        if confirm:
+            where = place.address if place is not None else f"[{lat:.5f}, {lon:.5f}]"
+            answer = QMessageBox.question(self, "New Location", f"Add a location here?\n\n{where}",
+                                          QMessageBox.Yes | QMessageBox.No, QMessageBox.Yes)
+            if answer != QMessageBox.Yes:
+                return
+        self.lat_input.setText(str(lat))
+        self.lon_input.setText(str(lon))
         # The place name becomes the note title (its first paragraph)
         address = (place.address.replace(", ", "\n\n", 1) if place is not None
                    else f"Unknown place at [{lat}, {lon}]")

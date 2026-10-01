@@ -55,7 +55,7 @@ Feature requests and bugs are tracked as [GitHub issues](https://github.com/klea
 - [x] #27 Show the location icon in the list entry
 - [ ] #28 "Save as…" to Nextcloud
 - [x] #29 Resizable side panels
-- [ ] #30 Confirm/validate button for location addition
+- [x] #30 Confirm/validate button for location addition
 - [x] #31 Create and add an application icon
 
 ### File handling
