@@ -36,3 +36,13 @@ def test_to_dict_round_trip():
     loc = Location(1.5, -2.5, {"markdown": "# A", "images": {}}, id="x", marker="star", color="red")
     again = Location.from_data(loc.to_dict())
     assert again.to_dict() == loc.to_dict()
+
+
+def test_label_removes_markdown_escapes():
+    loc = Location(note={"markdown": r"# Café \*Le Bistro\* at \[1.5, 2.5\] \\ ok" + "\n\nbody"})
+    assert loc.label() == r"Café *Le Bistro* at [1.5, 2.5] \ ok"
+
+
+def test_popup_html_is_escaped():
+    loc = Location(note={"markdown": "# Fish & <Chips>"})
+    assert loc.to_html() == "Fish &amp; &lt;Chips&gt;"

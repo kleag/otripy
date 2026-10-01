@@ -1,3 +1,4 @@
+import html
 import logging
 import re
 import uuid
@@ -5,6 +6,9 @@ import uuid
 from typing import Dict
 
 logger = logging.getLogger(__name__)
+
+# A backslash before an ASCII punctuation character, as written by QTextDocument.toMarkdown
+MARKDOWN_ESCAPE = r'\\([!-/:-@\[-`{-~])'
 
 class Location:
     def __init__(self,
@@ -42,14 +46,13 @@ class Location:
         return cls(lat, lon, note, id, marker, color)
 
     def label(self):
+        """Return the first line of the note as plain text: heading marks and markdown escapes removed."""
         the_label = self.note["markdown"].split('\n')[0]
         the_label = re.sub(r'^#+ ?', '', the_label)
-        return the_label
+        return re.sub(MARKDOWN_ESCAPE, r'\1', the_label)
 
     def to_html(self):
-        the_html = self.note["markdown"].split('\n')[0].replace("\n", "<br>")
-        the_html = re.sub(r'^#+ ?', '', the_html)
-        return the_html
+        return html.escape(self.label())
 
     def location(self):
         return [self.lat, self.lon]

@@ -1,11 +1,9 @@
-import folium
 import io
-import json
 import logging
 import nc_py_api
 import sys
 
-from PySide6.QtCore import QSettings, QObject, Signal, Slot
+from PySide6.QtCore import QSettings, Slot
 from PySide6.QtGui import QAction, QDoubleValidator, QIcon, QKeySequence, QTextCursor, QFont, QTextCharFormat, QTextFormat
 from PySide6.QtWidgets import (
     QApplication,
@@ -24,8 +22,7 @@ from PySide6.QtWebChannel import QWebChannel
 from PySide6.QtWebEngineCore import QWebEnginePage
 from PySide6.QtWebEngineWidgets import QWebEngineView
 
-from branca.element import Element
-from folium.elements import JavascriptLink
+from geopy.exc import GeopyError
 from geopy.geocoders import Nominatim
 from importlib import resources
 from typing import Dict, List, Any
@@ -40,6 +37,7 @@ try:
     from .limited_color_picker import LimitedColorPicker
     from .location import Location
     from .location_list_view import LocationListView
+    from .map_view import MapBridge, build_map_html, downplay_marker_js, highlight_marker_js, move_map_js
     from .search_popup import SearchPopup
     from .config import ConfigDialog, load_nextcloud_password
     from .nextcloud_with_api import NextcloudFilePicker
@@ -52,6 +50,7 @@ except ImportError:
     from limited_color_picker import LimitedColorPicker
     from location import Location
     from location_list_view import LocationListView
+    from map_view import MapBridge, build_map_html, downplay_marker_js, highlight_marker_js, move_map_js
     from search_popup import SearchPopup
     from config import ConfigDialog, load_nextcloud_password
     from nextcloud_with_api import NextcloudFilePicker
@@ -62,21 +61,6 @@ except ImportError:
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 logging.root.setLevel(logging.INFO)
-
-
-def js_string(value) -> str:
-    """Return value as a JavaScript string literal, safe to embed in a <script> element."""
-    return json.dumps(str(value)).replace("</", "<\\/")
-
-
-class MarkerHandler(QObject):
-    """ Exposes a slot to receive marker click events from JavaScript. """
-    markerClicked = Signal(str)  # Signal to send marker ID when clicked
-
-    @Slot(str)
-    def on_marker_clicked(self, marker_id):
-        # logger.info(f"Marker clicked: {marker_id}")  # Handle click event in Python
-        self.markerClicked.emit(marker_id)  # Emit the signal for further handling
 
 
 class MapViewPage(QWebEnginePage):
@@ -95,12 +79,10 @@ class MapApp(QMainWindow):
         self.settings = QSettings("Kleag", "Otripy")
 
         self.channel = QWebChannel()
-        self.marker_handler = MarkerHandler()
-        self.channel.registerObject("markerHandler", self.marker_handler)
-        self.channel.registerObject("pyObj", self)
-
-        # Connect markerClicked signal to a Python slot
-        self.marker_handler.markerClicked.connect(self.handle_marker_click)
+        self.map_bridge = MapBridge()
+        self.channel.registerObject("mapBridge", self.map_bridge)
+        self.map_bridge.mapClicked.connect(self.add_location_at)
+        self.map_bridge.markerClicked.connect(self.handle_marker_click)
 
         self.setGeometry(100, 100, 800, 600)
 
@@ -534,22 +516,25 @@ class MapApp(QMainWindow):
         return self.toolbar
         # self.addToolBar(self.toolbar)
 
-    @Slot(dict)
-    def receiveData(self, data):
-        # logger.debug(f"MapApp.receiveData Received from JS: {data}")
-        data["note"] = ""
+    @Slot(float, float)
+    def add_location_at(self, lat: float, lon: float):
+        """Add a location at the given coordinates, its note initialized with the address found there."""
+        self.lat_input.setText(str(lat))
+        self.lon_input.setText(str(lon))
         try:
-            self.note_input.textChanged.disconnect()
-            self.lat_input.setText(str(data["lat"]).strip())
-            self.lon_input.setText(str(data["lon"]).strip())
-            location = self.geolocator.reverse(f"{data['lat']}, {data['lon']}")
-            address = location.address.replace(", ", "\n", 1) if location is not None else f"Unknown place at [{self.lat_input.text().strip()}, {self.lon_input.text().strip()}]"
-            note = {"markdown": address}
-            self.note_input.from_note(note)
+            place = self.geolocator.reverse(f"{lat}, {lon}")
+        except GeopyError as e:
+            logger.warning(f"Reverse geocoding failed: {e}")
+            place = None
+        # The place name becomes the note title (its first paragraph)
+        address = (place.address.replace(", ", "\n\n", 1) if place is not None
+                   else f"Unknown place at [{lat}, {lon}]")
+        self.note_input.textChanged.disconnect(self.note_changed)
+        try:
+            self.note_input.from_note({"markdown": address})
+        finally:
             self.note_input.textChanged.connect(self.note_changed)
-            self.add_location()
-        except json.JSONDecodeError as _:
-            pass
+        self.add_location()
 
     @Slot()
     def note_changed(self):
@@ -559,105 +544,7 @@ class MapApp(QMainWindow):
             self.list_widget.updateLocationNoteAtIndex(selected_indexes[0], self.note_input.to_note())
 
     def update_map(self):
-        # Default location (Paris)
-        location = [48.8566, 2.3522]
-        if self.list_widget.locations():
-            location = self.list_widget.locations()[-1].location()
-        m = folium.Map(location=location, zoom_start=12)
-        m.get_root().html.add_child(
-            JavascriptLink('qrc:///qtwebchannel/qwebchannel.js'))
-        m.get_root().html.add_child(
-            JavascriptLink('https://cdnjs.cloudflare.com/ajax/libs/leaflet.awesome-markers/2.0.4/leaflet.awesome-markers.min.js'))
-
-        script = """
-        function moveMap(lat, lng, zoom) {
-            let mapElement = document.querySelector("div[id^='map_']");
-            if (mapElement) {
-                let mapId = mapElement.id; // Get the actual map ID
-                let map = window[mapId]; // Folium stores the map as a global variable with its ID
-                map.setView([lat, lng], zoom);
-            }
-        }
-
-        pywebchannel = new QWebChannel(qt.webChannelTransport, function(channel) {
-            var pyObj = channel.objects.pyObj;
-            if (pyObj) {
-                //pyObj.receiveData("Data from JS!");
-            } else {
-                console.error("pyObj is not available.");
-            }
-            var markerHandler = channel.objects.markerHandler;
-            if (markerHandler) {
-                //pyObj.receiveData("Data from JS!");
-            } else {
-                console.error("markerHandler is not available.");
-            }
-        });
-
-        document.addEventListener("DOMContentLoaded", function() {
-            window.markerMap = {};
-            let mapElement = document.querySelector("div[id^='map_']");
-            if (mapElement) {
-                let mapId = mapElement.id; // Get the actual map ID
-                let map = window[mapId]; // Folium stores the map as a global variable with its ID
-                map.on("click", function(event) {
-
-                    let lat = event.latlng.lat;
-                    let lon = event.latlng.lng;
-                    pywebchannel.objects.pyObj.receiveData({"lat": lat, "lon": lon});
-                });
-                """
-        for loc in self.list_widget.locations():
-            logger.info(f"Adding location to map: {repr(loc)}")
-            tooltip = loc.label()
-            popup = loc.to_html()
-            if loc.marker is not None:
-                icon = f"""
-                var icon = L.AwesomeMarkers.icon({{
-                    icon: {js_string("fa-" + loc.marker)},  // Icône FontAwesome (ex: fa-coffee, fa-car, fa-bicycle)
-                    markerColor: {js_string(loc.color if loc.color is not None else "blue")}, // Couleurs disponibles : red, blue, green, orange, purple, darkred, lightred, darkblue, lightblue, darkgreen, lightgreen, cadetblue, white, pink, gray, black
-                    prefix: 'fa'        // Indique que l'on utilise FontAwesome
-                }});
-                """
-                script += icon
-                script += f"""
-                var marker = L.marker([{loc.lat}, {loc.lon}], {{ icon: icon }}).addTo(map).bindTooltip({js_string(tooltip)}, {{permanent: false}}).bindPopup({js_string(popup)});
-                """
-            else:
-                icon = f"""
-                var icon = L.AwesomeMarkers.icon({{
-                    icon: 'fa-circle',  // Icône FontAwesome (ex: fa-coffee, fa-car, fa-bicycle)
-                    markerColor: {js_string(loc.color if loc.color is not None else "blue")}, // Couleurs disponibles : red, blue, green, orange, yellow, purple, darkred, lightred, darkblue, lightblue, darkgreen, lightgreen, cadetblue, white, pink, gray, black
-                    prefix: 'fa'        // Indique que l'on utilise FontAwesome
-                }});
-                """
-                script += icon
-                script += f"""
-                var marker = L.marker([{loc.lat}, {loc.lon}], {{ icon: icon }}).addTo(map).bindTooltip({js_string(tooltip)}, {{permanent: false}}).bindPopup({js_string(popup)});
-                """
-                # script += f"""
-                # var marker = L.marker([{loc.lat}, {loc.lon}]).addTo(map).bindTooltip({js_string(tooltip)}, {{permanent: false}}).bindPopup({js_string(popup)});
-                # """
-            script += f"""
-            window.markerMap[{js_string(loc.lid)}] = marker;
-            marker.on("click", function() {{
-                if (pywebchannel.objects.markerHandler) {{
-                    pywebchannel.objects.markerHandler.on_marker_clicked({js_string(loc.lid)});
-                }}
-            }});
-            """
-        script += """
-            }
-        });
-        """
-        m.get_root().script.add_child(Element(script))
-
-        m.add_child(folium.ClickForMarker(popup="Click location"))
-
-        data = io.BytesIO()
-        m.save(data, close_file=False)
-        html = data.getvalue().decode()
-        self.map_page.setHtml(html)
+        self.map_page.setHtml(build_map_html(self.list_widget.locations()))
 
     def handle_marker_click(self, marker_id):
         """ Handle marker click events in Python. """
@@ -668,43 +555,14 @@ class MapApp(QMainWindow):
                 self.on_item_selected(loc)
 
     def highlight_marker(self, marker_id):
-        """ Change marker color dynamically without modifying tooltip """
-        logger.info(f"MapApp.highlight_marker {marker_id}")
-        js_code = f"""
-        if (window.markerMap[{js_string(marker_id)}]) {{
-            window.markerMap[{js_string(marker_id)}].setIcon(
-                L.icon({{
-                    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
-                    iconSize: [35, 55],  // Larger icon
-                    iconAnchor: [17, 54],
-                    popupAnchor: [1, -34],
-                }})
-            );
-        }}
-        """
-        self.map_page.runJavaScript(js_code)
+        """Show a marker with the large red highlight icon."""
+        self.map_page.runJavaScript(highlight_marker_js(marker_id))
 
     def downplay_marker(self, marker_id):
-        """ Change marker color dynamically without modifying tooltip """
-        logger.info(f"MapApp.downplay_marker {marker_id}")
+        """Restore a marker's own icon."""
         loc = self.list_widget.model.get_location_by_id(marker_id)
-        if loc and loc.marker is not None:
-            icon_js = f"""
-            var icon = L.AwesomeMarkers.icon({{
-                icon: {js_string("fa-" + loc.marker)},  // Icône FontAwesome (ex: fa-coffee, fa-car, fa-bicycle)
-                markerColor: {js_string(loc.color if loc.color is not None else "blue")}, // Couleurs disponibles : red, blue, green, orange, yellow, purple, darkred, lightred, darkblue, lightblue, darkgreen, lightgreen, cadetblue, white, pink, gray, black
-                prefix: 'fa'        // Indique que l'on utilise FontAwesome
-            }});
-            """
-        else:
-            icon_js = """var icon = new L.Icon.Default;"""
-        js_code = f"""
-        {icon_js}
-        if (window.markerMap[{js_string(marker_id)}]) {{
-            window.markerMap[{js_string(marker_id)}].setIcon(icon);
-        }}
-        """
-        self.map_page.runJavaScript(js_code)
+        if loc is not None:
+            self.map_page.runJavaScript(downplay_marker_js(loc))
 
     def add_location(self):
         # logger.info(f"MapApp.add_location")
@@ -896,8 +754,7 @@ class MapApp(QMainWindow):
         for a_loc in self.list_widget.locations():
             (self.highlight_marker(loc.lid) if loc.lid == a_loc.lid
              else self.downplay_marker(a_loc.lid))
-        js_code = f"moveMap({loc.lat}, {loc.lon});"
-        self.map_page.runJavaScript(js_code)
+        self.map_page.runJavaScript(move_map_js(loc.lat, loc.lon))
 
     def close(self):
         if self.dirty:
@@ -948,7 +805,7 @@ class MapApp(QMainWindow):
     def handle_selected_location(self, location):
         """Handle the selected location"""
         # logger.info(f"Selected: {location}")
-        self.receiveData({"lat": location.latitude, "lon": location.longitude})
+        self.add_location_at(location.latitude, location.longitude)
 
 
 def main():
