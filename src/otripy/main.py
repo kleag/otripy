@@ -1,4 +1,3 @@
-import io
 import logging
 import nc_py_api
 import sys
@@ -583,158 +582,150 @@ class MapApp(QMainWindow):
         dialog = ConfigDialog(self.settings, self)
         dialog.exec()
 
-    def new(self):
-        if self.dirty:
-            answer = QMessageBox.question(
-                self,
-                "Journey Modified",
-                "Do you really want to lose your changes?",
-                QMessageBox.Yes | QMessageBox.No)
-            if answer == QMessageBox.No:
-                return
-        self.current_file = None
-        self.list_widget.clear()
+    def confirm_discard(self) -> bool:
+        """Return True if there are no unsaved changes or the user agrees to lose them."""
+        if not self.dirty:
+            return True
+        answer = QMessageBox.question(
+            self,
+            "Journey Modified",
+            "Do you really want to lose your changes?",
+            QMessageBox.Yes | QMessageBox.No)
+        return answer == QMessageBox.Yes
+
+    def set_journey(self, journey: Journey, current_file):
+        """Show a newly loaded journey; current_file is a local path or a Nextcloud FsNode."""
+        self.current_file = current_file
+        self.list_widget.setLocations(journey)
+        journey.dirty.connect(self.set_window_title)
+        self.set_window_title(dirty=False)
         self.update_map()
 
+    def new(self):
+        if self.confirm_discard():
+            self.set_journey(Journey(), None)
+
     def load_file(self):
-        if self.dirty:
-            answer = QMessageBox.question(
-                self,
-                "Journey Modified",
-                "Do you really want to lose your changes?",
-                QMessageBox.Yes | QMessageBox.No)
-            if answer == QMessageBox.No:
-                return
+        if not self.confirm_discard():
+            return
         file_name, _ = QFileDialog.getOpenFileName(
             self,
             "Open JSON File",
             "",
             "JSON Files (*.json);;All files (*.*)")
-        if file_name:
-            try:
-                with open(file_name, "r") as file:
-                    json_str = file.read()
-                    self.list_widget.clear()
-                    # Complete missing data
-                    self.current_file = file_name
-                    self.list_widget.setLocations(Journey.from_json_str(json_str))
-                    self.list_widget.model.locations.dirty.connect(self.set_window_title)
-                    self.set_window_title(dirty=False)
-                    self.update_map()
-            except Exception as e:
-                QMessageBox.critical(self,
-                                     "Error",
-                                     f"Failed to load file: {str(e)}")
+        if not file_name:
+            return
+        try:
+            journey = Journey.from_file(file_name)
+        except (OSError, ValueError, KeyError) as e:
+            QMessageBox.critical(self, "Error", f"Failed to load file: {e}")
+            return
+        self.set_journey(journey, file_name)
+
+    def connect_nextcloud(self) -> bool:
+        """Connect to the Nextcloud server configured in the settings, if not done yet."""
+        if self.nc is not None:
+            return True
+        base_url = self.settings.value("nextcloud/url", "")
+        username = self.settings.value("nextcloud/username", "")
+        password = load_nextcloud_password(self.settings)
+        if not base_url or not username or not password:
+            QMessageBox.critical(
+                self,
+                "Error",
+                "Please set Nextcloud data in settings before connecting.")
+            return False
+        try:
+            self.nc = nc_py_api.Nextcloud(nextcloud_url=base_url,
+                                          nc_auth_user=username,
+                                          nc_auth_pass=password)
+        except nc_py_api.NextcloudException as e:
+            QMessageBox.critical(
+                self,
+                "Error",
+                f"Error connecting to Nextcloud:\n\n{e}")
+            return False
+        return True
 
     def load_nc_file(self):
-        if self.dirty:
-            answer = QMessageBox.question(
-                self,
-                "Journey Modified",
-                "Do you really want to lose your changes?",
-                QMessageBox.Yes | QMessageBox.No)
-            if answer == QMessageBox.No:
-                return
-        if self.nc is None:
-            base_url = self.settings.value("nextcloud/url", "")
-            username = self.settings.value("nextcloud/username", "")
-            password = load_nextcloud_password(self.settings)
-            if not base_url or not username or not password:
-                QMessageBox.critical(
-                    self,
-                    "Error",
-                    "Please set Nextcloud data in settings before connecting.")
-                return
-            try:
-                self.nc = nc_py_api.Nextcloud(nextcloud_url=base_url,
-                                            nc_auth_user=username,
-                                            nc_auth_pass=password)
-                # logger.info(f"nc capabilities: {self.nc.capabilities}")
-            except nc_py_api.NextcloudException as e:
-                QMessageBox.critical(
-                    self,
-                    "Error",
-                    f"Error connecting to Nextcloud:\n\n{e}")
-                return
+        if not self.confirm_discard() or not self.connect_nextcloud():
+            return
         file_picker = NextcloudFilePicker(self.nc, self)
-        if file_picker.exec() == QDialog.DialogCode.Accepted:
-            selected_file = file_picker.get_selected_file()
-            if selected_file:
-                # logger.info(f"MapApp.load_nc_file got {selected_file}")
-                node = self.nc.files.by_path(selected_file)
-                json_bytes = self.nc.files.download(selected_file)
-                # Convert bytes to a string
-                json_str = json_bytes.decode('utf-8')
-                try:
-                    new_journey = Journey.from_json_str(json_str)
-                    # Complete missing data
-                    self.list_widget.clear()
-                    # keep nc_py_api FsNode instead of string
-                    self.current_file = node
-                    self.list_widget.setLocations(new_journey)
-                    self.list_widget.model.locations.dirty.connect(
-                        self.set_window_title)
-                    self.set_window_title(dirty=False)
-                    self.update_map()
-                except Exception as e:
-                    QMessageBox.critical(self,
-                                         "Error",
-                                         f"Failed to load file: {str(e)}")
+        if file_picker.exec() != QDialog.DialogCode.Accepted:
+            return
+        selected_file = file_picker.get_selected_file()
+        if not selected_file:
+            return
+        try:
+            # keep the nc_py_api FsNode: its etag detects remote changes on save
+            node = self.nc.files.by_path(selected_file)
+            journey = Journey.from_json_str(self.nc.files.download(node).decode("utf-8"))
+        except (nc_py_api.NextcloudException, ValueError, KeyError) as e:
+            QMessageBox.critical(self, "Error", f"Failed to load file: {e}")
+            return
+        self.set_journey(journey, node)
 
-    def save_file(self):
+    def save_file(self) -> bool:
+        """Save to the current file, asking for one if needed. Return True if the journey was saved."""
         if not self.current_file:
-            self.save_file_as()
-        elif type(self.current_file) is nc_py_api.FsNode:
-            buffer = io.StringIO()
-            self.list_widget.locations().write_to_file(buffer)
-            data = buffer.getvalue()
-            file_id  = self.current_file.file_id
-            current_remote_node = self.nc.files.by_id(file_id)
-            if current_remote_node.etag != self.current_file.etag:
-                popup = RenamePopup(self, self.current_file.user_path)
-                if popup.exec():
-                    new_name = popup.line_edit.text().strip()
+            return self.save_file_as()
+        if isinstance(self.current_file, nc_py_api.FsNode):
+            return self.save_nc_file()
+        return self.save_local_file(self.current_file)
 
-                    #  by_path will raise an exception if the file does not already exist as we wan
-                    try:
-                        self.nc.files.by_path(new_name)
-                        QMessageBox.critical(self, "Error", f"File {new_name} already exist. Abort.")
-                        return
-                    except nc_py_api.NextcloudException as _:
-                        self.current_file = self.nc.files.upload(new_name, data)
-                        return
-                else:
-                    return
-            else:
+    def save_nc_file(self) -> bool:
+        data = self.list_widget.locations().to_json_str()
+        try:
+            remote_node = self.nc.files.by_id(self.current_file.file_id)
+            if remote_node is not None and remote_node.etag == self.current_file.etag:
                 self.current_file = self.nc.files.upload(self.current_file, data)
-        else:
-            self.write_to_file(self.current_file)
-        self.list_widget.model.locations.clean()
+            else:
+                # The file changed (or vanished) on the server since it was opened: save under a new name
+                popup = RenamePopup(self, self.current_file.user_path)
+                if not popup.exec():
+                    return False
+                new_name = popup.line_edit.text().strip()
+                if self.nc_file_exists(new_name):
+                    QMessageBox.critical(self, "Error", f"File {new_name} already exists. Abort.")
+                    return False
+                self.current_file = self.nc.files.upload(new_name, data)
+        except nc_py_api.NextcloudException as e:
+            QMessageBox.critical(self, "Error", f"Failed to save file on Nextcloud: {e}")
+            return False
+        self.list_widget.locations().clean()
+        return True
 
-    def save_file_as(self):
+    def nc_file_exists(self, path) -> bool:
+        try:
+            self.nc.files.by_path(path)
+        except nc_py_api.NextcloudException:
+            return False
+        return True
+
+    def save_file_as(self) -> bool:
         file_name, _ = QFileDialog.getSaveFileName(self,
                                                    "Save JSON File",
                                                    "",
                                                    "JSON Files (*.json)")
-        if file_name:
-            self.current_file = file_name
-            self.write_to_file(file_name)
-        self.list_widget.model.locations.clean()
+        if not file_name:
+            return False
+        if not self.save_local_file(file_name):
+            return False
+        self.current_file = file_name
+        self.set_window_title(dirty=False)
+        return True
 
     def save_file_as_nc(self):
         logger.error("MapApp.save_file_as_nc NOT IMPLEMENTED")
-        pass
 
-    def write_to_file(self, file_name):
+    def save_local_file(self, file_name) -> bool:
         try:
-            # locations = [loc.to_dict() for loc in self.list_widget.locations()]
-            with open(file_name, "w") as file:
-                self.list_widget.locations().write_to_file(file)
-                # json.dump(locations, file, indent=4)
-        except Exception as e:
-            QMessageBox.critical(self,
-                                 "Error",
-                                 f"Failed to save file: {str(e)}")
+            self.list_widget.locations().save(file_name)
+        except OSError as e:
+            QMessageBox.critical(self, "Error", f"Failed to save file: {e}")
+            return False
+        self.list_widget.locations().clean()
+        return True
 
     def delete_item(self):
         selected_indexes = self.list_widget.selectedIndexes()
@@ -756,34 +747,18 @@ class MapApp(QMainWindow):
              else self.downplay_marker(a_loc.lid))
         self.map_page.runJavaScript(move_map_js(loc.lat, loc.lon))
 
-    def close(self):
-        if self.dirty:
-            answer = QMessageBox.question(
-                self,
-                "Journey Modified",
-                "Do you really want to lose your changes?",
-                QMessageBox.Yes | QMessageBox.No)
-            if answer == QMessageBox.No:
-                return
-        QApplication.quit()
-
     def closeEvent(self, event):
-        if self.dirty:
-            reply = QMessageBox.question(self, 'Journey Modified',
-                                         'You have unsaved changes. Do you want to save them?',
-                                         QMessageBox.Save | QMessageBox.Discard | QMessageBox.Cancel,
-                                         QMessageBox.Save)
-            if reply == QMessageBox.Save:
-                # Handle saving here
-                logger.info("Saving changes...")
-                self.save_file()
-                event.accept()  # Close the window after saving
-            elif reply == QMessageBox.Discard:
-                event.accept()  # Close the window without saving
-            else:
-                event.ignore()  # Ignore the close event to keep the window open
+        if not self.dirty:
+            event.accept()
+            return
+        reply = QMessageBox.question(self, 'Journey Modified',
+                                     'You have unsaved changes. Do you want to save them?',
+                                     QMessageBox.Save | QMessageBox.Discard | QMessageBox.Cancel,
+                                     QMessageBox.Save)
+        if reply == QMessageBox.Discard or (reply == QMessageBox.Save and self.save_file()):
+            event.accept()
         else:
-            event.accept()  # No unsaved changes, just close the window
+            event.ignore()  # Cancelled, or the save failed or was cancelled: keep the window open
 
     def search_location(self):
         # logger.info(f"MapApp.search_location {self.search_entry.text()}")

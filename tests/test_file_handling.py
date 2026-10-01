@@ -1,0 +1,250 @@
+import json
+
+import nc_py_api
+import pytest
+from PySide6.QtGui import QCloseEvent
+from PySide6.QtWidgets import QMessageBox
+
+from otripy import main
+from otripy.journey import Journey
+from otripy.location import Location
+from otripy.main import MapApp
+
+
+class Dialogs:
+    """Scripted answers for the modal dialogs MapApp opens."""
+    def __init__(self, monkeypatch):
+        self.question_answer = QMessageBox.Discard
+        self.open_path = ""
+        self.save_path = ""
+        self.errors = []
+        monkeypatch.setattr(main.QMessageBox, "question", lambda *a, **k: self.question_answer)
+        monkeypatch.setattr(main.QMessageBox, "critical", lambda parent, title, text: self.errors.append(text))
+        monkeypatch.setattr(main.QFileDialog, "getOpenFileName", lambda *a, **k: (str(self.open_path), ""))
+        monkeypatch.setattr(main.QFileDialog, "getSaveFileName", lambda *a, **k: (str(self.save_path), ""))
+
+
+@pytest.fixture
+def dialogs(monkeypatch):
+    return Dialogs(monkeypatch)
+
+
+@pytest.fixture
+def window(qtbot, monkeypatch, dialogs):
+    window = MapApp()
+    qtbot.addWidget(window)
+    monkeypatch.setattr(window.map_page, "setHtml", lambda html: None)
+    monkeypatch.setattr(window.map_page, "runJavaScript", lambda code: None)
+    return window
+
+
+def add_location(window, name="Somewhere"):
+    window.list_widget.addLocation(Location(1.0, 2.0, {"markdown": f"# {name}"}))
+
+
+def labels(window):
+    return [loc.label() for loc in window.list_widget.locations()]
+
+
+def test_open_local_file(window, dialogs, fixture_text, tmp_path):
+    dialogs.open_path = tmp_path / "trip.json"
+    dialogs.open_path.write_text(fixture_text("journey-1.0.0.json"), encoding="utf-8")
+    window.load_file()
+    assert labels(window)[0] == "Tour Eiffel"
+    assert window.current_file == str(dialogs.open_path)
+    assert not window.dirty
+    add_location(window)
+    assert window.dirty, "edits of the opened journey must mark it modified"
+
+
+def test_failed_open_keeps_current_journey(window, dialogs, tmp_path):
+    add_location(window, "Mine")
+    window.list_widget.locations().clean()
+    window.current_file = "mine.json"
+    dialogs.open_path = tmp_path / "broken.json"
+    dialogs.open_path.write_text("{not json", encoding="utf-8")
+    window.load_file()
+    assert dialogs.errors
+    assert labels(window) == ["Mine"]
+    assert window.current_file == "mine.json"
+
+
+def test_open_refused_when_keeping_changes(window, dialogs, tmp_path):
+    add_location(window, "Unsaved")
+    dialogs.question_answer = QMessageBox.No
+    dialogs.open_path = tmp_path / "never-read.json"
+    window.load_file()
+    assert labels(window) == ["Unsaved"]
+
+
+def test_save_as_then_save(window, dialogs, tmp_path):
+    add_location(window, "Café")
+    dialogs.save_path = tmp_path / "trip.json"
+    assert window.save_file()
+    assert not window.dirty
+    assert window.current_file == str(dialogs.save_path)
+    assert Journey.from_file(dialogs.save_path)[0].label() == "Café"
+    add_location(window, "Second")
+    assert window.save_file()
+    assert len(Journey.from_file(dialogs.save_path)) == 2
+
+
+def test_cancelled_save_as_keeps_changes_unsaved(window, dialogs):
+    add_location(window)
+    dialogs.save_path = ""
+    assert not window.save_file()
+    assert window.dirty
+
+
+def test_failed_save_keeps_changes_unsaved(window, dialogs, tmp_path):
+    add_location(window)
+    dialogs.save_path = tmp_path / "missing-dir" / "trip.json"
+    assert not window.save_file()
+    assert dialogs.errors
+    assert window.dirty
+    assert window.current_file is None
+
+
+def test_new_journey(window, dialogs):
+    add_location(window)
+    window.current_file = "old.json"
+    dialogs.question_answer = QMessageBox.No
+    window.new()
+    assert labels(window) == ["Somewhere"]
+    dialogs.question_answer = QMessageBox.Yes
+    window.new()
+    assert labels(window) == []
+    assert window.current_file is None
+    add_location(window)
+    assert window.dirty
+
+
+def close(window):
+    event = QCloseEvent()
+    window.closeEvent(event)
+    return event.isAccepted()
+
+
+@pytest.mark.parametrize("answer, save_path, closes", [
+    (QMessageBox.Discard, "", True),
+    (QMessageBox.Cancel, "", False),
+    (QMessageBox.Save, "", False),           # save dialog cancelled
+    (QMessageBox.Save, "trip.json", True),
+])
+def test_close_with_unsaved_changes(window, dialogs, tmp_path, answer, save_path, closes):
+    add_location(window)
+    dialogs.question_answer = answer
+    dialogs.save_path = tmp_path / save_path if save_path else ""
+    assert close(window) == closes
+
+
+def test_close_without_changes(window):
+    assert close(window)
+
+
+class FakeNode(nc_py_api.FsNode):
+    def __init__(self, path, etag):
+        super().__init__(path, etag=etag, file_id=path)
+
+
+class FakeFiles:
+    """In-memory stand-in for nc_py_api's files API."""
+    def __init__(self):
+        self.contents, self.etags = {}, {}
+
+    def put(self, path, data):
+        self.contents[path] = data.encode() if isinstance(data, str) else data
+        self.etags[path] = self.etags.get(path, 0) + 1
+        return FakeNode(path, str(self.etags[path]))
+
+    def by_path(self, path):
+        if path not in self.contents:
+            raise nc_py_api.NextcloudException(404, "not found")
+        return FakeNode(path, str(self.etags[path]))
+
+    def by_id(self, file_id):
+        return self.by_path(file_id) if file_id in self.contents else None
+
+    def download(self, node):
+        return self.contents[node.user_path if isinstance(node, nc_py_api.FsNode) else node]
+
+    def upload(self, node, data):
+        return self.put(node.user_path if isinstance(node, nc_py_api.FsNode) else node, data)
+
+
+@pytest.fixture
+def nextcloud(window, monkeypatch):
+    files = FakeFiles()
+    window.nc = type("FakeNextcloud", (), {"files": files})()
+    picked = {"path": None}
+
+    class FakePicker:
+        def __init__(self, nc, parent):
+            pass
+
+        def exec(self):
+            return main.QDialog.DialogCode.Accepted
+
+        def get_selected_file(self):
+            return picked["path"]
+
+    monkeypatch.setattr(main, "NextcloudFilePicker", FakePicker)
+    files.pick = lambda path: picked.update(path=path)
+    return files
+
+
+def test_nextcloud_open_and_save(window, nextcloud, fixture_text):
+    nextcloud.put("Trips/paris.json", fixture_text("journey-1.0.0.json"))
+    nextcloud.pick("Trips/paris.json")
+    window.load_nc_file()
+    assert labels(window)[0] == "Tour Eiffel"
+    add_location(window, "Added")
+    assert window.save_file()
+    assert not window.dirty
+    saved = json.loads(nextcloud.contents["Trips/paris.json"])
+    assert saved["format"] == "otripy"
+    assert saved["locations"][-1]["note"]["markdown"] == "# Added"
+
+
+def test_nextcloud_conflict_saves_under_new_name(window, nextcloud, fixture_text, monkeypatch):
+    nextcloud.put("paris.json", fixture_text("journey-1.0.0.json"))
+    nextcloud.pick("paris.json")
+    window.load_nc_file()
+    nextcloud.put("paris.json", "changed elsewhere")
+    add_location(window)
+
+    class FakeRename:
+        def __init__(self, parent, path):
+            self.line_edit = type("Edit", (), {"text": lambda self: "paris-2.json"})()
+
+        def exec(self):
+            return True
+
+    monkeypatch.setattr(main, "RenamePopup", FakeRename)
+    assert window.save_file()
+    assert nextcloud.contents["paris.json"] == b"changed elsewhere"
+    assert json.loads(nextcloud.contents["paris-2.json"])["format"] == "otripy"
+    assert window.current_file.user_path == "paris-2.json"
+    assert not window.dirty
+
+
+def test_nextcloud_upload_error_keeps_changes_unsaved(window, nextcloud, dialogs, fixture_text, monkeypatch):
+    nextcloud.put("paris.json", fixture_text("journey-1.0.0.json"))
+    nextcloud.pick("paris.json")
+    window.load_nc_file()
+    add_location(window)
+
+    def fail(*args):
+        raise nc_py_api.NextcloudException(503, "unavailable")
+
+    monkeypatch.setattr(nextcloud, "upload", fail)
+    assert not window.save_file()
+    assert dialogs.errors
+    assert window.dirty
+
+
+def test_nextcloud_open_error(window, nextcloud, dialogs):
+    nextcloud.pick("missing.json")
+    window.load_nc_file()
+    assert dialogs.errors
+    assert labels(window) == []

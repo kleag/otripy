@@ -1,4 +1,5 @@
 import ast
+import io
 import json
 import logging
 
@@ -139,6 +140,20 @@ class Journey(QObject):
         self._created_at = journey["created_at"]
 
         self._locations = [Location.from_data(loc) for loc in journey["locations"]]
+
+    @classmethod
+    def from_file(cls, path):
+        """Load a journey from a JSON file. Raises OSError or ValueError."""
+        return cls.from_json_str(Path(path).read_text(encoding="utf-8"))
+
+    def to_json_str(self) -> str:
+        buffer = io.StringIO()
+        self.write_to_file(buffer)
+        return buffer.getvalue()
+
+    def save(self, path):
+        """Write the journey to a JSON file. Raises OSError."""
+        Path(path).write_text(self.to_json_str(), encoding="utf-8")
 
     def write_to_file(self, file: TextIO):
         app_version = self._get_version_from_init("__init__.py")
