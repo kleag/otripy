@@ -33,6 +33,7 @@ Notable changes to Otripy. The format follows [Keep a Changelog](https://keepach
 - The title of a location added from the map included its whole address instead of the place's name.
 - Titles showed Markdown escape characters such as `\[`.
 - Markers without a custom icon lost their color when another location was selected.
+- Changing a note's title updates its marker's tooltip and popup at once ([#26](https://github.com/kleag/otripy/issues/26)); they show the title as text, not HTML.
 - Otripy runs on Python 3.10 again.
 
 ## 1.2.3 - 2025-03-17

@@ -79,6 +79,19 @@ def downplay_marker_js(loc: Location) -> str:
     """
 
 
+def update_marker_text_js(loc: Location) -> str:
+    """Return JavaScript updating a marker's tooltip and popup to the location's current title.
+
+    Leaflet renders both as HTML: give them the escaped title.
+    """
+    return f"""
+    if (window.markerMap[{js_string(loc.lid)}]) {{
+        window.markerMap[{js_string(loc.lid)}].setTooltipContent({js_string(loc.to_html())});
+        window.markerMap[{js_string(loc.lid)}].setPopupContent({js_string(loc.to_html())});
+    }}
+    """
+
+
 def move_map_js(lat: float, lon: float) -> str:
     return f"moveMap({float(lat)}, {float(lon)});"
 
@@ -121,7 +134,7 @@ def build_map_html(locations: Iterable[Location]) -> str:
         logger.debug(f"Adding location to map: {repr(loc)}")
         script += f"""
             var marker = L.marker([{float(loc.lat)}, {float(loc.lon)}], {{icon: {marker_icon_js(loc)}}}).addTo(map)
-                .bindTooltip({js_string(loc.label())}, {{permanent: false}})
+                .bindTooltip({js_string(loc.to_html())}, {{permanent: false}})
                 .bindPopup({js_string(loc.to_html())});
             window.markerMap[{js_string(loc.lid)}] = marker;
             marker.on("click", function() {{

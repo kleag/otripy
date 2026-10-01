@@ -48,7 +48,7 @@ Feature requests and bugs are tracked as [GitHub issues](https://github.com/klea
 
 ### Bugs
 - [x] #21 Moved (cut and paste) images are duplicated
-- [ ] #26 Text popup over markers is not always updated
+- [x] #26 Text popup over markers is not always updated
 
 ### Quick wins
 - [ ] #25 Fit map to all markers when opening a file

@@ -7,7 +7,8 @@ import pytest
 from otripy.journey import Journey
 from otripy.location import Location
 from otripy.map_view import (DEFAULT_CENTER, MapBridge, build_map_html, downplay_marker_js,
-                             highlight_marker_js, js_string, marker_icon_js, move_map_js)
+                             highlight_marker_js, js_string, marker_icon_js, move_map_js,
+                             update_marker_text_js)
 
 
 def inline_scripts(html):
@@ -63,7 +64,8 @@ def test_empty_map_centers_on_default():
 
 def test_marker_update_snippets_are_valid(tmp_path):
     loc = Location(1, 2, id='quote"id', marker="star", color="red")
-    for code in (highlight_marker_js(loc.lid), downplay_marker_js(loc), move_map_js(1, 2)):
+    for code in (highlight_marker_js(loc.lid), downplay_marker_js(loc), move_map_js(1, 2),
+                 update_marker_text_js(loc)):
         assert_valid_js("function moveMap() {}\n" + code, tmp_path)
 
 
@@ -75,3 +77,10 @@ def test_bridge_relays_events(qtbot):
     with qtbot.waitSignal(bridge.markerClicked) as clicked:
         bridge.on_marker_clicked("abc")
     assert clicked.args == ["abc"]
+
+
+def test_marker_texts_are_escaped_html():
+    loc = Location(1, 2, {"markdown": "# Fish & <Chips>"}, id="x")
+    for code in (build_map_html([loc]), update_marker_text_js(loc)):
+        assert "<Chips>" not in code
+        assert "Fish &amp; &lt;Chips&gt;" in code
