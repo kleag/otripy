@@ -122,9 +122,10 @@ class Journey(QObject):
             # Initial pre-1.0.0 unstructured format with no metadata
             # we have only a list of locations
             self._locations = [Location.from_data(loc) for loc in journey]
-            logger.warn("Loading old unstructured pre-1.0.0 format with no metadata")
+            logger.warning("Loading old unstructured pre-1.0.0 format with no metadata")
             return
-        assert "format" in journey and journey["format"] == "otripy"
+        if not isinstance(journey, dict) or journey.get("format") != "otripy":
+            raise ValueError("This is not an Otripy journey file.")
 
         current_app_version = Version(self._get_version_from_init("__init__.py"))
         saved_app_version = Version(journey["app_version"])
@@ -133,7 +134,7 @@ class Journey(QObject):
 
         saved_format_version = Version(journey["format_version"])
         if Version(CURRENT_FORMAT_VERSION) < saved_format_version:
-            raise ValueError(f"Loading file from Otripy file format version {saved_app_version} while we are at format version {CURRENT_FORMAT_VERSION} is forbidden.\nPlease update Otripy.")
+            raise ValueError(f"Loading file from Otripy file format version {saved_format_version} while we are at format version {CURRENT_FORMAT_VERSION} is forbidden.\nPlease update Otripy.")
 
         self._created_at = journey["created_at"]
 
