@@ -9,18 +9,12 @@ description = "A tool to plan your next trip"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-    "bs4>=0.0.2",
     "folium>=0.19.5",
     "geopy>=2.4.1",
     "keyring>=25.6.0",
-    "lxml>=5.3.1",
-    "markdown>=3.7",
     "nc-py-api>=0.19.0",
-    "numpy>=2.2.3",
     "packaging>=24.2",
-    "pillow>=11.1.0",
     "pyside6>=6.8.2.1",
-    "requests>=2.32.3",
     "typing-extensions>=4.12.2",
 ]
 authors = [{ name = "Gaël de Chalendar (aka Kleag)", email = "kleagg@gmail.com" }]
@@ -115,11 +109,8 @@ requires = [
     "folium",
     "geopy",
     "keyring",
-    "lxml",
-    "markdown",
     "nc-py-api",
-    "numpy",
-    "pillow",
+    "packaging",
     "pyside6",
     "typing-extensions",
 ]
