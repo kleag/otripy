@@ -221,6 +221,7 @@ def test_nextcloud_conflict_saves_under_new_name(window, nextcloud, fixture_text
             return True
 
     monkeypatch.setattr(main, "RenamePopup", FakeRename)
+    monkeypatch.setattr(window, "ask_save_conflict", lambda path, deleted: "rename")
     assert window.save_file()
     assert nextcloud.contents["paris.json"] == b"changed elsewhere"
     assert json.loads(nextcloud.contents["paris-2.json"])["format"] == "otripy"
@@ -298,3 +299,51 @@ def test_save_as_nextcloud_error_keeps_changes_unsaved(window, nextcloud, dialog
     assert not window.save_file_as_nc()
     assert dialogs.errors
     assert window.dirty
+
+
+def open_then_change_remotely(window, nextcloud, fixture_text, remote_change):
+    nextcloud.put("paris.json", fixture_text("journey-1.0.0.json"))
+    nextcloud.pick("paris.json")
+    window.load_nc_file()
+    remote_change()
+    add_location(window, "Mine")
+
+
+@pytest.mark.parametrize("choice, saved", [("overwrite", True), ("cancel", False)])
+def test_nextcloud_conflict_overwrite_or_cancel(window, nextcloud, fixture_text, monkeypatch, choice, saved):
+    """Issue #10: a file changed on the server can be overwritten."""
+    open_then_change_remotely(window, nextcloud, fixture_text, lambda: nextcloud.put("paris.json", "theirs"))
+    asked = []
+    monkeypatch.setattr(window, "ask_save_conflict", lambda path, deleted: asked.append((path, deleted)) or choice)
+    assert window.save_file() == saved
+    assert asked == [("paris.json", False)]
+    content = nextcloud.contents["paris.json"]
+    assert (content != b"theirs") == saved
+    if saved:
+        assert json.loads(content)["locations"][-1]["note"]["markdown"] == "# Mine"
+    assert window.dirty != saved
+
+
+def test_nextcloud_deleted_file_can_be_recreated(window, nextcloud, fixture_text, monkeypatch):
+    def delete():
+        del nextcloud.contents["paris.json"]
+        del nextcloud.etags["paris.json"]
+    open_then_change_remotely(window, nextcloud, fixture_text, delete)
+    asked = []
+    monkeypatch.setattr(window, "ask_save_conflict", lambda path, deleted: asked.append(deleted) or "overwrite")
+    assert window.save_file()
+    assert asked == [True]
+    assert json.loads(nextcloud.contents["paris.json"])["format"] == "otripy"
+    assert window.save_file(), "later saves go to the recreated file without asking again"
+    assert asked == [True]
+
+
+def test_save_conflict_dialog_buttons(window, monkeypatch):
+    """The real dialog maps its buttons to the choices."""
+    for label, expected in (("Save As…", "rename"), ("Overwrite", "overwrite"), (None, "cancel")):
+        def fake_exec(box, label=label):
+            buttons = {b.text(): b for b in box.buttons()}
+            box_clicked = buttons[label] if label else box.button(QMessageBox.Cancel)
+            monkeypatch.setattr(box, "clickedButton", lambda: box_clicked)
+        monkeypatch.setattr(main.QMessageBox, "exec", fake_exec)
+        assert window.ask_save_conflict("paris.json", deleted=False) == expected
