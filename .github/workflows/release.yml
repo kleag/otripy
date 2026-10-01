@@ -1,0 +1,87 @@
+name: Release
+
+# bumpver tags releases as MAJOR.MINOR.PATCH (no "v" prefix).
+# Run it by hand (workflow_dispatch) to build everything without publishing.
+on:
+  push:
+    tags: ["[0-9]+.[0-9]+.[0-9]+"]
+  workflow_dispatch:
+
+jobs:
+  dist:
+    name: Build sdist and wheel
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - name: Check that the tag matches the project version
+        if: github.ref_type == 'tag'
+        run: |
+          version=$(uv version --short)
+          test "$version" = "$GITHUB_REF_NAME" || { echo "Tag $GITHUB_REF_NAME does not match version $version"; exit 1; }
+      - run: uv build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  bundles:
+    name: Build ${{ matrix.platform }} bundle
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            platform: windows
+            options: ""
+          - os: macos-latest
+            platform: macOS
+            # No Apple Developer ID: ad-hoc signed and not notarized, users
+            # must allow the app once in System Settings > Privacy & Security.
+            options: --adhoc-sign
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install briefcase
+      - run: briefcase package ${{ matrix.platform }} --no-input ${{ matrix.options }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bundle-${{ matrix.platform }}
+          path: |
+            dist/*.msi
+            dist/*.dmg
+
+  publish-pypi:
+    name: Publish to PyPI
+    if: github.ref_type == 'tag'
+    needs: [dist, bundles]
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write  # trusted publishing, no API token
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1
+
+  github-release:
+    name: Create GitHub release
+    if: github.ref_type == 'tag'
+    needs: [dist, bundles]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts/
+          merge-multiple: true
+      - uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: artifacts/*

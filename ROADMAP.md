@@ -24,12 +24,13 @@ Feature requests and bugs are tracked as [GitHub issues](https://github.com/klea
 
 ## Phase 2 — CI and deployment
 
-- [ ] Commit a rewritten `.github/workflows/release.yml` (never committed so far; its `v*.*.*` trigger does not match bumpver's `1.2.3` tags)
-- [ ] CI workflow on push/PR: ruff + pytest on Linux/macOS/Windows and supported Python versions
-- [ ] Publish to PyPI on version tag using trusted publishing (replace manual `uv publish`)
-- [ ] Fix macOS release job: notarize and attach a zip/DMG rather than a bare `.app` directory
-- [ ] Add a Linux bundle (AppImage or Flatpak via Briefcase)
-- [ ] Verify the Windows `.msi` build end to end
+- [x] Commit a rewritten `.github/workflows/release.yml` (never committed so far; its `v*.*.*` trigger does not match bumpver's `1.2.3` tags)
+- [x] CI workflow on push/PR: ruff + pytest on Linux/macOS/Windows and supported Python versions
+- [x] Publish to PyPI on version tag using trusted publishing (replace manual `uv publish`); needs the trusted publisher configured on pypi.org
+- [x] Fix macOS release job: ad-hoc signed DMG (no Apple Developer ID, so no notarization)
+- [ ] Run the release workflow by hand (workflow_dispatch) and test the Windows `.msi` and macOS `.dmg` on real machines
+- [ ] Add a Linux bundle (AppImage or Flatpak via Briefcase); a native `linux system` build needs the distribution's own Python
+- [ ] Declare the license as an SPDX expression (PEP 639); Briefcase currently reads `license.file` as GPL-3.0
 
 ## Phase 3 — Documentation
 
@@ -38,6 +39,7 @@ Feature requests and bugs are tracked as [GitHub issues](https://github.com/klea
 - [ ] `CONTRIBUTING.md`: dev setup, running tests, release procedure
 - [ ] `CHANGELOG.md`
 - [ ] Credit Font Awesome Free (icons are CC BY 4.0, attribution required) in the README and next to `resources/icons/`
+- [ ] Include the full MIT notice for `toolbar.py` (borrowed from Notolog Editor)
 - [ ] Docstrings for the model classes (`Location`, `Journey`, list model)
 
 ## Phase 4 — Features
