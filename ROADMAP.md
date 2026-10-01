@@ -15,8 +15,9 @@ Feature requests and bugs are tracked as [GitHub issues](https://github.com/klea
 ## Phase 1 — Tests
 
 - [ ] Add `pytest`, `pytest-qt` and a `ruff` configuration; run Qt tests headless (`QT_QPA_PLATFORM=offscreen`)
-- [ ] Unit tests for `Location` and `Journey`: JSON round-trip, legacy list format, rejection of newer app/format versions, `dirty` signal emission
+- [ ] Unit tests for `Location` and `Journey` using `tests/fixtures/`: JSON round-trip, legacy list format, rejection of newer app/format versions, `dirty` signal emission
 - [ ] Extract map HTML/JS generation from `MapApp.update_map` into a pure function and test it (including escaping)
+- [ ] Replace the `pyObj` web channel registration of the whole `MapApp` window with a small bridge object exposing only `receiveData` (registering the window floods the log with "has no notify signal" warnings)
 - [ ] Extract load/save logic from `MapApp` so it can be tested without the GUI
 - [ ] `pytest-qt` tests for `LocationListModel` and `NoteWidget` note round-trip (markdown + images, see #21)
 - [ ] Mock Nominatim geocoding and Nextcloud in tests

@@ -1,0 +1,51 @@
+{
+    "format": "otripy",
+    "description": "A Journey with Otripy",
+    "format_version": "1.0.0",
+    "app_version": "1.1.4",
+    "app_name": "Otripy",
+    "created_at": "2025-03-01T09:00:00+00:00",
+    "updated_at": "2025-03-02T18:30:00+00:00",
+    "encoding": "UTF-8",
+    "settings": {},
+    "locations": [
+        {
+            "id": "5d2c7f10-8a3b-4e6d-b1c2-7e9f0a1b2c01",
+            "lat": 48.6361,
+            "lon": -1.5115,
+            "note": {
+                "markdown": "# Mont-Saint-Michel\n\n50170 Le Mont-Saint-Michel, France\n\n![image](dropped_image_1)\n\n",
+                "images": {
+                    "dropped_image_1": "iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAAFElEQVR4nGM8YWPDgA0wYRUdtBIA/xQBUEfB7b0AAAAASUVORK5CYII="
+                }
+            },
+            "marker": "star",
+            "color": ""
+        },
+        {
+            "id": "5d2c7f10-8a3b-4e6d-b1c2-7e9f0a1b2c02",
+            "lat": 43.9475,
+            "lon": 4.535,
+            "note": {
+                "markdown": "# Pont du Gard\n\n400 Route du Pont du Gard, 30210 Vers-Pont-du-Gard, France\n\n![image](dropped_image_1)\n\n![image](dropped_image_2)\n\n",
+                "images": {
+                    "dropped_image_1": "iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAAFElEQVR4nGO0qTjBgA0wYRUdtBIALHMBjF3SPsYAAAAASUVORK5CYII=",
+                    "dropped_image_2": "iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAAFElEQVR4nGO02RLFgA0wYRUdtBIABjUBWqD6iIUAAAAASUVORK5CYII="
+                }
+            },
+            "marker": "",
+            "color": ""
+        },
+        {
+            "id": "5d2c7f10-8a3b-4e6d-b1c2-7e9f0a1b2c03",
+            "lat": 45.8326,
+            "lon": 6.8652,
+            "note": {
+                "markdown": "# Mont Blanc\n\nNo image in this note.\n\n",
+                "images": {}
+            },
+            "marker": "",
+            "color": ""
+        }
+    ]
+}
