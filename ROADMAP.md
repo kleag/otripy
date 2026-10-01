@@ -71,8 +71,9 @@ Feature requests and bugs are tracked as [GitHub issues](https://github.com/klea
 ### Map and organization
 - [x] #22 Highlight marker on hover
 - [ ] #18 Group locations under a common title (file format change)
-- [ ] #6 Distance measurement tool
-- [ ] #3 Route calculation between locations
+- [x] #6 Distance measurement tool
+- [x] #3 Route calculation between locations: car, bicycle, foot (FOSSGIS OSRM)
+- [ ] #3 Public transport routes and electric car charging stops (no free service found)
 
 ### Cross-cutting
 - [ ] #8 Make the GUI translatable

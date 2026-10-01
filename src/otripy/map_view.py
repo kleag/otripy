@@ -24,6 +24,7 @@ logger = logging.getLogger(__name__)
 DEFAULT_CENTER = [48.8566, 2.3522]  # Paris
 DEFAULT_MARKER_ICON = "circle"
 DEFAULT_ZOOM = 12
+ROUTE_COLOR = "#3b6fd8"
 # Do not zoom closer than street level when fitting a few nearby locations
 FIT_MAX_ZOOM = 15
 DEFAULT_MARKER_COLOR = "blue"
@@ -124,12 +125,12 @@ def move_map_js(lat: float, lon: float) -> str:
     return f"moveMap({float(lat)}, {float(lon)});"
 
 
-def build_map_html(locations: Iterable[Location], fit_all: bool = False, view=None) -> str:
+def build_map_html(locations: Iterable[Location], fit_all: bool = False, view=None, route=None) -> str:
     """Return the full HTML page showing the locations.
 
     With fit_all, the map is zoomed to show all the locations. Otherwise it shows
     view, a (latitude, longitude, zoom) tuple, if given, else it is centered on
-    the last location.
+    the last location. route is a list of (latitude, longitude) points drawn as a line.
     """
     locations = list(locations)
     if view is not None and not fit_all:
@@ -226,6 +227,8 @@ def build_map_html(locations: Iterable[Location], fit_all: bool = False, view=No
     });
     """
     m.get_root().script.add_child(Element(script))
+    if route:
+        folium.PolyLine([[float(lat), float(lon)] for lat, lon in route], color=ROUTE_COLOR, weight=5, opacity=0.7).add_to(m)
     m.add_child(folium.ClickForMarker(popup="Click location"))
 
     data = io.BytesIO()

@@ -9,6 +9,7 @@ from PySide6.QtWidgets import (
     QDialog,
     QFileDialog,
     QHBoxLayout,
+    QLabel,
     QLineEdit,
     QMainWindow,
     QMessageBox,
@@ -41,7 +42,9 @@ try:
     from .map_view import (DEFAULT_ZOOM, MapBridge, hover_marker_js, tooltip_html, build_map_html, downplay_marker_js, highlight_marker_js, move_map_js,
                            update_marker_text_js)
     from .search_popup import SearchPopup
+    from . import routing
     from .config import ConfigDialog, load_nextcloud_password
+    from .distance_dialog import DistanceDialog
     from .nextcloud_with_api import NextcloudFilePicker
     from .rename_popup import RenamePopup
     from .toolbar import ToolBar
@@ -55,7 +58,9 @@ except ImportError:
     from map_view import (DEFAULT_ZOOM, MapBridge, hover_marker_js, tooltip_html, build_map_html, downplay_marker_js, highlight_marker_js, move_map_js,
                           update_marker_text_js)
     from search_popup import SearchPopup
+    import routing
     from config import ConfigDialog, load_nextcloud_password
+    from distance_dialog import DistanceDialog
     from nextcloud_with_api import NextcloudFilePicker
     from rename_popup import RenamePopup
     from toolbar import ToolBar
@@ -94,6 +99,10 @@ class MapApp(QMainWindow):
         self.map_view_state = None
         self.map_bridge.viewChanged.connect(self.map_view_changed)
         self._autosave_pending = False
+        # Route drawn on the map: (locations it goes through, routing.Route, mode), or None
+        self.route = None
+        self.route_label = QLabel()
+        self.route_label.setOpenExternalLinks(True)
 
         self.setGeometry(100, 100, 800, 600)
 
@@ -288,6 +297,19 @@ class MapApp(QMainWindow):
         file_menu.addAction(quit_action)
         # export_action = file_menu.addAction("Export as HTML Map…")
         # export_action.triggered.connect(self.export_as_html)
+
+        tools_menu = menu_bar.addMenu("Tools")
+        distances_action = QAction("Distances…", self)
+        distances_action.triggered.connect(self.open_distance_dialog)
+        tools_menu.addAction(distances_action)
+        route_menu = tools_menu.addMenu("Show Route")
+        for mode, (label, _) in routing.MODES.items():
+            action = route_menu.addAction(label)
+            action.triggered.connect(lambda checked=False, mode=mode: self.show_route(mode))
+        self.hide_route_action = QAction("Hide Route", self)
+        self.hide_route_action.setEnabled(False)
+        self.hide_route_action.triggered.connect(self.hide_route)
+        tools_menu.addAction(self.hide_route_action)
 
         config_menu = menu_bar.addMenu("Settings")
 
@@ -641,8 +663,51 @@ class MapApp(QMainWindow):
         """Redraw the map, keeping its current view; with fit_all, zoom it to show all the locations."""
         if fit_all:
             self.map_view_state = None
-        self.map_page.setHtml(build_map_html(self.list_widget.locations(), fit_all=fit_all,
-                                             view=self.map_view_state))
+        locations = self.list_widget.locations()
+        # A route stays drawn only while the locations it goes through are unchanged
+        if self.route is not None and self.route[0] != tuple((loc.lid, loc.lat, loc.lon) for loc in locations):
+            self.hide_route(redraw=False)
+        self.map_page.setHtml(build_map_html(locations, fit_all=fit_all, view=self.map_view_state,
+                                             route=self.route[1].geometry if self.route else None))
+
+    def open_distance_dialog(self):
+        """Measure the distance between two locations (issue #6)."""
+        locations = list(self.list_widget.locations())
+        if len(locations) < 2:
+            QMessageBox.information(self, "Distances", "Add at least two locations to measure distances.")
+            return
+        selected = self.list_widget.selectedIndexes()
+        DistanceDialog(locations, first=selected[0].row() if selected else 0, parent=self).exec()
+
+    def show_route(self, mode: str):
+        """Draw the route through all the locations, in list order (issue #3)."""
+        locations = list(self.list_widget.locations())
+        if len(locations) < 2:
+            QMessageBox.information(self, "Route", "Add at least two locations to show a route.")
+            return
+        QApplication.setOverrideCursor(Qt.WaitCursor)
+        try:
+            route = routing.fetch_route([loc.location() for loc in locations], mode)
+        except routing.RoutingError as e:
+            QMessageBox.critical(self, "Route", str(e))
+            return
+        finally:
+            QApplication.restoreOverrideCursor()
+        self.route = (tuple((loc.lid, loc.lat, loc.lon) for loc in locations), route, mode)
+        self.hide_route_action.setEnabled(True)
+        self.route_label.setText(f"{routing.MODES[mode][0]}: {routing.format_distance(route.distance)}, "
+                                 f"{routing.format_duration(route.duration)} — {routing.ATTRIBUTION_HTML}")
+        self.statusBar().addPermanentWidget(self.route_label)
+        self.route_label.show()
+        self.update_map()
+
+    def hide_route(self, redraw: bool = True):
+        self.route = None
+        self.hide_route_action.setEnabled(False)
+        self.statusBar().removeWidget(self.route_label)
+        self.route_label.clear()
+        if redraw:
+            self.update_map()
 
     def handle_marker_click(self, marker_id):
         """ Handle marker click events in Python. """

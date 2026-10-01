@@ -11,6 +11,13 @@
 
 The map stays where you moved it while you edit, and shows all the locations when you open a trip. Drag the separators between the list, the map and the note to resize them; Otripy remembers their sizes.
 
+## Distances and routes
+
+* *Tools* → *Distances…* shows the straight-line distance between two locations, the selected one and the next by default. Choose a mode (car, bicycle or foot) and click *Compute Route* for the route's length and duration.
+* *Tools* → *Show Route* draws the route through all the locations, in the list's order, by car, bicycle or foot; the status bar shows its length and duration. It disappears when the locations change; *Tools* → *Hide Route* removes it.
+
+Routes are computed by the [FOSSGIS](https://routing.openstreetmap.de/about.html) routing servers behind openstreetmap.org, from OpenStreetMap data: they need an Internet connection. If a route looks wrong, you can [fix the map](https://www.openstreetmap.org/fixthemap). Public transport and electric car charging are not available.
+
 ## Notes
 
 The first line of a note is the location's title, shown in the list and on the map. The toolbar above the note sets headings (H1 to H3), bold, italic, underline and strikethrough. Add images by pasting them, or by dragging image files into the note. Right-click an image to change its size: *Image Size* → *Small*, *Medium*, *Large* or *Original Size*. Links and web addresses (`https://…`, `www.…`) open in your browser with Ctrl+click; a plain click just places the cursor.

@@ -9,6 +9,8 @@ Notable changes to Otripy. The format follows [Keep a Changelog](https://keepach
 - Installers for Windows (`.msi`), macOS 13 and later (`.dmg`) and Linux (AppImage), attached to each GitHub release.
 - Application icon.
 - Opening a trip zooms the map to show all its locations ([#25](https://github.com/kleag/otripy/issues/25)).
+- *Tools* → *Distances…* measures the straight-line distance between two locations, and their route length and duration by car, bicycle or foot ([#6](https://github.com/kleag/otripy/issues/6)).
+- *Tools* → *Show Route* draws the route through all the locations by car, bicycle or foot, with its length and duration ([#3](https://github.com/kleag/otripy/issues/3)). Routes come from the FOSSGIS servers behind openstreetmap.org.
 - Hovering a location in the list highlights its marker on the map, and conversely; tooltips preview the note ([#22](https://github.com/kleag/otripy/issues/22)).
 - Images in notes can be resized from their context menu; their size is saved with the trip ([#20](https://github.com/kleag/otripy/issues/20)).
 - Ctrl+click opens links and web addresses in notes ([#5](https://github.com/kleag/otripy/issues/5)).
