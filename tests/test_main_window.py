@@ -130,3 +130,32 @@ def test_cancelling_color_picker_keeps_color(window, monkeypatch):
     window.action_marker_color_picker()
     assert loc.color == "red"
     assert not window.dirty
+
+
+def test_map_click_adds_without_asking_by_default(window, monkeypatch):
+    asked = []
+    monkeypatch.setattr(main.QMessageBox, "question", lambda *a, **k: asked.append(a) or QMessageBox.No)
+    window.geolocator = FakeGeolocator("Tour Eiffel, Paris")
+    window.map_bridge.on_map_clicked(48.8584, 2.2945)
+    assert not asked
+    assert len(window.list_widget.locations()) == 1
+
+
+@pytest.mark.parametrize("answer, added", [(QMessageBox.Yes, 1), (QMessageBox.No, 0)])
+def test_map_click_confirmation(window, monkeypatch, answer, added):
+    """Issue #30: optionally confirm, with the address, before adding a clicked location."""
+    asked = []
+    monkeypatch.setattr(main.QMessageBox, "question", lambda parent, title, text, *a: asked.append(text) or answer)
+    window.confirm_locations_action.setChecked(True)
+    window.geolocator = FakeGeolocator("Tour Eiffel, Paris")
+    window.map_bridge.on_map_clicked(48.8584, 2.2945)
+    assert "Tour Eiffel, Paris" in asked[0]
+    assert len(window.list_widget.locations()) == added
+    assert (window.lat_input.text() != "") == bool(added)
+
+
+def test_confirmation_setting_is_remembered(window, qtbot):
+    window.confirm_locations_action.setChecked(True)
+    again = MapApp()
+    qtbot.addWidget(again)
+    assert again.confirm_locations_action.isChecked()

@@ -99,3 +99,14 @@ def test_place_added_from_search_is_shown(window):
     window.search_popup.itemClicked.emit(window.search_popup.item(0))
     assert "[43.2965, 5.3698]" in pages[-1]
     assert '"zoom": 15' in pages[-1]
+
+
+def test_search_result_is_added_without_confirmation(window, monkeypatch):
+    asked = []
+    monkeypatch.setattr(main.QMessageBox, "question", lambda *a, **k: asked.append(a) or main.QMessageBox.No)
+    window.confirm_locations_action.setChecked(True)
+    window.geolocator = FakeGeocoder([Place("Louvre, Paris", 48.8606, 2.3376)])
+    search(window, "Louvre")
+    window.search_popup.itemClicked.emit(window.search_popup.item(0))
+    assert not asked
+    assert len(window.list_widget.locations()) == 1
