@@ -1,17 +1,25 @@
 import logging
 
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (QVBoxLayout,
-    QDialog, QLineEdit, QListView,
+    QDialog, QDialogButtonBox, QLineEdit, QListView,
     QAbstractItemView)
 from PySide6.QtGui import QStandardItemModel, QStandardItem
 
 logger = logging.getLogger(__name__)
 
+# Kind of each entry of the list, stored in its item
+ENTRY_KIND = Qt.UserRole
+PARENT, DIRECTORY, FILE = "parent", "directory", "file"
+
 
 class NextcloudFilePicker(QDialog):
-    def __init__(self, nextcloud, parent=None):
+    """Browse Nextcloud folders to pick a file to open or, with save, a file name to save to."""
+
+    def __init__(self, nextcloud, parent=None, save=False):
         super().__init__(parent)
-        self.setWindowTitle("Select File from Nextcloud")
+        self.save = save
+        self.setWindowTitle("Save to Nextcloud" if save else "Select File from Nextcloud")
         self.nc = nextcloud
         self.selected_file = None
         self.current_dir = ""
@@ -34,42 +42,64 @@ class NextcloudFilePicker(QDialog):
         self.list_view.clicked.connect(self.on_file_selected)
         layout.addWidget(self.list_view)
 
+        if self.save:
+            self.name_line_edit = QLineEdit()
+            self.name_line_edit.setPlaceholderText("File name, e.g. trip.json")
+            self.name_line_edit.returnPressed.connect(self.accept_name)
+            layout.addWidget(self.name_line_edit)
+            buttons = QDialogButtonBox(QDialogButtonBox.Save | QDialogButtonBox.Cancel)
+            buttons.accepted.connect(self.accept_name)
+            buttons.rejected.connect(self.reject)
+            layout.addWidget(buttons)
+
         self.setLayout(layout)
         self.refresh_files()  # Initially load the root directory
+
+    def add_entry(self, text, kind, name=None):
+        item = QStandardItem(text)
+        item.setData(kind, ENTRY_KIND)
+        item.setData(name if name is not None else text, Qt.UserRole + 1)
+        self.list_model.appendRow(item)
 
     def refresh_files(self):
         directory = self.path_line_edit.text().strip()
         files = self.nc.files.listdir(directory)
         self.list_model.clear()  # Clear previous entries
         if directory:
-            item = QStandardItem("[..]")
-            self.list_model.appendRow(item)
+            self.add_entry("[..]", PARENT)
         for file in files:
-            if file.is_dir:  # and not file["hidden"]:
-                item = QStandardItem(f"[{file.name}]")
-                self.list_model.appendRow(item)
+            if file.is_dir:
+                self.add_entry(f"[{file.name}]", DIRECTORY, file.name)
         for file in files:
-            if not file.is_dir:  # and not file["hidden"]:
-                item = QStandardItem(file.name)
-                self.list_model.appendRow(item)
+            if not file.is_dir:
+                self.add_entry(file.name, FILE)
 
     def on_file_selected(self, index):
-        self.selected_file = self.list_model.itemFromIndex(index).text()
-        logger.info(f"on_file_selected {index}, {self.selected_file}")
-        if self.selected_file == "[..]":
-            directory = self.path_line_edit.text().strip()
-            if directory[-1] == "/":
-                directory = directory[:-1]
-            directory = "/".join(directory.split("/")[:-1])
-            logger.info(f"on_file_selected .. directory: {directory}")
-            self.path_line_edit.setText(directory)
+        item = self.list_model.itemFromIndex(index)
+        kind, name = item.data(ENTRY_KIND), item.data(Qt.UserRole + 1)
+        logger.info(f"on_file_selected {kind} {name}")
+        if kind == PARENT:
+            directory = self.path_line_edit.text().strip().rstrip("/")
+            self.path_line_edit.setText("/".join(directory.split("/")[:-1]))
             self.refresh_files()
-        elif self.selected_file[0] == "[" and self.selected_file[-1] == "]":
-            directory = self.path_line_edit.text().strip() + "/" + self.selected_file[1:-1]
-            self.path_line_edit.setText(directory)
+        elif kind == DIRECTORY:
+            self.path_line_edit.setText(self.path_line_edit.text().strip() + "/" + name)
             self.refresh_files()
+        elif self.save:
+            self.name_line_edit.setText(name)  # save over this file, after confirmation
         else:
+            self.selected_file = name
             self.accept()
+
+    def accept_name(self):
+        """Save mode: accept the typed file name, adding the .json extension if missing."""
+        name = self.name_line_edit.text().strip().strip("/")
+        if not name:
+            return
+        if not name.lower().endswith(".json"):
+            name += ".json"
+        self.selected_file = name
+        self.accept()
 
     def get_selected_file(self):
         return self.path_line_edit.text().strip() + "/" + self.selected_file

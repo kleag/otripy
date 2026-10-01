@@ -254,10 +254,9 @@ class MapApp(QMainWindow):
         save_as_action.setShortcut(QKeySequence("Ctrl+Shift+S"))
         save_as_action.triggered.connect(self.save_file_as)
 
-        # TODO Implement Save As on Nextcloud
-        # save_as_nc_action = QAction("Save As Nextcloud…", self)
-        # save_as_nc_action.setShortcut(QKeySequence("Ctrl+Alt+S"))
-        # save_as_nc_action.triggered.connect(self.save_file_as_nc)
+        save_as_nc_action = QAction("Save As Nextcloud…", self)
+        save_as_nc_action.setShortcut(QKeySequence("Ctrl+Alt+S"))
+        save_as_nc_action.triggered.connect(self.save_file_as_nc)
 
         quit_action = QAction("Quit", self)
         quit_action.setShortcut(QKeySequence("Ctrl+Q"))
@@ -270,7 +269,7 @@ class MapApp(QMainWindow):
         file_menu.addSeparator()
         file_menu.addAction(save_action)
         file_menu.addAction(save_as_action)
-        # file_menu.addAction(save_as_nc_action)
+        file_menu.addAction(save_as_nc_action)
         file_menu.addSeparator()
         file_menu.addAction(quit_action)
         # export_action = file_menu.addAction("Export as HTML Map…")
@@ -784,8 +783,28 @@ class MapApp(QMainWindow):
         self.set_window_title(dirty=False)
         return True
 
-    def save_file_as_nc(self):
-        logger.error("MapApp.save_file_as_nc NOT IMPLEMENTED")
+    def save_file_as_nc(self) -> bool:
+        """Save the journey to a new file on Nextcloud. Return True if it was saved."""
+        if not self.connect_nextcloud():
+            return False
+        file_picker = NextcloudFilePicker(self.nc, self, save=True)
+        if file_picker.exec() != QDialog.DialogCode.Accepted:
+            return False
+        path = file_picker.get_selected_file()
+        try:
+            if self.nc_file_exists(path):
+                answer = QMessageBox.question(
+                    self, "File Exists", f"{path} already exists on Nextcloud. Replace it?",
+                    QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+                if answer != QMessageBox.Yes:
+                    return False
+            self.current_file = self.nc.files.upload(path, self.list_widget.locations().to_json_str())
+        except nc_py_api.NextcloudException as e:
+            QMessageBox.critical(self, "Error", f"Failed to save file on Nextcloud: {e}")
+            return False
+        self.list_widget.locations().clean()
+        self.set_window_title(dirty=False)
+        return True
 
     def save_local_file(self, file_name) -> bool:
         try:
