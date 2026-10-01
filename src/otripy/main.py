@@ -789,7 +789,12 @@ class MapApp(QMainWindow):
 
 
 def main():
-    # sys.argv.append("--disable-web-security")
+    if sys.argv[1:2] == ["--self-test"]:
+        try:
+            from .self_test import run
+        except ImportError:
+            from self_test import run
+        sys.exit(run(sys.argv[2] if len(sys.argv) > 2 else None))
     app = QApplication(sys.argv)
     app_icon = QIcon()
     for size in (16, 32, 64, 128, 256, 512):
