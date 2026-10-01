@@ -30,7 +30,7 @@ Feature requests and bugs are tracked as [GitHub issues](https://github.com/klea
 - [x] Fix macOS release job: ad-hoc signed DMG (no Apple Developer ID, so no notarization), macOS 13+ as required by PySide6
 - [ ] Run the release workflow by hand (workflow_dispatch) and test the Windows `.msi` and macOS `.dmg` on real machines
 - [x] Add a Linux bundle: AppImage built with PyInstaller on Ubuntu 22.04 (Briefcase's AppImage support is unreliable for PySide6); Flatpak only if publishing on Flathub
-- [ ] Pin Briefcase `requires` to the locked versions, so all platforms ship the tested PySide6
+- [x] Pin Briefcase `requires` to the locked versions, so all platforms ship the tested PySide6
 - [x] Declare the license as an SPDX expression (PEP 639): AGPL-3.0-or-later
 
 ## Phase 3 — Documentation

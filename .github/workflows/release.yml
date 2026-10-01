@@ -45,8 +45,18 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - uses: astral-sh/setup-uv@v6
       - run: python -m pip install briefcase
-      - run: briefcase package ${{ matrix.platform }} --no-input ${{ matrix.options }}
+      # Briefcase installs [tool.briefcase.app.otripy] requires with pip, which
+      # would take the latest versions: constrain them to uv.lock, the
+      # versions the tests run with.
+      - name: Export the locked versions as pip constraints
+        run: uv export --frozen --no-dev --no-emit-project --no-hashes -o constraints.txt
+      - name: Build the bundle
+        shell: bash
+        run: >-
+          briefcase package ${{ matrix.platform }} --no-input ${{ matrix.options }}
+          -C "requirement_installer_args=['--constraint', './constraints.txt']"
       - uses: actions/upload-artifact@v4
         with:
           name: bundle-${{ matrix.platform }}
