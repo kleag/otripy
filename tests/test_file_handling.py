@@ -248,3 +248,16 @@ def test_nextcloud_open_error(window, nextcloud, dialogs):
     window.load_nc_file()
     assert dialogs.errors
     assert labels(window) == []
+
+
+def test_opened_journey_is_framed(window, dialogs, fixture_text, tmp_path, monkeypatch):
+    """Issue #25: opening a file shows all its locations."""
+    pages = []
+    monkeypatch.setattr(window.map_page, "setHtml", pages.append)
+    dialogs.open_path = tmp_path / "trip.json"
+    dialogs.open_path.write_text(fixture_text("journey-1.0.0.json"), encoding="utf-8")
+    window.load_file()
+    assert "fitBounds" in pages[-1]
+    add_location(window)
+    window.update_map()
+    assert "fitBounds" not in pages[-1], "editing must not move the map"

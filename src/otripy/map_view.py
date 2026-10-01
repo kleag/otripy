@@ -22,6 +22,8 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_CENTER = [48.8566, 2.3522]  # Paris
 DEFAULT_MARKER_ICON = "circle"
+# Do not zoom closer than street level when fitting a few nearby locations
+FIT_MAX_ZOOM = 15
 DEFAULT_MARKER_COLOR = "blue"
 HIGHLIGHT_ICON_URL = "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png"
 
@@ -96,11 +98,19 @@ def move_map_js(lat: float, lon: float) -> str:
     return f"moveMap({float(lat)}, {float(lon)});"
 
 
-def build_map_html(locations: Iterable[Location]) -> str:
-    """Return the full HTML page showing the locations, centered on the last one."""
+def build_map_html(locations: Iterable[Location], fit_all: bool = False) -> str:
+    """Return the full HTML page showing the locations.
+
+    The map is centered on the last location, or, with fit_all, zoomed to show
+    all of them.
+    """
     locations = list(locations)
     center = locations[-1].location() if locations else DEFAULT_CENTER
     m = folium.Map(location=center, zoom_start=12)
+    if fit_all and len(locations) > 1:
+        lats = [loc.lat for loc in locations]
+        lons = [loc.lon for loc in locations]
+        m.fit_bounds([[min(lats), min(lons)], [max(lats), max(lons)]], padding=(30, 30), max_zoom=FIT_MAX_ZOOM)
     m.get_root().html.add_child(
         JavascriptLink('qrc:///qtwebchannel/qwebchannel.js'))
     m.get_root().html.add_child(
