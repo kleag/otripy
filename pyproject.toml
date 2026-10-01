@@ -18,7 +18,8 @@ dependencies = [
     "typing-extensions>=4.12.2",
 ]
 authors = [{ name = "Gaël de Chalendar (aka Kleag)", email = "kleagg@gmail.com" }]
-license = { text = "AGPL" }
+license = "AGPL-3.0-or-later"
+license-files = ["AGPL.md"]
 keywords = ["map", "tourism", "openstreetmap", "journey", "planning", "trip" ]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
@@ -28,7 +29,6 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Intended Audience :: End Users/Desktop",
-    "License :: OSI Approved :: GNU Affero General Public License v3",
     "Natural Language :: English",
     "Operating System :: MacOS",
     "Operating System :: Microsoft :: Windows",
@@ -98,7 +98,8 @@ version = "1.2.3"
 author = "Gaël de Chalendar"
 author_email = "kleagg@gmail.com"
 url = "https://github.com/kleag/otripy"
-license.file = "AGPL.md"
+license = "AGPL-3.0-or-later"
+license-files = ["AGPL.md"]
 
 [tool.briefcase.app.otripy]
 formal_name = "Otripy"

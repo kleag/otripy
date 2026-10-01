@@ -30,7 +30,7 @@ Feature requests and bugs are tracked as [GitHub issues](https://github.com/klea
 - [x] Fix macOS release job: ad-hoc signed DMG (no Apple Developer ID, so no notarization)
 - [ ] Run the release workflow by hand (workflow_dispatch) and test the Windows `.msi` and macOS `.dmg` on real machines
 - [ ] Add a Linux bundle (AppImage or Flatpak via Briefcase); a native `linux system` build needs the distribution's own Python
-- [ ] Declare the license as an SPDX expression (PEP 639); Briefcase currently reads `license.file` as GPL-3.0
+- [x] Declare the license as an SPDX expression (PEP 639): AGPL-3.0-or-later
 
 ## Phase 3 — Documentation
 
