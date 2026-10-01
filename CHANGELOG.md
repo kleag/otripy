@@ -4,6 +4,8 @@ Notable changes to Otripy. The format follows [Keep a Changelog](https://keepach
 
 ## Unreleased
 
+## 1.3.1 - 2026-10-01
+
 ### Fixed
 
 - The Windows and macOS installers contain the same tested versions of Qt and the other libraries as the other installations; those of 1.3.0 used the latest versions available when they were built.
