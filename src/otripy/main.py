@@ -539,7 +539,7 @@ class MapApp(QMainWindow):
             self.note_input.textChanged.disconnect()
             self.lat_input.setText(str(data["lat"]).strip())
             self.lon_input.setText(str(data["lon"]).strip())
-            location = self.geolocator.reverse(f"{data["lat"]}, {data["lon"]}")
+            location = self.geolocator.reverse(f"{data['lat']}, {data['lon']}")
             address = location.address.replace(", ", "\n", 1) if location is not None else f"Unknown place at [{self.lat_input.text().strip()}, {self.lon_input.text().strip()}]"
             note = {"markdown": address}
             self.note_input.from_note(note)
