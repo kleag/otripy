@@ -66,6 +66,11 @@ logging.basicConfig(level=logging.INFO)
 logging.root.setLevel(logging.INFO)
 
 
+def js_string(value) -> str:
+    """Return value as a JavaScript string literal, safe to embed in a <script> element."""
+    return json.dumps(str(value)).replace("</", "<\\/")
+
+
 class MarkerHandler(QObject):
     """ Exposes a slot to receive marker click events from JavaScript. """
     markerClicked = Signal(str)  # Signal to send marker ID when clicked
@@ -611,35 +616,35 @@ class MapApp(QMainWindow):
             if loc.marker is not None:
                 icon = f"""
                 var icon = L.AwesomeMarkers.icon({{
-                    icon: 'fa-{loc.marker}',  // Icône FontAwesome (ex: fa-coffee, fa-car, fa-bicycle)
-                    markerColor: '{loc.color if loc.color is not None else "blue"}', // Couleurs disponibles : red, blue, green, orange, purple, darkred, lightred, darkblue, lightblue, darkgreen, lightgreen, cadetblue, white, pink, gray, black
+                    icon: {js_string("fa-" + loc.marker)},  // Icône FontAwesome (ex: fa-coffee, fa-car, fa-bicycle)
+                    markerColor: {js_string(loc.color if loc.color is not None else "blue")}, // Couleurs disponibles : red, blue, green, orange, purple, darkred, lightred, darkblue, lightblue, darkgreen, lightgreen, cadetblue, white, pink, gray, black
                     prefix: 'fa'        // Indique que l'on utilise FontAwesome
                 }});
                 """
                 script += icon
                 script += f"""
-                var marker = L.marker([{loc.lat}, {loc.lon}], {{ icon: icon }}).addTo(map).bindTooltip("{tooltip}", {{permanent: false}}).bindPopup("{popup}");
+                var marker = L.marker([{loc.lat}, {loc.lon}], {{ icon: icon }}).addTo(map).bindTooltip({js_string(tooltip)}, {{permanent: false}}).bindPopup({js_string(popup)});
                 """
             else:
                 icon = f"""
                 var icon = L.AwesomeMarkers.icon({{
                     icon: 'fa-circle',  // Icône FontAwesome (ex: fa-coffee, fa-car, fa-bicycle)
-                    markerColor: '{loc.color if loc.color is not None else "blue"}', // Couleurs disponibles : red, blue, green, orange, yellow, purple, darkred, lightred, darkblue, lightblue, darkgreen, lightgreen, cadetblue, white, pink, gray, black
+                    markerColor: {js_string(loc.color if loc.color is not None else "blue")}, // Couleurs disponibles : red, blue, green, orange, yellow, purple, darkred, lightred, darkblue, lightblue, darkgreen, lightgreen, cadetblue, white, pink, gray, black
                     prefix: 'fa'        // Indique que l'on utilise FontAwesome
                 }});
                 """
                 script += icon
                 script += f"""
-                var marker = L.marker([{loc.lat}, {loc.lon}], {{ icon: icon }}).addTo(map).bindTooltip("{tooltip}", {{permanent: false}}).bindPopup("{popup}");
+                var marker = L.marker([{loc.lat}, {loc.lon}], {{ icon: icon }}).addTo(map).bindTooltip({js_string(tooltip)}, {{permanent: false}}).bindPopup({js_string(popup)});
                 """
                 # script += f"""
-                # var marker = L.marker([{loc.lat}, {loc.lon}]).addTo(map).bindTooltip("{tooltip}", {{permanent: false}}).bindPopup("{popup}");
+                # var marker = L.marker([{loc.lat}, {loc.lon}]).addTo(map).bindTooltip({js_string(tooltip)}, {{permanent: false}}).bindPopup({js_string(popup)});
                 # """
             script += f"""
-            window.markerMap["{loc.lid}"] = marker;
+            window.markerMap[{js_string(loc.lid)}] = marker;
             marker.on("click", function() {{
                 if (pywebchannel.objects.markerHandler) {{
-                    pywebchannel.objects.markerHandler.on_marker_clicked("{loc.lid}");
+                    pywebchannel.objects.markerHandler.on_marker_clicked({js_string(loc.lid)});
                 }}
             }});
             """
@@ -668,8 +673,8 @@ class MapApp(QMainWindow):
         """ Change marker color dynamically without modifying tooltip """
         logger.info(f"MapApp.highlight_marker {marker_id}")
         js_code = f"""
-        if (window.markerMap["{marker_id}"]) {{
-            window.markerMap["{marker_id}"].setIcon(
+        if (window.markerMap[{js_string(marker_id)}]) {{
+            window.markerMap[{js_string(marker_id)}].setIcon(
                 L.icon({{
                     iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
                     iconSize: [35, 55],  // Larger icon
@@ -688,8 +693,8 @@ class MapApp(QMainWindow):
         if loc and loc.marker is not None:
             icon_js = f"""
             var icon = L.AwesomeMarkers.icon({{
-                icon: 'fa-{loc.marker}',  // Icône FontAwesome (ex: fa-coffee, fa-car, fa-bicycle)
-                markerColor: '{loc.color if loc.color is not None else "blue"}', // Couleurs disponibles : red, blue, green, orange, yellow, purple, darkred, lightred, darkblue, lightblue, darkgreen, lightgreen, cadetblue, white, pink, gray, black
+                icon: {js_string("fa-" + loc.marker)},  // Icône FontAwesome (ex: fa-coffee, fa-car, fa-bicycle)
+                markerColor: {js_string(loc.color if loc.color is not None else "blue")}, // Couleurs disponibles : red, blue, green, orange, yellow, purple, darkred, lightred, darkblue, lightblue, darkgreen, lightgreen, cadetblue, white, pink, gray, black
                 prefix: 'fa'        // Indique que l'on utilise FontAwesome
             }});
             """
@@ -697,8 +702,8 @@ class MapApp(QMainWindow):
             icon_js = """var icon = new L.Icon.Default;"""
         js_code = f"""
         {icon_js}
-        if (window.markerMap["{marker_id}"]) {{
-            window.markerMap["{marker_id}"].setIcon(icon);
+        if (window.markerMap[{js_string(marker_id)}]) {{
+            window.markerMap[{js_string(marker_id)}].setIcon(icon);
         }}
         """
         self.map_page.runJavaScript(js_code)
