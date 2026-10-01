@@ -36,7 +36,7 @@ Feature requests and bugs are tracked as [GitHub issues](https://github.com/klea
 ## Phase 3 — Documentation
 
 - [x] README and user guide site (GitHub Pages, MkDocs Material): installation per platform, usage; build/publish moved to CONTRIBUTING.md
-- [ ] Update the screenshot (it predates marker icons and colors)
+- [x] Update the screenshot
 - [x] `docs/file-format.md`: the `.json` journey format and its versioning rules
 - [x] `CONTRIBUTING.md`: dev setup, running tests, release procedure
 - [x] `CHANGELOG.md`
@@ -54,7 +54,7 @@ Feature requests and bugs are tracked as [GitHub issues](https://github.com/klea
 - [x] #25 Fit map to all markers when opening a file
 - [ ] #27 Show the location icon in the list entry
 - [ ] #28 "Save as…" to Nextcloud
-- [ ] #29 Resizable side panels
+- [x] #29 Resizable side panels
 - [ ] #30 Confirm/validate button for location addition
 - [x] #31 Create and add an application icon
 

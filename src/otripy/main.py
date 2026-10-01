@@ -2,7 +2,7 @@ import logging
 import nc_py_api
 import sys
 
-from PySide6.QtCore import QSettings, Slot
+from PySide6.QtCore import QSettings, Qt, Slot
 from PySide6.QtGui import QAction, QDoubleValidator, QIcon, QKeySequence, QTextCursor, QFont, QTextCharFormat, QTextFormat
 from PySide6.QtWidgets import (
     QApplication,
@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
     QMainWindow,
     QMessageBox,
     QPushButton,
+    QSplitter,
     QTextEdit,
     QVBoxLayout,
     QWidget,
@@ -122,7 +123,6 @@ class MapApp(QMainWindow):
         self.list_widget = LocationListView(self)
         self.list_widget.model.locations.dirty.connect(self.set_window_title)
 
-        self.list_widget.setMaximumWidth(300)
         self.list_widget.locationClicked.connect(self.on_item_selected)
         # self.list_widget.setLocations(self.locations)
 
@@ -167,7 +167,6 @@ class MapApp(QMainWindow):
         btn_layout.addWidget(self.lon_input)
 
         self.note_input = NoteWidget(self)
-        self.note_input.setMaximumHeight(200)
         self.note_input.setPlaceholderText("Enter Note")
         self.note_input.textChanged.connect(self.note_changed)
         self.note_input.setAutoFormatting(QTextEdit.AutoFormatting.AutoAll)
@@ -178,27 +177,58 @@ class MapApp(QMainWindow):
         self.del_btn.clicked.connect(self.delete_item)
 
         self.create_icons_toolbar()
-        ctrl_layout = QVBoxLayout()
-        ctrl_layout.addLayout(search_layout)
-        ctrl_layout.addWidget(self.map_view)
-        ctrl_layout.addLayout(btn_layout)
-        ctrl_layout.addWidget(self.toolbar)
-        ctrl_layout.addWidget(self.note_input)
-        # ctrl_layout.addWidget(self.add_button)
 
-        list_layout = QVBoxLayout()
+        # Panels, resizable with splitters: the list on the left; on the right,
+        # the map above the note
+        list_panel = QWidget()
+        list_layout = QVBoxLayout(list_panel)
+        list_layout.setContentsMargins(0, 0, 0, 0)
         list_layout.addWidget(self.list_widget)
         list_layout.addWidget(self.del_btn)
 
-        # Layout arrangement
-        main_layout = QHBoxLayout()
-        main_layout.addLayout(list_layout, 1)
-        main_layout.addLayout(ctrl_layout, 2)
+        note_panel = QWidget()
+        note_layout = QVBoxLayout(note_panel)
+        note_layout.setContentsMargins(0, 0, 0, 0)
+        note_layout.addLayout(btn_layout)
+        note_layout.addWidget(self.toolbar)
+        note_layout.addWidget(self.note_input)
 
-        layout.addLayout(main_layout)
-        # layout.addLayout(ctrl_layout)
+        self.map_splitter = QSplitter(Qt.Vertical)
+        self.map_splitter.addWidget(self.map_view)
+        self.map_splitter.addWidget(note_panel)
+        self.map_splitter.setStretchFactor(0, 1)  # the map takes the extra height
+        self.map_splitter.setSizes([500, 200])
 
+        map_panel = QWidget()
+        map_layout = QVBoxLayout(map_panel)
+        map_layout.setContentsMargins(0, 0, 0, 0)
+        map_layout.addLayout(search_layout)
+        map_layout.addWidget(self.map_splitter)
+
+        self.main_splitter = QSplitter(Qt.Horizontal)
+        self.main_splitter.addWidget(list_panel)
+        self.main_splitter.addWidget(map_panel)
+        self.main_splitter.setStretchFactor(1, 1)  # the map takes the extra width
+        self.main_splitter.setSizes([250, 550])
+
+        for splitter in (self.main_splitter, self.map_splitter):
+            splitter.setChildrenCollapsible(False)
+        self.restore_layout()
+
+        layout.addWidget(self.main_splitter)
         central_widget.setLayout(layout)
+
+    def restore_layout(self):
+        """Restore the panel sizes saved by save_layout."""
+        for key, splitter in (("window/mainSplitter", self.main_splitter), ("window/mapSplitter", self.map_splitter)):
+            state = self.settings.value(key)
+            if state is not None:
+                splitter.restoreState(state)
+
+    def save_layout(self):
+        """Save the panel sizes in the settings, for the next start."""
+        self.settings.setValue("window/mainSplitter", self.main_splitter.saveState())
+        self.settings.setValue("window/mapSplitter", self.map_splitter.saveState())
 
     def createMenu(self):
         menu_bar = self.menuBar()
@@ -766,6 +796,7 @@ class MapApp(QMainWindow):
         self.map_page.runJavaScript(move_map_js(loc.lat, loc.lon))
 
     def closeEvent(self, event):
+        self.save_layout()
         if not self.dirty:
             event.accept()
             return
