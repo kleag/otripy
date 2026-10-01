@@ -139,3 +139,70 @@ def test_image_moved_to_another_note(widget):
     assert list(note_b["images"]) == image_refs(note_b)
     widget.from_note(note_a)
     assert image_refs(widget.to_note()) == []
+
+
+def point_at(widget, text):
+    """Viewport position in the middle of the first occurrence of text."""
+    from PySide6.QtGui import QTextDocument as Doc
+    cursor = widget.document().find(text, 0, Doc.FindFlags())
+    middle = widget.textCursor()
+    middle.setPosition((cursor.selectionStart() + cursor.selectionEnd()) // 2)
+    return widget.cursorRect(middle).center()
+
+
+@pytest.fixture
+def opened(monkeypatch):
+    urls = []
+    monkeypatch.setattr("otripy.note_widget.QDesktopServices.openUrl", lambda url: urls.append(url.toString()))
+    return urls
+
+
+@pytest.mark.parametrize("markdown, target, url", [
+    ("See [the museum](https://www.louvre.fr/en) now", "the museum", "https://www.louvre.fr/en"),
+    ("Tickets at https://example.org/tickets.", "example.org", "https://example.org/tickets"),
+    ("Or www.example.org/plan (map)", "example.org", "http://www.example.org/plan"),
+])
+def test_ctrl_click_opens_links(widget, opened, markdown, target, url):
+    """Issue #5: Ctrl+click opens links and web addresses in notes."""
+    from PySide6.QtCore import Qt
+    from PySide6.QtTest import QTest
+    widget.from_note({"markdown": markdown})
+    widget.resize(600, 200)
+    widget.show()
+    QTest.mouseClick(widget.viewport(), Qt.LeftButton, Qt.ControlModifier, point_at(widget, target))
+    assert opened == [url]
+
+
+def test_plain_click_on_link_only_moves_cursor(widget, opened):
+    from PySide6.QtCore import Qt
+    from PySide6.QtTest import QTest
+    widget.from_note({"markdown": "Tickets at https://example.org/tickets"})
+    widget.resize(600, 200)
+    widget.show()
+    QTest.mouseClick(widget.viewport(), Qt.LeftButton, Qt.NoModifier, point_at(widget, "example"))
+    assert opened == []
+    assert widget.textCursor().position() > 0
+
+
+def test_ctrl_click_outside_links_opens_nothing(widget, opened):
+    from PySide6.QtCore import Qt
+    from PySide6.QtTest import QTest
+    widget.from_note({"markdown": "No link here https://example.org"})
+    widget.resize(600, 200)
+    widget.show()
+    QTest.mouseClick(widget.viewport(), Qt.LeftButton, Qt.ControlModifier, point_at(widget, "link"))
+    assert opened == []
+
+
+def test_ctrl_click_opens_typed_address(widget, opened):
+    """Addresses typed in the editor are plain text until the note is reloaded."""
+    from PySide6.QtCore import Qt
+    from PySide6.QtTest import QTest
+    widget.from_note({"markdown": "Title"})
+    widget.resize(600, 200)
+    widget.show()
+    move_cursor_to_end(widget)
+    widget.textCursor().insertText(" see www.example.org/typed, then")
+    assert not widget.anchorAt(point_at(widget, "example"))
+    QTest.mouseClick(widget.viewport(), Qt.LeftButton, Qt.ControlModifier, point_at(widget, "example"))
+    assert opened == ["http://www.example.org/typed"]

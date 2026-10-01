@@ -64,7 +64,7 @@ Feature requests and bugs are tracked as [GitHub issues](https://github.com/klea
 - [x] #12 Auto-save option
 
 ### Notes
-- [ ] #5 Clickable links in notes
+- [x] #5 Clickable links in notes
 - [ ] #20 Resizable images in notes
 - [ ] #19 General notes page not linked to a location (file format change)
 
