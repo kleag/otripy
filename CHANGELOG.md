@@ -4,6 +4,8 @@ Notable changes to Otripy. The format follows [Keep a Changelog](https://keepach
 
 ## Unreleased
 
+## 1.4.0 - 2026-10-02
+
 ### Added
 
 - Groups: titled sections of the location list, such as the days of a trip, to which locations are dragged or added; groups can be reordered, collapsed, and shown on the map ([#18](https://github.com/kleag/otripy/issues/18)).
