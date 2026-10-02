@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 from otripy.journey import Journey
-from otripy.location import Group, Location, TripNotes
+from otripy.location import Group, Leg, Location, TripNotes
 from otripy.trip_export import (ORGANIC_COLORS, ORGANIC_ICONS, build_gpx, build_kmz, markdown_to_html,
                                 markdown_to_text)
 
@@ -91,13 +91,27 @@ def test_unmapped_icon_has_no_icon():
     assert killarney.findtext("k:styleUrl", None, KML) == "#placemark-red"
 
 
-def test_route_is_a_track_in_the_first_list():
-    route = [(53.35, -6.26), (53.27, -9.06), (52.06, -9.5)]
-    documents = kml_documents(build_kmz(trip(), "Ireland", route, "Route by car"))
-    first = documents[0][1]
-    [line] = first.findall(".//k:LineString/k:coordinates", KML)
-    assert line.text == "-6.260000,53.350000 -9.060000,53.270000 -9.500000,52.060000"
-    assert all(doc.find(".//k:LineString", KML) is None for _, doc in documents[1:])
+def trip_with_legs():
+    journey = trip()
+    journey.add_leg(Leg("dublin", "galway", "car", 208_000, 9_000, [(53.35, -6.26), (53.27, -9.06)]))
+    journey.add_leg(Leg("galway", "moher", "bike", 70_000, 14_000, [(53.27, -9.06), (53.1, -9.2), (53.0, -9.4)]))
+    return journey
+
+
+def test_routes_are_tracks_in_the_list_of_their_start():
+    """Issue #50: each route between two places is a track, with the list of its first place."""
+    documents = kml_documents(build_kmz(trip_with_legs(), "Ireland"))
+    tracks = [[(p.findtext("k:name", None, KML), p.findtext("k:LineString/k:coordinates", None, KML))
+               for p in placemarks(doc) if p.find("k:LineString", KML) is not None] for _, doc in documents]
+    assert tracks[0] == [("Dublin → Galway (Car)", "-6.260000,53.350000 -9.060000,53.270000")]
+    assert tracks[1] == [("Galway → Cliffs of Moher (Bicycle)",
+                          "-9.060000,53.270000 -9.200000,53.100000 -9.400000,53.000000")]
+    assert tracks[2] == []
+
+
+def test_routes_can_be_left_out():
+    documents = kml_documents(build_kmz(trip_with_legs(), "Ireland", include_routes=False))
+    assert all(doc.find(".//k:LineString", KML) is None for _, doc in documents)
 
 
 def test_trip_without_groups_is_one_list():
@@ -113,9 +127,8 @@ def test_cdata_end_in_notes_stays_valid():
         "]]> end" in placemarks(document)[0].findtext("k:description", None, KML)
 
 
-def test_gpx_waypoints_and_track():
-    route = [(53.35, -6.26), (52.06, -9.5)]
-    root = ET.fromstring(build_gpx(trip(), "Ireland", route, "Route by car"))
+def test_gpx_waypoints_and_tracks():
+    root = ET.fromstring(build_gpx(trip_with_legs(), "Ireland"))
     assert root.findtext("g:metadata/g:name", None, GPX) == "Ireland"
     assert root.findtext("g:metadata/g:desc", None, GPX) == "Passports and *adapters*"
     waypoints = root.findall("g:wpt", GPX)
@@ -127,7 +140,9 @@ def test_gpx_waypoints_and_track():
     assert galway.findtext("g:desc", None, GPX) == \
         "See the harbour (https://galway.ie) & <the docks>\n\n- pub\n- music"
     assert galway.findtext("g:extensions/{https://osmand.net}color", None, GPX) == "#006400"
-    assert len(root.findall("g:trk/g:trkseg/g:trkpt", GPX)) == 2
+    assert [t.findtext("g:name", None, GPX) for t in root.findall("g:trk", GPX)] == [
+        "Dublin → Galway (Car)", "Galway → Cliffs of Moher (Bicycle)"]
+    assert len(root.findall("g:trk/g:trkseg/g:trkpt", GPX)) == 5
 
 
 @pytest.mark.parametrize("markdown, text", [
@@ -151,8 +166,8 @@ class FakeExportDialog:
     """Scripted ExportDialog: format, route, destination (None to cancel)."""
     choice = ("kmz", True, "file")
 
-    def __init__(self, parent=None, has_route=False, route_label=""):
-        self.has_route = has_route
+    def __init__(self, parent=None, route_count=0):
+        self.route_count = route_count
 
     def exec(self):
         from otripy import main
@@ -166,7 +181,7 @@ class FakeExportDialog:
         return self.choice[0]
 
     def include_route(self):
-        return self.has_route and self.choice[1]
+        return bool(self.route_count) and self.choice[1]
 
 
 @pytest.fixture
@@ -200,16 +215,12 @@ def test_export_to_file(window, monkeypatch, fmt, extension):
         assert ET.fromstring(data).findtext("g:metadata/g:name", None, GPX) == "Ireland 2026"
 
 
-def test_export_includes_the_drawn_route(window, monkeypatch):
-    from otripy.routing import Route
-    journey = window.list_widget.locations()
-    route = Route(1000, 600, [], [loc.location() for loc in journey])
-    window.route = (tuple((loc.lid, loc.lat, loc.lon) for loc in journey), route, "car")
+def test_export_includes_the_routes(window, monkeypatch):
+    window.list_widget.locations().add_leg(Leg("dublin", "galway", "car", 1000, 600, [(53.35, -6.26), (53.27, -9.06)]))
     monkeypatch.setattr(FakeExportDialog, "choice", ("kmz", True, "file"))
     assert window.export_for_phone()
     first = kml_documents(window.save_path.with_suffix(".kmz").read_bytes())[0][1]
-    assert first.find(".//k:LineString", KML) is not None
-    assert first.findall(".//k:Placemark/k:name", KML)[-1].text == "Route (Car)"
+    assert first.findall(".//k:Placemark/k:name", KML)[-1].text == "Dublin → Galway (Car)"
 
 
 def test_export_to_nextcloud(window, monkeypatch):
@@ -251,12 +262,12 @@ def test_cancelled_export_writes_nothing(window, monkeypatch):
 
 def test_export_dialog_choices(qtbot):
     from otripy.export_dialog import ExportDialog
-    dialog = ExportDialog(has_route=False)
+    dialog = ExportDialog(route_count=0)
     qtbot.addWidget(dialog)
     assert dialog.export_format() == "kmz" and not dialog.include_route() and not dialog.route_box.isEnabled()
     dialog.gpx_button.setChecked(True)
     dialog.nextcloud_button.click()
     assert (dialog.export_format(), dialog.destination) == ("gpx", "nextcloud")
-    with_route = ExportDialog(has_route=True, route_label="Car: 12 km")
-    qtbot.addWidget(with_route)
-    assert with_route.include_route() and "Car: 12 km" in with_route.route_box.text()
+    with_routes = ExportDialog(route_count=3)
+    qtbot.addWidget(with_routes)
+    assert with_routes.include_route() and "(3)" in with_routes.route_box.text()

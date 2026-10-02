@@ -359,6 +359,8 @@ class LocationListView(QListView):
     entryClicked = Signal(object)
     locationClicked = Signal(object)  # Signal emitting the selected Location object
     locationHovered = Signal(str)
+    # Shift-click on a location: a route from the selected location to it (issue #50)
+    routeRequested = Signal(object, object)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -390,6 +392,17 @@ class LocationListView(QListView):
         # A hover highlight is not a change of the journey
         if list(roles) != [Qt.BackgroundRole]:
             self.model.locations.dirty.emit(True)
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton and event.modifiers() & Qt.ShiftModifier:
+            target = self.model.getLocation(self.indexAt(event.position().toPoint()))
+            start = self.current_entry()
+            if target is not None and isinstance(start, Location) and start is not target:
+                # Keep the selection: the selected location is where the route starts
+                self.routeRequested.emit(start, target)
+                event.accept()
+                return
+        super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event):
         super().mouseMoveEvent(event)

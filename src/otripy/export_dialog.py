@@ -9,7 +9,7 @@ FILE, NEXTCLOUD = "file", "nextcloud"
 class ExportDialog(QDialog):
     """Choose the format (KMZ for Organic Maps, GPX for other apps), the route, and where to save."""
 
-    def __init__(self, parent=None, has_route=False, route_label=""):
+    def __init__(self, parent=None, route_count=0):
         super().__init__(parent)
         self.setWindowTitle(self.tr("Export for Phone"))
         self.setMinimumWidth(420)
@@ -25,10 +25,11 @@ class ExportDialog(QDialog):
         self.formats.addButton(self.kmz_button)
         self.formats.addButton(self.gpx_button)
 
-        self.route_box = QCheckBox(self.tr("Include the route shown on the map ({route})").format(route=route_label)
-                                   if has_route else self.tr("Include the route (show a route on the map first)"))
-        self.route_box.setChecked(has_route)
-        self.route_box.setEnabled(has_route)
+        self.route_box = QCheckBox(self.tr("Include the routes between places ({count})").format(count=route_count)
+                                   if route_count else
+                                   self.tr("Include the routes (select a place, then Shift-click another to add one)"))
+        self.route_box.setChecked(bool(route_count))
+        self.route_box.setEnabled(bool(route_count))
 
         self.file_button = QPushButton(self.tr("Save to File…"))
         self.nextcloud_button = QPushButton(self.tr("Save to Nextcloud…"))

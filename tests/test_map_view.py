@@ -152,3 +152,43 @@ def test_bridge_relays_hovering(qtbot):
     with qtbot.waitSignal(bridge.markerHovered) as hovered:
         bridge.on_marker_hovered("abc")
     assert hovered.args == ["abc"]
+
+
+# Routes between two locations (issue #50)
+
+def leg_page():
+    from otripy.location import Leg
+    a = Location(48.8584, 2.2945, {"markdown": "# Tour \"Eiffel\""}, id="a")
+    b = Location(48.8606, 2.3376, {"markdown": "# Louvre"}, id="b")
+    leg = Leg("a", "b", "foot", 3748, 3002, [(48.8584, 2.2945), (48.86, 2.31), (48.8606, 2.3376)], id="leg-1")
+    return [a, b], leg
+
+
+def test_legs_are_drawn_with_their_mode_and_actions(tmp_path):
+    locations, leg = leg_page()
+    html = build_map_html(locations, legs=[leg])
+    assert "L.polyline([[48.8584, 2.2945], [48.86, 2.31], [48.8606, 2.3376]]" in html
+    assert '"#e07b24"' in html and "dashArray" in html, "foot routes are orange and dashed"
+    assert "Foot: 3.7 km, 50 min" in html
+    assert 'on_leg_action(&quot;leg-1&quot;, &quot;car&quot;)' in html
+    assert 'on_leg_action(&quot;leg-1&quot;, &quot;remove&quot;)' in html
+    assert "Tour &quot;Eiffel&quot; → Louvre" in html.replace("\\u2192", "→")
+    for script in inline_scripts(html):
+        assert_valid_js(script, tmp_path)
+
+
+def test_marker_shift_click_is_reported():
+    locations, _ = leg_page()
+    html = build_map_html(locations)
+    assert "event.originalEvent.shiftKey" in html
+    assert 'on_marker_shift_clicked("a")' in html
+
+
+def test_bridge_relays_route_events(qtbot):
+    bridge = MapBridge()
+    with qtbot.waitSignal(bridge.markerShiftClicked) as clicked:
+        bridge.on_marker_shift_clicked("b")
+    assert clicked.args == ["b"]
+    with qtbot.waitSignal(bridge.legAction) as action:
+        bridge.on_leg_action("leg-1", "remove")
+    assert action.args == ["leg-1", "remove"]

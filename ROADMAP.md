@@ -77,6 +77,7 @@ Feature requests and bugs are tracked as [GitHub issues](https://github.com/klea
 
 ### On the road
 - [x] #47 Use the trip on a phone: export to Organic Maps (KMZ) and other map apps (GPX)
+- [x] #50 Routes between two places, each with its own mode, saved with the trip (file format 1.2.0)
 
 ### Cross-cutting
 - [x] #8 Make the GUI translatable (English, French)

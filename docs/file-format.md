@@ -1,8 +1,8 @@
 # Otripy journey file format
 
-A journey (a trip) is saved as a UTF-8 JSON file, usually with the `.json` extension. This describes format version **1.1.0**, written by Otripy 1.4.0 and later, and the 1.0.0 format it extends.
+A journey (a trip) is saved as a UTF-8 JSON file, usually with the `.json` extension. This describes format version **1.2.0**, written by Otripy 1.5.0 and later, and the 1.1.0 and 1.0.0 formats it extends.
 
-Otripy writes the oldest format that can hold a journey: **1.0.0** for journeys without groups nor trip notes, **1.1.0** otherwise. Format 1.1.0 adds:
+Otripy writes the oldest format that can hold a journey: **1.2.0** for journeys with routes between locations, **1.1.0** for journeys with groups or trip notes, **1.0.0** otherwise. Format 1.2.0 adds `routes` at the top level ([#50](https://github.com/kleag/otripy/issues/50)). Format 1.1.0 adds:
 
 * `notes` at the top level: the trip's general notes ([#19](https://github.com/kleag/otripy/issues/19));
 * `groups` at the top level, and `group` in locations: titled sections of the location list ([#18](https://github.com/kleag/otripy/issues/18)).
@@ -38,6 +38,7 @@ Otripy writes the oldest format that can hold a journey: **1.0.0** for journeys 
 | `locations` | array | The locations, in the order shown in the list: ungrouped locations first, then those of each group, in group order. |
 | `notes` | object | Format 1.1.0. The trip's general notes, a [note](#notes) like those of locations. |
 | `groups` | array | Format 1.1.0. The [groups](#groups), in the order shown in the list. |
+| `routes` | array | Format 1.2.0. The [routes](#routes) between two locations. |
 
 ## Locations
 
@@ -85,6 +86,33 @@ Format 1.1.0. A group is a titled section of the location list, such as a day of
 | `collapsed` | boolean | Whether the group's locations are hidden in the list. |
 
 A location belongs to a group through its optional `group` key, the group's `id`; locations without it are not in any group.
+
+### Routes
+
+Format 1.2.0. A route between two locations, computed for one travel mode, as drawn on the map.
+
+```json
+{
+    "id": "4c1f0e1a-0000-4000-8000-000000000001",
+    "from": "0b1e6a52-6f1c-4c55-9a7e-2f0d1c3a4b01",
+    "to": "0b1e6a52-6f1c-4c55-9a7e-2f0d1c3a4b02",
+    "mode": "foot",
+    "distance": 3748.2,
+    "duration": 3002.1,
+    "geometry": [[48.8584, 2.2945], [48.8592, 2.3011], [48.8606, 2.3376]]
+}
+```
+
+| Key | Type | Meaning |
+|---|---|---|
+| `id` | string | Unique identifier, a UUID. |
+| `from`, `to` | string | The `id` of the locations the route goes from and to. |
+| `mode` | string | `car`, `bike` or `foot`. |
+| `distance` | number | Length, in meters. |
+| `duration` | number | Duration, in seconds, as estimated by the routing service. |
+| `geometry` | array | The path, as `[latitude, longitude]` pairs. |
+
+There is at most one route between two locations. Routes whose `from` or `to` matches no location are dropped when reading.
 
 ### Notes
 

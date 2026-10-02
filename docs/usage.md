@@ -31,7 +31,12 @@ The first entry of the list, *Trip notes*, holds notes about the whole trip rath
 ## Distances and routes
 
 * *Tools* → *Distances…* shows the straight-line distance between two locations, the selected one and the next by default. Choose a mode (car, bicycle or foot) and click *Compute Route* for the route's length and duration.
-* *Tools* → *Show Route* draws the route through all the locations, in the list's order, by car, bicycle or foot; the status bar shows its length and duration. It disappears when the locations change; *Tools* → *Hide Route* removes it.
+* **Add a route between two places**: select the first place, in the list or on the map, then **Shift-click** the second one, in the list or on the map. Choose how you travel, by car, bicycle or foot, in the menu that appears. The route is drawn on the map, in blue for the car, green for the bicycle, and dashed orange on foot; hover it for its length and duration.
+* Each part of the journey has its own route and mode: add one between each pair of places you travel between. Adding a route between two places that already have one replaces it.
+* **Click a route** on the map to switch it to another mode, or to remove it. *Tools* → *Remove All Routes* removes them all; deleting a place removes its routes.
+* The status bar shows how many routes the trip has, and their total length and duration.
+
+Routes are saved with the trip, so they show again without an Internet connection. Trips with routes use file format 1.2.0, which Otripy 1.4 and earlier cannot open.
 
 Routes are computed by the [FOSSGIS](https://routing.openstreetmap.de/about.html) routing servers behind openstreetmap.org, from OpenStreetMap data: they need an Internet connection. If a route looks wrong, you can [fix the map](https://www.openstreetmap.org/fixthemap). Public transport and electric car charging are not available.
 

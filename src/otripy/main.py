@@ -3,13 +3,14 @@ import nc_py_api
 import sys
 
 from PySide6.QtCore import Qt, QTimer, Slot
-from PySide6.QtGui import QAction, QDoubleValidator, QIcon, QKeySequence, QTextCursor, QFont, QTextCharFormat, QTextFormat
+from PySide6.QtGui import QAction, QCursor, QDoubleValidator, QIcon, QKeySequence, QTextCursor, QFont, QTextCharFormat, QTextFormat
 from PySide6.QtWidgets import (
     QApplication,
     QDialog,
     QFileDialog,
     QHBoxLayout,
     QLabel,
+    QMenu,
     QLineEdit,
     QMainWindow,
     QMessageBox,
@@ -37,7 +38,7 @@ try:
     from .icon_picker import IconPickerWidget
     from .journey import Journey
     from .limited_color_picker import LimitedColorPicker
-    from .location import Group, Location, TripNotes
+    from .location import Group, Leg, Location, TripNotes
     from .location_list_view import LocationListView
     from .map_view import (DEFAULT_ZOOM, MapBridge, fit_points_js, hover_marker_js, tooltip_html, build_map_html, downplay_marker_js, highlight_marker_js, move_map_js,
                            update_marker_text_js)
@@ -55,7 +56,7 @@ except ImportError:
     from icon_picker import IconPickerWidget
     from journey import Journey
     from limited_color_picker import LimitedColorPicker
-    from location import Group, Location, TripNotes
+    from location import Group, Leg, Location, TripNotes
     from location_list_view import LocationListView
     from map_view import (DEFAULT_ZOOM, MapBridge, fit_points_js, hover_marker_js, tooltip_html, build_map_html, downplay_marker_js, highlight_marker_js, move_map_js,
                           update_marker_text_js)
@@ -106,10 +107,11 @@ class MapApp(QMainWindow):
         self.map_view_state = None
         self.map_bridge.viewChanged.connect(self.map_view_changed)
         self._autosave_pending = False
-        # Route drawn on the map: (locations it goes through, routing.Route, mode), or None
-        self.route = None
+        # Summary of the routes between locations, in the status bar
         self.route_label = QLabel()
         self.route_label.setOpenExternalLinks(True)
+        self.map_bridge.markerShiftClicked.connect(self.route_to_marker)
+        self.map_bridge.legAction.connect(self.leg_action)
 
         self.setGeometry(100, 100, 800, 600)
 
@@ -146,6 +148,7 @@ class MapApp(QMainWindow):
         self.list_widget.model.locations.dirty.connect(self.set_window_title)
 
         self.list_widget.entryClicked.connect(self.on_entry_selected)
+        self.list_widget.routeRequested.connect(self.request_leg)
         self.list_widget.model.arranged.connect(self.schedule_autosave)
         # Hovering a location in the list or on the map highlights it in the other (issue #22)
         self._hovered_marker = None
@@ -318,14 +321,10 @@ class MapApp(QMainWindow):
         distances_action = QAction(self.tr("Distances…"), self)
         distances_action.triggered.connect(self.open_distance_dialog)
         tools_menu.addAction(distances_action)
-        route_menu = tools_menu.addMenu(self.tr("Show Route"))
-        for mode in routing.MODES:
-            action = route_menu.addAction(routing.mode_label(mode))
-            action.triggered.connect(lambda checked=False, mode=mode: self.show_route(mode))
-        self.hide_route_action = QAction(self.tr("Hide Route"), self)
-        self.hide_route_action.setEnabled(False)
-        self.hide_route_action.triggered.connect(self.hide_route)
-        tools_menu.addAction(self.hide_route_action)
+        # Routes between two locations (issue #50): select one, Shift-click another
+        self.remove_routes_action = QAction(self.tr("Remove All Routes"), self)
+        self.remove_routes_action.triggered.connect(self.remove_all_legs)
+        tools_menu.addAction(self.remove_routes_action)
 
         config_menu = menu_bar.addMenu(self.tr("Settings"))
 
@@ -663,11 +662,9 @@ class MapApp(QMainWindow):
         if fit_all:
             self.map_view_state = None
         locations = self.list_widget.locations()
-        # A route stays drawn only while the locations it goes through are unchanged
-        if self.route is not None and self.route[0] != tuple((loc.lid, loc.lat, loc.lon) for loc in locations):
-            self.hide_route(redraw=False)
         self.map_page.setHtml(build_map_html(locations, fit_all=fit_all, view=self.map_view_state,
-                                             route=self.route[1].geometry if self.route else None))
+                                             legs=locations.legs))
+        self.update_routes_status()
 
     def trip_name(self) -> str:
         """The trip's name: its file's, or its notes' title, for exports."""
@@ -682,18 +679,13 @@ class MapApp(QMainWindow):
         if not len(journey):
             QMessageBox.information(self, self.tr("Export for Phone"), self.tr("Add locations before exporting the trip."))
             return False
-        route_label = (self.tr("{mode}: {distance}").format(mode=routing.mode_label(self.route[2]),
-                                                            distance=routing.format_distance(self.route[1].distance))
-                       if self.route else "")
-        dialog = ExportDialog(self, has_route=self.route is not None, route_label=route_label)
+        dialog = ExportDialog(self, route_count=len(journey.legs))
         if dialog.exec() != QDialog.DialogCode.Accepted:
             return False
         name = self.trip_name()
-        route = self.route[1].geometry if self.route and dialog.include_route() else None
-        route_name = self.tr("Route ({mode})").format(mode=routing.mode_label(self.route[2])) if route else ""
         builder, extension = ((trip_export.build_kmz, ".kmz") if dialog.export_format() == export_dialog.KMZ
                               else (trip_export.build_gpx, ".gpx"))
-        data = builder(journey, name, route, route_name)
+        data = builder(journey, name, dialog.include_route())
         if dialog.destination == export_dialog.NEXTCLOUD:
             return self.export_to_nextcloud(data, extension)
         file_name, _ = QFileDialog.getSaveFileName(self, self.tr("Export for Phone"), name + extension,
@@ -740,36 +732,86 @@ class MapApp(QMainWindow):
         selected = self.list_widget.selectedIndexes()
         DistanceDialog(locations, first=selected[0].row() if selected else 0, parent=self).exec()
 
-    def show_route(self, mode: str):
-        """Draw the route through all the locations, in list order (issue #3)."""
-        locations = list(self.list_widget.locations())
-        if len(locations) < 2:
-            QMessageBox.information(self, self.tr("Route"), self.tr("Add at least two locations to show a route."))
+    # Routes between two locations (issue #50)
+    def route_to_marker(self, location_id: str):
+        """Shift-click on a marker: route from the selected location to it."""
+        end = self.list_widget.get_location_by_id(location_id)
+        start = self.list_widget.current_entry()
+        if end is None:
             return
+        if not isinstance(start, Location) or start is end:
+            self.statusBar().showMessage(
+                self.tr("To add a route, select a first place, then Shift-click a second one."), 8000)
+            return
+        self.request_leg(start, end)
+
+    def choose_leg_mode(self, start: Location, end: Location) -> str | None:
+        """Ask how to travel from start to end, with a menu at the pointer; None if cancelled."""
+        menu = QMenu(self)
+        title = menu.addAction(self.tr("Route from {start} to {end}").format(start=start.label(), end=end.label()))
+        title.setEnabled(False)
+        menu.addSeparator()
+        for mode in routing.MODES:
+            menu.addAction(routing.mode_label(mode)).setData(mode)
+        chosen = menu.exec(QCursor.pos())
+        return chosen.data() if chosen is not None else None
+
+    def request_leg(self, start: Location, end: Location):
+        mode = self.choose_leg_mode(start, end)
+        if mode:
+            self.add_leg(start, end, mode)
+
+    def add_leg(self, start: Location, end: Location, mode: str) -> bool:
+        """Compute the route from start to end and add it to the trip, replacing any route between them."""
         QApplication.setOverrideCursor(Qt.WaitCursor)
         try:
-            route = routing.fetch_route([loc.location() for loc in locations], mode)
+            route = routing.fetch_route([start.location(), end.location()], mode)
         except routing.RoutingError as e:
             QMessageBox.critical(self, self.tr("Route"), str(e))
-            return
+            return False
         finally:
             QApplication.restoreOverrideCursor()
-        self.route = (tuple((loc.lid, loc.lat, loc.lon) for loc in locations), route, mode)
-        self.hide_route_action.setEnabled(True)
-        self.route_label.setText(self.tr("{mode}: {distance}, {duration}").format(
-            mode=routing.mode_label(mode), distance=routing.format_distance(route.distance),
-            duration=routing.format_duration(route.duration)) + " — " + routing.attribution_html())
+        self.list_widget.locations().add_leg(
+            Leg(start.lid, end.lid, mode, route.distance, route.duration, route.geometry))
+        self.update_map()
+        self.schedule_autosave()
+        return True
+
+    def leg_action(self, leg_id: str, action: str):
+        """From a route's popup on the map: switch it to another mode, or remove it."""
+        journey = self.list_widget.locations()
+        leg = journey.leg_by_id(leg_id)
+        if leg is None:
+            return
+        if action == "remove":
+            journey.remove_leg(leg)
+            self.update_map()
+            self.schedule_autosave()
+        elif action in routing.MODES:
+            self.add_leg(journey.loc_by_id(leg.start), journey.loc_by_id(leg.end), action)
+
+    def remove_all_legs(self):
+        journey = self.list_widget.locations()
+        if not journey.legs:
+            return
+        for leg in journey.legs:
+            journey.remove_leg(leg)
+        self.update_map()
+        self.schedule_autosave()
+
+    def update_routes_status(self):
+        """Show the routes' total length and duration, with the routing service's attribution."""
+        legs = self.list_widget.locations().legs
+        self.remove_routes_action.setEnabled(bool(legs))
+        if not legs:
+            self.statusBar().removeWidget(self.route_label)
+            self.route_label.clear()
+            return
+        self.route_label.setText(self.tr("Routes: {count}, {distance}, {duration}").format(
+            count=len(legs), distance=routing.format_distance(sum(leg.distance for leg in legs)),
+            duration=routing.format_duration(sum(leg.duration for leg in legs))) + " — " + routing.attribution_html())
         self.statusBar().addPermanentWidget(self.route_label)
         self.route_label.show()
-        self.update_map()
-
-    def hide_route(self, redraw: bool = True):
-        self.route = None
-        self.hide_route_action.setEnabled(False)
-        self.statusBar().removeWidget(self.route_label)
-        self.route_label.clear()
-        if redraw:
-            self.update_map()
 
     def handle_marker_click(self, marker_id):
         """ Handle marker click events in Python. """

@@ -73,6 +73,14 @@
     </message>
 </context>
 <context>
+    <name>Export</name>
+    <message>
+        <location filename="../trip_export.py" line="+155"/>
+        <source>{start} → {end} ({mode})</source>
+        <translation>{start} → {end} ({mode})</translation>
+    </message>
+</context>
+<context>
     <name>ExportDialog</name>
     <message>
         <location filename="../export_dialog.py" line="+14"/>
@@ -96,13 +104,13 @@
     </message>
     <message>
         <location line="+6"/>
-        <source>Include the route shown on the map ({route})</source>
-        <translation>Inclure l&apos;itinéraire affiché sur la carte ({route})</translation>
+        <source>Include the routes between places ({count})</source>
+        <translation>Inclure les itinéraires entre les lieux ({count})</translation>
     </message>
     <message>
-        <location line="+1"/>
-        <source>Include the route (show a route on the map first)</source>
-        <translation>Inclure l&apos;itinéraire (affichez d&apos;abord un itinéraire sur la carte)</translation>
+        <location line="+2"/>
+        <source>Include the routes (select a place, then Shift-click another to add one)</source>
+        <translation>Inclure les itinéraires (sélectionnez un lieu, puis Maj+clic sur un autre pour en ajouter un)</translation>
     </message>
     <message>
         <location line="+4"/>
@@ -149,7 +157,27 @@
 <context>
     <name>Map</name>
     <message>
-        <location filename="../map_view.py" line="+250"/>
+        <location filename="../map_view.py" line="+153"/>
+        <source>{mode}: {distance}, {duration}</source>
+        <translation>{mode}&#xa0;: {distance}, {duration}</translation>
+    </message>
+    <message>
+        <location line="+11"/>
+        <source>{start} → {end}</source>
+        <translation>{start} → {end}</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Remove</source>
+        <translation>Supprimer</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Switch to:</source>
+        <translation>Passer à&#xa0;:</translation>
+    </message>
+    <message>
+        <location line="+137"/>
         <source>Click location</source>
         <translation>Lieu cliqué</translation>
     </message>
@@ -157,7 +185,7 @@
 <context>
     <name>MapApp</name>
     <message>
-        <location filename="../main.py" line="+165"/>
+        <location filename="../main.py" line="+168"/>
         <source>Search…</source>
         <translation>Rechercher…</translation>
     </message>
@@ -228,12 +256,12 @@
     </message>
     <message>
         <location line="+4"/>
-        <location line="+717"/>
+        <location line="+756"/>
         <source>Save As…</source>
         <translation>Enregistrer sous…</translation>
     </message>
     <message>
-        <location line="-713"/>
+        <location line="-752"/>
         <source>Save As Nextcloud…</source>
         <translation>Enregistrer sous dans Nextcloud…</translation>
     </message>
@@ -264,17 +292,7 @@
         <translation>Distances…</translation>
     </message>
     <message>
-        <location line="+3"/>
-        <source>Show Route</source>
-        <translation>Afficher l&apos;itinéraire</translation>
-    </message>
-    <message>
-        <location line="+4"/>
-        <source>Hide Route</source>
-        <translation>Masquer l&apos;itinéraire</translation>
-    </message>
-    <message>
-        <location line="+5"/>
+        <location line="+8"/>
         <source>Settings</source>
         <translation>Paramètres</translation>
     </message>
@@ -358,33 +376,23 @@
         <translation>Lieu inconnu en [{latitude}, {longitude}]</translation>
     </message>
     <message>
-        <location line="+50"/>
+        <location line="+48"/>
         <source>Otripy trip</source>
         <translation>Voyage Otripy</translation>
     </message>
     <message>
         <location line="+4"/>
-        <location line="+16"/>
+        <location line="+11"/>
         <source>Export for Phone</source>
         <translation>Exporter pour téléphone</translation>
     </message>
     <message>
-        <location line="-16"/>
+        <location line="-11"/>
         <source>Add locations before exporting the trip.</source>
         <translation>Ajoutez des lieux avant d&apos;exporter le voyage.</translation>
     </message>
     <message>
-        <location line="+2"/>
-        <source>{mode}: {distance}</source>
-        <translation>{mode}&#xa0;: {distance}</translation>
-    </message>
-    <message>
-        <location line="+8"/>
-        <source>Route ({mode})</source>
-        <translation>Itinéraire ({mode})</translation>
-    </message>
-    <message>
-        <location line="+7"/>
+        <location line="+12"/>
         <source>{format} files (*{extension})</source>
         <translation>Fichiers {format} (*{extension})</translation>
     </message>
@@ -399,23 +407,12 @@
         <translation>Ajoutez au moins deux lieux pour mesurer des distances.</translation>
     </message>
     <message>
-        <location line="+9"/>
-        <location line="+6"/>
+        <location line="+40"/>
         <source>Route</source>
         <translation>Itinéraire</translation>
     </message>
     <message>
-        <location line="-6"/>
-        <source>Add at least two locations to show a route.</source>
-        <translation>Ajoutez au moins deux lieux pour afficher un itinéraire.</translation>
-    </message>
-    <message>
-        <location line="+12"/>
-        <source>{mode}: {distance}, {duration}</source>
-        <translation>{mode}&#xa0;: {distance}, {duration}</translation>
-    </message>
-    <message>
-        <location line="+59"/>
+        <location line="+90"/>
         <location line="+337"/>
         <source>Journey Modified</source>
         <translation>Voyage modifié</translation>
@@ -436,9 +433,9 @@
         <translation>Fichiers JSON (*.json);;Tous les fichiers (*.*)</translation>
     </message>
     <message>
-        <location line="-134"/>
+        <location line="-184"/>
         <location line="+21"/>
-        <location line="+122"/>
+        <location line="+172"/>
         <location line="+15"/>
         <location line="+10"/>
         <location line="+22"/>
@@ -486,14 +483,34 @@
         <translation>Le fichier {path} existe déjà. Abandon.</translation>
     </message>
     <message>
-        <location line="-252"/>
-        <location line="+256"/>
+        <location line="-302"/>
+        <location line="+306"/>
         <location line="+64"/>
         <source>Failed to save file on Nextcloud: {error}</source>
         <translation>Impossible d&apos;enregistrer le fichier dans Nextcloud&#xa0;: {error}</translation>
     </message>
     <message>
-        <location line="-52"/>
+        <location line="-767"/>
+        <source>Remove All Routes</source>
+        <translation>Supprimer tous les itinéraires</translation>
+    </message>
+    <message>
+        <location line="+419"/>
+        <source>To add a route, select a first place, then Shift-click a second one.</source>
+        <translation>Pour ajouter un itinéraire, sélectionnez un premier lieu, puis Maj+clic sur un second.</translation>
+    </message>
+    <message>
+        <location line="+7"/>
+        <source>Route from {start} to {end}</source>
+        <translation>Itinéraire de {start} à {end}</translation>
+    </message>
+    <message>
+        <location line="+59"/>
+        <source>Routes: {count}, {distance}, {duration}</source>
+        <translation>Itinéraires&#xa0;: {count}, {distance}, {duration}</translation>
+    </message>
+    <message>
+        <location line="+230"/>
         <source>File Changed on Nextcloud</source>
         <translation>Fichier modifié dans Nextcloud</translation>
     </message>
@@ -528,20 +545,20 @@
         <translation>Fichiers JSON (*.json)</translation>
     </message>
     <message>
-        <location line="-299"/>
-        <location line="+320"/>
+        <location line="-349"/>
+        <location line="+370"/>
         <source>File Exists</source>
         <translation>Le fichier existe</translation>
     </message>
     <message>
-        <location line="-319"/>
-        <location line="+320"/>
+        <location line="-369"/>
+        <location line="+370"/>
         <source>{path} already exists on Nextcloud. Replace it?</source>
         <translation>{path} existe déjà dans Nextcloud. Le remplacer&#xa0;?</translation>
     </message>
     <message>
-        <location line="-335"/>
-        <location line="+352"/>
+        <location line="-385"/>
+        <location line="+402"/>
         <source>Failed to save file: {error}</source>
         <translation>Impossible d&apos;enregistrer le fichier&#xa0;: {error}</translation>
     </message>
