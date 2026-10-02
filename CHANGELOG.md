@@ -4,6 +4,8 @@ Notable changes to Otripy. The format follows [Keep a Changelog](https://keepach
 
 ## Unreleased
 
+## 1.4.1 - 2026-10-02
+
 ### Added
 
 - *File* → *Export for Phone…* exports the trip for map apps on phones, to use it offline during the journey: KMZ for [Organic Maps](https://organicmaps.app), with a bookmark list per group, or GPX for OsmAnd and other apps. Notes, colors and the drawn route are included, images are not. Saves to a file or to Nextcloud ([#47](https://github.com/kleag/otripy/issues/47)). A [guide](https://kleag.github.io/otripy/phone/) explains how to use it on a phone.
