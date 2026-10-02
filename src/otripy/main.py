@@ -42,7 +42,8 @@ try:
     from .map_view import (DEFAULT_ZOOM, MapBridge, fit_points_js, hover_marker_js, tooltip_html, build_map_html, downplay_marker_js, highlight_marker_js, move_map_js,
                            update_marker_text_js)
     from .search_popup import SearchPopup
-    from . import routing, settings
+    from . import export_dialog, routing, settings, trip_export
+    from .export_dialog import ExportDialog
     from .config import ConfigDialog, load_nextcloud_password
     from .distance_dialog import DistanceDialog
     from .nextcloud_with_api import NextcloudFilePicker
@@ -59,8 +60,11 @@ except ImportError:
     from map_view import (DEFAULT_ZOOM, MapBridge, fit_points_js, hover_marker_js, tooltip_html, build_map_html, downplay_marker_js, highlight_marker_js, move_map_js,
                           update_marker_text_js)
     from search_popup import SearchPopup
+    import export_dialog
     import routing
     import settings
+    import trip_export
+    from export_dialog import ExportDialog
     from config import ConfigDialog, load_nextcloud_password
     from distance_dialog import DistanceDialog
     from nextcloud_with_api import NextcloudFilePicker
@@ -304,9 +308,11 @@ class MapApp(QMainWindow):
         file_menu.addAction(save_as_action)
         file_menu.addAction(save_as_nc_action)
         file_menu.addSeparator()
+        export_action = QAction(self.tr("Export for Phone…"), self)
+        export_action.triggered.connect(self.export_for_phone)
+        file_menu.addAction(export_action)
+        file_menu.addSeparator()
         file_menu.addAction(quit_action)
-        # export_action = file_menu.addAction("Export as HTML Map…")
-        # export_action.triggered.connect(self.export_as_html)
 
         tools_menu = menu_bar.addMenu(self.tr("Tools"))
         distances_action = QAction(self.tr("Distances…"), self)
@@ -342,26 +348,6 @@ class MapApp(QMainWindow):
         self.autosave_action.setChecked(self.settings.value("files/autoSave", False, type=bool))
         self.autosave_action.toggled.connect(lambda checked: self.settings.setValue("files/autoSave", checked))
         config_menu.addAction(self.autosave_action)
-
-    # def export_as_html(self):
-    #     if not self.model or not getattr(self.model, "trip_data", None):
-    #         QMessageBox.warning(self, "No Trip Loaded", "Please load a trip before exporting.")
-    #         return
-    #
-    #     file_path, _ = QFileDialog.getSaveFileName(
-    #         self,
-    #         "Save HTML Map",
-    #         str(Path.home() / "map.html"),
-    #         "HTML Files (*.html)"
-    #     )
-    #     if not file_path:
-    #         return
-    #
-    #     try:
-    #         export_html(self.model.trip_data, Path(file_path))
-    #         QMessageBox.information(self, "Export Complete", f"Map saved to:\n{file_path}")
-    #     except Exception as e:
-    #         QMessageBox.critical(self, "Export Failed", str(e))
 
     def get_toolbar_actions(self) -> List[Dict[str, Any]]:
         """
@@ -682,6 +668,68 @@ class MapApp(QMainWindow):
             self.hide_route(redraw=False)
         self.map_page.setHtml(build_map_html(locations, fit_all=fit_all, view=self.map_view_state,
                                              route=self.route[1].geometry if self.route else None))
+
+    def trip_name(self) -> str:
+        """The trip's name: its file's, or its notes' title, for exports."""
+        if self.current_file:
+            path = self.current_file.user_path if isinstance(self.current_file, nc_py_api.FsNode) else self.current_file
+            return Path(path).stem
+        return self.list_widget.locations().notes.label() or self.tr("Otripy trip")
+
+    def export_for_phone(self) -> bool:
+        """Export the trip for a map app on a phone: KMZ for Organic Maps or GPX (issue #47)."""
+        journey = self.list_widget.locations()
+        if not len(journey):
+            QMessageBox.information(self, self.tr("Export for Phone"), self.tr("Add locations before exporting the trip."))
+            return False
+        route_label = (self.tr("{mode}: {distance}").format(mode=routing.mode_label(self.route[2]),
+                                                            distance=routing.format_distance(self.route[1].distance))
+                       if self.route else "")
+        dialog = ExportDialog(self, has_route=self.route is not None, route_label=route_label)
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return False
+        name = self.trip_name()
+        route = self.route[1].geometry if self.route and dialog.include_route() else None
+        route_name = self.tr("Route ({mode})").format(mode=routing.mode_label(self.route[2])) if route else ""
+        builder, extension = ((trip_export.build_kmz, ".kmz") if dialog.export_format() == export_dialog.KMZ
+                              else (trip_export.build_gpx, ".gpx"))
+        data = builder(journey, name, route, route_name)
+        if dialog.destination == export_dialog.NEXTCLOUD:
+            return self.export_to_nextcloud(data, extension)
+        file_name, _ = QFileDialog.getSaveFileName(self, self.tr("Export for Phone"), name + extension,
+                                                   self.tr("{format} files (*{extension})").format(
+                                                       format=extension[1:].upper(), extension=extension))
+        if not file_name:
+            return False
+        if not file_name.lower().endswith(extension):
+            file_name += extension
+        try:
+            Path(file_name).write_bytes(data)
+        except OSError as e:
+            QMessageBox.critical(self, self.tr("Error"), self.tr("Failed to save file: {error}").format(error=e))
+            return False
+        return True
+
+    def export_to_nextcloud(self, data: bytes, extension: str) -> bool:
+        if not self.connect_nextcloud():
+            return False
+        file_picker = NextcloudFilePicker(self.nc, self, save=True, extension=extension)
+        if file_picker.exec() != QDialog.DialogCode.Accepted:
+            return False
+        path = file_picker.get_selected_file()
+        try:
+            if self.nc_file_exists(path):
+                answer = QMessageBox.question(
+                    self, self.tr("File Exists"),
+                    self.tr("{path} already exists on Nextcloud. Replace it?").format(path=path),
+                    QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+                if answer != QMessageBox.Yes:
+                    return False
+            self.nc.files.upload(path, data)
+        except nc_py_api.NextcloudException as e:
+            QMessageBox.critical(self, self.tr("Error"), self.tr("Failed to save file on Nextcloud: {error}").format(error=e))
+            return False
+        return True
 
     def open_distance_dialog(self):
         """Measure the distance between two locations (issue #6)."""

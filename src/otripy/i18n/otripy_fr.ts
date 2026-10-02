@@ -73,6 +73,49 @@
     </message>
 </context>
 <context>
+    <name>ExportDialog</name>
+    <message>
+        <location filename="../export_dialog.py" line="+14"/>
+        <source>Export for Phone</source>
+        <translation>Exporter pour téléphone</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Export the trip to use it in a map app on your phone, even offline. Notes are included, without their images.</source>
+        <translation>Exporter le voyage pour l&apos;utiliser dans une application de cartes sur votre téléphone, même hors connexion. Les notes sont incluses, sans leurs images.</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>KMZ, for Organic Maps (each group becomes a list)</source>
+        <translation>KMZ, pour Organic Maps (chaque groupe devient une liste)</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>GPX, for OsmAnd and other apps</source>
+        <translation>GPX, pour OsmAnd et d&apos;autres applications</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>Include the route shown on the map ({route})</source>
+        <translation>Inclure l&apos;itinéraire affiché sur la carte ({route})</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Include the route (show a route on the map first)</source>
+        <translation>Inclure l&apos;itinéraire (affichez d&apos;abord un itinéraire sur la carte)</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Save to File…</source>
+        <translation>Enregistrer dans un fichier…</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Save to Nextcloud…</source>
+        <translation>Enregistrer dans Nextcloud…</translation>
+    </message>
+</context>
+<context>
     <name>IconPickerWidget</name>
     <message>
         <location filename="../icon_picker.py" line="+89"/>
@@ -114,7 +157,7 @@
 <context>
     <name>MapApp</name>
     <message>
-        <location filename="../main.py" line="+161"/>
+        <location filename="../main.py" line="+165"/>
         <source>Search…</source>
         <translation>Rechercher…</translation>
     </message>
@@ -185,12 +228,12 @@
     </message>
     <message>
         <location line="+4"/>
-        <location line="+673"/>
+        <location line="+717"/>
         <source>Save As…</source>
         <translation>Enregistrer sous…</translation>
     </message>
     <message>
-        <location line="-669"/>
+        <location line="-713"/>
         <source>Save As Nextcloud…</source>
         <translation>Enregistrer sous dans Nextcloud…</translation>
     </message>
@@ -206,7 +249,12 @@
         <translation>Ouvrir un fichier récent</translation>
     </message>
     <message>
-        <location line="+12"/>
+        <location line="+8"/>
+        <source>Export for Phone…</source>
+        <translation>Exporter pour téléphone…</translation>
+    </message>
+    <message>
+        <location line="+6"/>
         <source>Tools</source>
         <translation>Outils</translation>
     </message>
@@ -246,7 +294,7 @@
         <translation>Enregistrement automatique</translation>
     </message>
     <message>
-        <location line="+36"/>
+        <location line="+16"/>
         <source>Header1</source>
         <translation>Titre 1</translation>
     </message>
@@ -310,7 +358,38 @@
         <translation>Lieu inconnu en [{latitude}, {longitude}]</translation>
     </message>
     <message>
-        <location line="+47"/>
+        <location line="+50"/>
+        <source>Otripy trip</source>
+        <translation>Voyage Otripy</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <location line="+16"/>
+        <source>Export for Phone</source>
+        <translation>Exporter pour téléphone</translation>
+    </message>
+    <message>
+        <location line="-16"/>
+        <source>Add locations before exporting the trip.</source>
+        <translation>Ajoutez des lieux avant d&apos;exporter le voyage.</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>{mode}: {distance}</source>
+        <translation>{mode}&#xa0;: {distance}</translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>Route ({mode})</source>
+        <translation>Itinéraire ({mode})</translation>
+    </message>
+    <message>
+        <location line="+7"/>
+        <source>{format} files (*{extension})</source>
+        <translation>Fichiers {format} (*{extension})</translation>
+    </message>
+    <message>
+        <location line="+38"/>
         <source>Distances</source>
         <translation>Distances</translation>
     </message>
@@ -357,7 +436,9 @@
         <translation>Fichiers JSON (*.json);;Tous les fichiers (*.*)</translation>
     </message>
     <message>
-        <location line="+9"/>
+        <location line="-134"/>
+        <location line="+21"/>
+        <location line="+122"/>
         <location line="+15"/>
         <location line="+10"/>
         <location line="+22"/>
@@ -405,7 +486,8 @@
         <translation>Le fichier {path} existe déjà. Abandon.</translation>
     </message>
     <message>
-        <location line="+4"/>
+        <location line="-252"/>
+        <location line="+256"/>
         <location line="+64"/>
         <source>Failed to save file on Nextcloud: {error}</source>
         <translation>Impossible d&apos;enregistrer le fichier dans Nextcloud&#xa0;: {error}</translation>
@@ -446,17 +528,20 @@
         <translation>Fichiers JSON (*.json)</translation>
     </message>
     <message>
-        <location line="+21"/>
+        <location line="-299"/>
+        <location line="+320"/>
         <source>File Exists</source>
         <translation>Le fichier existe</translation>
     </message>
     <message>
-        <location line="+1"/>
+        <location line="-319"/>
+        <location line="+320"/>
         <source>{path} already exists on Nextcloud. Replace it?</source>
         <translation>{path} existe déjà dans Nextcloud. Le remplacer&#xa0;?</translation>
     </message>
     <message>
-        <location line="+17"/>
+        <location line="-335"/>
+        <location line="+352"/>
         <source>Failed to save file: {error}</source>
         <translation>Impossible d&apos;enregistrer le fichier&#xa0;: {error}</translation>
     </message>
@@ -489,7 +574,7 @@
 <context>
     <name>NextcloudFilePicker</name>
     <message>
-        <location filename="../nextcloud_with_api.py" line="+22"/>
+        <location filename="../nextcloud_with_api.py" line="+23"/>
         <source>Save to Nextcloud</source>
         <translation>Enregistrer dans Nextcloud</translation>
     </message>
