@@ -16,9 +16,10 @@ PARENT, DIRECTORY, FILE = "parent", "directory", "file"
 class NextcloudFilePicker(QDialog):
     """Browse Nextcloud folders to pick a file to open or, with save, a file name to save to."""
 
-    def __init__(self, nextcloud, parent=None, save=False):
+    def __init__(self, nextcloud, parent=None, save=False, extension=".json"):
         super().__init__(parent)
         self.save = save
+        self.extension = extension  # added to typed file names that lack it
         self.setWindowTitle(self.tr("Save to Nextcloud") if save else self.tr("Select File from Nextcloud"))
         self.nc = nextcloud
         self.selected_file = None
@@ -92,12 +93,12 @@ class NextcloudFilePicker(QDialog):
             self.accept()
 
     def accept_name(self):
-        """Save mode: accept the typed file name, adding the .json extension if missing."""
+        """Save mode: accept the typed file name, adding the extension if missing."""
         name = self.name_line_edit.text().strip().strip("/")
         if not name:
             return
-        if not name.lower().endswith(".json"):
-            name += ".json"
+        if not name.lower().endswith(self.extension):
+            name += self.extension
         self.selected_file = name
         self.accept()
 

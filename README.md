@@ -27,6 +27,7 @@ Otripy is already usable but would be better with a lot of other features. Some 
 * Open and save trips as local files
 * Open and save trips on any Nextcloud server you have access to
 * Distances and routes between locations, by car, bicycle or foot
+* Export to map apps on phones, such as [Organic Maps](https://organicmaps.app), to use the trip offline during the journey
 
 ## Screenshots
 

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "otripy"
-version = "1.4.0"
+version = "1.4.1"
 description = "A tool to plan your next trip"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -12,6 +12,7 @@ dependencies = [
     "folium>=0.19.5",
     "geopy>=2.4.1",
     "keyring>=25.6.0",
+    "markdown>=3.7",
     "nc-py-api>=0.19.0",
     "packaging>=24.2",
     "pyside6>=6.8.2.1",
@@ -82,7 +83,7 @@ Issues = "https://github.com/kleag/otripy/issues"
 
 
 [bumpver]
-current_version = "1.4.0"
+current_version = "1.4.1"
 version_pattern = "MAJOR.MINOR.PATCH"
 commit = true
 tag = true
@@ -105,7 +106,7 @@ package = true
 [tool.briefcase]
 project_name = "Otripy"
 bundle = "org.kleag.otripy"
-version = "1.4.0"
+version = "1.4.1"
 author = "Gaël de Chalendar"
 author_email = "kleagg@gmail.com"
 url = "https://github.com/kleag/otripy"
@@ -121,6 +122,7 @@ requires = [
     "folium",
     "geopy",
     "keyring",
+    "markdown",
     "nc-py-api",
     "packaging",
     "pyside6",

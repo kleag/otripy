@@ -51,9 +51,12 @@ The two last toolbar buttons change the selected location's marker: its icon, ch
 | Save | Ctrl+S |
 | Save as a new file | Ctrl+Shift+S |
 | Save as a new file on Nextcloud | Ctrl+Alt+S |
+| Export for a map app on a phone (KMZ, GPX) | *File* → *Export for Phone…* |
 | Quit | Ctrl+Q |
 
 With *Settings* → *Auto Save* checked, Otripy saves the trip after each action on its locations: adding, deleting, reordering or changing a marker, and selecting another location, which saves the note you were editing. It does not save while you type, nor trips that were never saved, which need a file name first.
+
+To take your trip with you, *File* → *Export for Phone…* saves it for map apps that work offline, such as Organic Maps: see [your trip on your phone](phone.md).
 
 *File* → *Open Recent* lists the last trips you opened or saved, on your computer or on Nextcloud.
 

@@ -75,6 +75,9 @@ Feature requests and bugs are tracked as [GitHub issues](https://github.com/klea
 - [x] #3 Route calculation between locations: car, bicycle, foot (FOSSGIS OSRM)
 - [ ] #3 Public transport routes and electric car charging stops (no free service found)
 
+### On the road
+- [x] #47 Use the trip on a phone: export to Organic Maps (KMZ) and other map apps (GPX)
+
 ### Cross-cutting
 - [x] #8 Make the GUI translatable (English, French)
 
