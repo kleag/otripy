@@ -12,10 +12,10 @@ Both work **without an Internet connection** once the map of the country is down
 In Otripy, choose *File* → *Export for Phone…*, then:
 
 1. The format: **KMZ** for Organic Maps, or **GPX** for OsmAnd and other apps.
-2. Whether to include the route: show a route first with *Tools* → *Show Route* to export it with the trip.
+2. Whether to include the routes between places: they are added by selecting a place, then Shift-clicking another (see [routes](usage.md#distances-and-routes)).
 3. Where to save the file: *Save to File…*, or *Save to Nextcloud…* to find it in the Nextcloud app of your phone.
 
-The export contains your locations with their titles, notes and colors, the trip notes and the notes of groups, and the route. **Images are not exported**: map apps do not show them.
+The export contains your locations with their titles, notes and colors, the trip notes and the notes of groups, and the routes. **Images are not exported**: map apps do not show them.
 
 ## With Organic Maps
 
@@ -25,13 +25,13 @@ The export contains your locations with their titles, notes and colors, the trip
 4. Tap the file and choose *Open with Organic Maps* (Android) or the share button then *Organic Maps* (iPhone).
 5. Organic Maps adds one bookmark list for the trip, and one for each group, such as "Ireland – Day 1". Find them under the star button, *Bookmarks and Tracks*; each list can be shown or hidden.
 
-Tap a bookmark to read its note, and *Route to* to be guided to it.
+Tap a bookmark to read its note, and *Route to* to be guided to it. Routes exported from Otripy appear as tracks in the list of their first place.
 
 ## With OsmAnd
 
 1. Install [OsmAnd](https://osmand.net) and download the maps of the countries you visit (*Menu* → *Maps & Resources*).
 2. Get the `.gpx` file on the phone, as above, and open it with OsmAnd.
-3. The locations appear as waypoints of a track, grouped by Otripy group; the route, if exported, as the track itself. They are in *My Places* → *Tracks*.
+3. The locations appear as waypoints, grouped by Otripy group, and each route as a track. They are in *My Places* → *Tracks*.
 
 ## After changing the trip
 

@@ -9,15 +9,17 @@ from pathlib import Path
 from PySide6.QtCore import QObject, Signal, QTimer
 try:
     from . import __version__
-    from .location import Group, Location, TripNotes, note_from_data
+    from .location import Group, Leg, Location, TripNotes, note_from_data
 except ImportError:
     from __init__ import __version__
-    from location import Group, Location, TripNotes, note_from_data
+    from location import Group, Leg, Location, TripNotes, note_from_data
 
 logger = logging.getLogger(__name__)
 
 # The newest file format this version reads and writes
-CURRENT_FORMAT_VERSION = "1.1.0"
+CURRENT_FORMAT_VERSION = "1.2.0"
+# Format adding groups and trip notes (issues #18, #19); 1.2.0 adds routes between locations (issue #50)
+GROUPS_FORMAT_VERSION = "1.1.0"
 # Written when a journey uses none of the 1.1.0 additions (groups, trip notes),
 # so that versions reading only 1.0.0 can open it
 BASE_FORMAT_VERSION = "1.0.0"
@@ -43,6 +45,7 @@ class Journey(QObject):
         self._locations = locations if locations is not None else []
         self._groups = groups if groups is not None else []
         self.notes = notes if notes is not None else TripNotes()
+        self._legs = []  # routes between two locations (issue #50)
         self.normalize_order()
         self._dirty = False
         self._created_at = None  # The creation date that was stored in the file where this journey was saved at, None if not already saved or if absent
@@ -71,6 +74,7 @@ class Journey(QObject):
         self._dirty = True
         self.dirty.emit(self._dirty)
         del self._locations[index]
+        self.prune_legs()
 
     def __iter__(self) -> Iterator[Location]:
         """Enable iteration."""
@@ -102,6 +106,7 @@ class Journey(QObject):
         self._dirty = True
         self.dirty.emit(self._dirty)
         self._locations.remove(location)
+        self.prune_legs()
 
     def __repr__(self) -> str:
         return f"Journey({self._locations})"
@@ -159,6 +164,29 @@ class Journey(QObject):
         self.normalize_order()
         self.mark_dirty()
 
+    # Routes between two locations (issue #50)
+    @property
+    def legs(self) -> List[Leg]:
+        return list(self._legs)
+
+    def leg_by_id(self, leg_id) -> Leg | None:
+        return next((leg for leg in self._legs if leg.leg_id == leg_id), None)
+
+    def add_leg(self, leg: Leg):
+        """Add a route; it replaces any route between the same two locations."""
+        self._legs = [other for other in self._legs if not other.joins(leg.start, leg.end)]
+        self._legs.append(leg)
+        self.mark_dirty()
+
+    def remove_leg(self, leg: Leg):
+        self._legs.remove(leg)
+        self.mark_dirty()
+
+    def prune_legs(self):
+        """Drop the routes of locations that are gone."""
+        ids = {loc.lid for loc in self._locations}
+        self._legs = [leg for leg in self._legs if leg.start in ids and leg.end in ids]
+
     def mark_dirty(self):
         self._dirty = True
         self.dirty.emit(True)
@@ -166,9 +194,16 @@ class Journey(QObject):
     def uses_format_1_1(self) -> bool:
         return bool(self._groups) or self.notes.has_note()
 
+    def format_version(self) -> str:
+        """The oldest file format that can hold this journey, so that more Otripy versions can read it."""
+        if self._legs:
+            return CURRENT_FORMAT_VERSION
+        return GROUPS_FORMAT_VERSION if self.uses_format_1_1() else BASE_FORMAT_VERSION
+
     def clear(self):
         self._locations.clear()
         self._groups.clear()
+        self._legs.clear()
         self.notes = TripNotes()
         self._dirty = False
         self.dirty.emit(self._dirty)
@@ -184,6 +219,7 @@ class Journey(QObject):
             raise IndexError("pop from empty Journey")
 
         loc = self._locations.pop(index)
+        self.prune_legs()
         self._dirty = True
         # Use QTimer to emit the signal after execution completes
         if self._locations:  # Only emit dirty if there are still items
@@ -216,7 +252,9 @@ class Journey(QObject):
         self._locations = [Location.from_data(loc) for loc in journey["locations"]]
         self._groups = [Group.from_data(group) for group in journey.get("groups", [])]
         self.notes = TripNotes(note_from_data(journey["notes"])) if "notes" in journey else TripNotes()
+        self._legs = [Leg.from_data(leg) for leg in journey.get("routes", [])]
         self.normalize_order()
+        self.prune_legs()  # routes of unknown locations
 
     @classmethod
     def from_file(cls, path):
@@ -237,13 +275,13 @@ class Journey(QObject):
 
         locations = [loc.to_dict() for loc in self._locations]
         # logger.info(f"Journey.write_to_file locations: {locations}")
-        uses_1_1 = self.uses_format_1_1()
+        format_version = self.format_version()
         data = {
             "format": "otripy",
             "description": "A Journey with Otripy",  # A brief description of the data.
             # The version of the JSON format itself, which may evolve separately from the application:
             # the oldest one that can hold this journey, so that more Otripy versions can read it
-            "format_version": CURRENT_FORMAT_VERSION if uses_1_1 else BASE_FORMAT_VERSION,
+            "format_version": format_version,
             "app_version": __version__,  # The version of the application that generated the file.
             "app_name": "Otripy",  # The name of the application that created the file.
             "created_at": self._created_at if self._created_at is not None else iso_timestamp,  # Timestamp when the file was created (ISO 8601 format).
@@ -252,9 +290,11 @@ class Journey(QObject):
             "settings": {},  # If the JSON file stores configuration, a settings section.
             "locations": locations
             }
-        if uses_1_1:
+        if format_version != BASE_FORMAT_VERSION:
             data["notes"] = self.notes.note
             data["groups"] = [group.to_dict() for group in self._groups]
+        if self._legs:
+            data["routes"] = [leg.to_dict() for leg in self._legs]
         json.dump(data, file, indent=4)
 
     # Data that could be added later in the format

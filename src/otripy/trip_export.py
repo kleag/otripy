@@ -9,8 +9,9 @@
 * GPX, for OsmAnd and other apps: waypoints with the note as text and their
   group as type, which OsmAnd uses as favorites group.
 
-A drawn route is exported as a track in both formats. Images stay in Otripy:
-these apps do not show images in bookmark descriptions.
+The routes between locations (issue #50) are exported as tracks: in the KMZ,
+in the list of their starting location. Images stay in Otripy: these apps do
+not show images in bookmark descriptions.
 """
 import io
 import re
@@ -19,12 +20,15 @@ from typing import List, Optional, Sequence, Tuple
 from xml.sax.saxutils import escape
 
 import markdown as markdown_lib
+from PySide6.QtCore import QCoreApplication
 
 try:
+    from . import routing
     from .journey import Journey
     from .limited_color_picker import LimitedColorPicker
     from .location import MARKDOWN_ESCAPE, Location, NoteHolder
 except ImportError:
+    import routing
     from journey import Journey
     from limited_color_picker import LimitedColorPicker
     from location import MARKDOWN_ESCAPE, Location, NoteHolder
@@ -145,6 +149,13 @@ def _placemark(location: Location) -> str:
     return "\n".join(parts)
 
 
+def leg_name(journey: Journey, leg) -> str:
+    """'Dublin → Galway (Car)'."""
+    start, end = journey.loc_by_id(leg.start), journey.loc_by_id(leg.end)
+    return QCoreApplication.translate("Export", "{start} → {end} ({mode})").format(
+        start=start.label() if start else "?", end=end.label() if end else "?", mode=routing.mode_label(leg.mode))
+
+
 def _track(name: str, route: Sequence[Point]) -> str:
     coordinates = " ".join(f"{float(lon):.6f},{float(lat):.6f}" for lat, lon in route)
     return (f"  <Placemark>\n    <name>{escape(name)}</name>\n    <styleUrl>#route</styleUrl>\n"
@@ -152,7 +163,7 @@ def _track(name: str, route: Sequence[Point]) -> str:
 
 
 def kml_document(name: str, description_html: str, locations: Sequence[Location],
-                 route: Optional[Sequence[Point]] = None, route_name: str = "Route") -> str:
+                 tracks: Sequence[Tuple[str, Sequence[Point]]] = ()) -> str:
     """One KML document, which Organic Maps imports as one bookmark list."""
     parts = ['<?xml version="1.0" encoding="UTF-8"?>',
              '<kml xmlns="http://www.opengis.net/kml/2.2">',
@@ -162,8 +173,7 @@ def kml_document(name: str, description_html: str, locations: Sequence[Location]
         parts.append(f"  <description>{_cdata(description_html)}</description>")
     parts.append(_style_definitions())
     parts.extend(_placemark(location) for location in locations)
-    if route:
-        parts.append(_track(route_name, route))
+    parts.extend(_track(track_name, points) for track_name, points in tracks if len(points) > 1)
     parts += ["</Document>", "</kml>", ""]
     return "\n".join(parts)
 
@@ -173,29 +183,29 @@ def _file_name(index: int, name: str) -> str:
     return f"{index:02d} {safe[:80]}.kml"
 
 
-def build_kmz(journey: Journey, trip_name: str, route: Optional[Sequence[Point]] = None,
-              route_name: str = "Route") -> bytes:
-    """A KMZ archive with one KML document per non-empty section; the route goes with the first."""
+def build_kmz(journey: Journey, trip_name: str, include_routes: bool = True) -> bytes:
+    """A KMZ archive with one KML document per non-empty section; routes go with their start."""
     documents = []
     for name, holder, locations in sections(journey, trip_name):
         description = markdown_to_html(note_body(holder)) if holder is not None else ""
-        if locations or (holder is journey.notes and (description or route)):
-            documents.append((name, description, locations))
+        ids = {loc.lid for loc in locations}
+        tracks = [(leg_name(journey, leg), leg.geometry) for leg in journey.legs
+                  if include_routes and leg.start in ids]
+        if locations or (holder is journey.notes and description):
+            documents.append((name, description, locations, tracks))
     if not documents:
-        documents.append((trip_name, "", []))
+        documents.append((trip_name, "", [], []))
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as archive:
-        for index, (name, description, locations) in enumerate(documents):
-            document = kml_document(name, description, locations, route if index == 0 else None, route_name)
-            archive.writestr(_file_name(index, name), document.encode("utf-8"))
+        for index, (name, description, locations, tracks) in enumerate(documents):
+            archive.writestr(_file_name(index, name), kml_document(name, description, locations, tracks).encode("utf-8"))
     return buffer.getvalue()
 
 
 # GPX
 
-def build_gpx(journey: Journey, trip_name: str, route: Optional[Sequence[Point]] = None,
-              route_name: str = "Route") -> bytes:
-    """A GPX 1.1 file: a waypoint per location, typed by its group, and the route as a track."""
+def build_gpx(journey: Journey, trip_name: str, include_routes: bool = True) -> bytes:
+    """A GPX 1.1 file: a waypoint per location, typed by its group, and a track per route."""
     parts = ['<?xml version="1.0" encoding="UTF-8"?>',
              '<gpx version="1.1" creator="Otripy" xmlns="http://www.topografix.com/GPX/1/1"',
              '     xmlns:osmand="https://osmand.net">',
@@ -216,9 +226,11 @@ def build_gpx(journey: Journey, trip_name: str, route: Optional[Sequence[Point]]
             rgb = LimitedColorPicker.COLORS.get(location.color or "blue", LimitedColorPicker.COLORS["blue"])
             parts.append("    <extensions><osmand:color>#{:02x}{:02x}{:02x}</osmand:color></extensions>".format(*rgb))
             parts.append("  </wpt>")
-    if route:
-        parts.append(f"  <trk>\n    <name>{escape(route_name)}</name>\n    <trkseg>")
-        parts.extend(f'      <trkpt lat="{float(lat):.6f}" lon="{float(lon):.6f}"/>' for lat, lon in route)
+    for leg in journey.legs if include_routes else []:
+        if len(leg.geometry) < 2:
+            continue
+        parts.append(f"  <trk>\n    <name>{escape(leg_name(journey, leg))}</name>\n    <trkseg>")
+        parts.extend(f'      <trkpt lat="{float(lat):.6f}" lon="{float(lon):.6f}"/>' for lat, lon in leg.geometry)
         parts.append("    </trkseg>\n  </trk>")
     parts += ["</gpx>", ""]
     return "\n".join(parts).encode("utf-8")

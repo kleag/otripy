@@ -4,8 +4,8 @@ import json
 import pytest
 
 from otripy import __version__
-from otripy.journey import BASE_FORMAT_VERSION, CURRENT_FORMAT_VERSION, Journey
-from otripy.location import Group, Location, TripNotes
+from otripy.journey import BASE_FORMAT_VERSION, CURRENT_FORMAT_VERSION, GROUPS_FORMAT_VERSION, Journey
+from otripy.location import Group, Leg, Location, TripNotes
 
 
 def save_to_str(journey):
@@ -136,7 +136,7 @@ def test_locations_are_kept_in_display_order():
 def test_groups_and_trip_notes_round_trip():
     journey = grouped_journey()
     data = json.loads(save_to_str(journey))
-    assert data["format_version"] == CURRENT_FORMAT_VERSION == "1.1.0"
+    assert data["format_version"] == GROUPS_FORMAT_VERSION == "1.1.0"
     assert [g["id"] for g in data["groups"]] == ["d1", "d2"]
     assert data["notes"]["markdown"] == "# Trip\n\nPassports!"
     again = Journey.from_json_str(json.dumps(data))
@@ -180,9 +180,10 @@ def test_arrange_reorders_locations_and_groups():
     assert [loc.lid for loc in journey] == ["hotel", "louvre", "eiffel"]
 
 
-def test_refuses_newer_format_than_1_1(fixture_text):
-    with pytest.raises(ValueError, match="format version 1.2.0"):
-        Journey.from_json_str(with_metadata(fixture_text, format_version="1.2.0"))
+def test_refuses_newer_format_than_current(fixture_text):
+    assert CURRENT_FORMAT_VERSION == "1.2.0"
+    with pytest.raises(ValueError, match="format version 1.3.0"):
+        Journey.from_json_str(with_metadata(fixture_text, format_version="1.3.0"))
 
 
 def test_load_format_1_1_fixture(fixture_text):
@@ -191,3 +192,60 @@ def test_load_format_1_1_fixture(fixture_text):
     assert [g.label() for g in journey.groups] == ["Day 1: Left bank", "Day 2: Right bank"]
     assert [len(journey.group_locations(g)) for g in [None, *journey.groups]] == [1, 2, 3]
     assert journey.groups[1].collapsed
+
+
+# Routes between two locations (issue #50)
+
+def journey_with_legs():
+    journey = Journey([Location(53.35, -6.26, {"markdown": "# Dublin"}, id="dublin"),
+                       Location(53.27, -9.06, {"markdown": "# Galway"}, id="galway"),
+                       Location(52.06, -9.5, {"markdown": "# Killarney"}, id="killarney")])
+    journey.add_leg(Leg("dublin", "galway", "car", 208_000, 9_000, [(53.35, -6.26), (53.3, -8.0), (53.27, -9.06)], id="l1"))
+    journey.add_leg(Leg("galway", "killarney", "bike", 180_000, 36_000, [(53.27, -9.06), (52.06, -9.5)], id="l2"))
+    return journey
+
+
+def test_legs_round_trip_in_format_1_2():
+    data = json.loads(save_to_str(journey_with_legs()))
+    assert data["format_version"] == "1.2.0"
+    assert [(r["from"], r["to"], r["mode"]) for r in data["routes"]] == [("dublin", "galway", "car"),
+                                                                        ("galway", "killarney", "bike")]
+    again = Journey.from_json_str(json.dumps(data))
+    [leg, _] = again.legs
+    assert (leg.distance, leg.duration, leg.geometry[1]) == (208_000, 9_000, (53.3, -8.0))
+
+
+def test_new_leg_replaces_the_one_between_the_same_locations(qtbot):
+    journey = journey_with_legs()
+    with qtbot.waitSignal(journey.dirty):
+        journey.add_leg(Leg("galway", "dublin", "foot"))
+    assert [(leg.start, leg.mode) for leg in journey.legs] == [("galway", "bike"), ("galway", "foot")]
+
+
+def test_deleting_a_location_drops_its_legs():
+    journey = journey_with_legs()
+    journey.remove(journey.loc_by_id("galway"))
+    assert journey.legs == []
+    journey = journey_with_legs()
+    del journey[2]
+    assert [leg.leg_id for leg in journey.legs] == ["l1"]
+
+
+def test_legs_of_unknown_locations_are_dropped_when_loading():
+    data = json.loads(save_to_str(journey_with_legs()))
+    data["routes"][0]["to"] = "nowhere"
+    assert [leg.leg_id for leg in Journey.from_json_str(json.dumps(data)).legs] == ["l2"]
+
+
+def test_removing_the_last_leg_goes_back_to_an_older_format():
+    journey = journey_with_legs()
+    for leg in journey.legs:
+        journey.remove_leg(leg)
+    assert json.loads(save_to_str(journey))["format_version"] == BASE_FORMAT_VERSION
+
+
+def test_load_format_1_2_fixture(fixture_text):
+    journey = Journey.from_json_str(fixture_text("journey-1.2.0.json"))
+    assert [(leg.mode, round(leg.distance)) for leg in journey.legs] == [("foot", 3748), ("bike", 1612)]
+    assert all(journey.loc_by_id(leg.start) and journey.loc_by_id(leg.end) for leg in journey.legs)
+    assert json.loads(save_to_str(journey))["format_version"] == "1.2.0"

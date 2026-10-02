@@ -147,3 +147,39 @@ class TripNotes(NoteHolder):
 
     def __init__(self, note: dict = None):
         self.note = note if note is not None else {"markdown": ""}
+
+
+class Leg:
+    """A route between two locations, with its own travel mode (issue #50).
+
+    start and end are location ids; mode is a key of routing.MODES. The route's
+    length (meters), duration (seconds) and path ((latitude, longitude) points)
+    are kept, so that it shows again without asking the routing server.
+    """
+
+    def __init__(self, start: str, end: str, mode: str, distance: float = 0.0, duration: float = 0.0,
+                 geometry=None, id: str = None):
+        self.leg_id = id if id is not None else str(uuid.uuid4())
+        self.start = start
+        self.end = end
+        self.mode = mode
+        self.distance = distance
+        self.duration = duration
+        self.geometry = [(float(lat), float(lon)) for lat, lon in (geometry or [])]
+
+    def __repr__(self):
+        return f"Leg({self.start} -> {self.end}, {self.mode})"
+
+    def joins(self, a: str, b: str) -> bool:
+        """Whether the leg goes between the two locations, in either direction."""
+        return {self.start, self.end} == {a, b}
+
+    @classmethod
+    def from_data(cls, data: dict):
+        return cls(data["from"], data["to"], data["mode"], float(data.get("distance", 0)),
+                   float(data.get("duration", 0)), data.get("geometry", []), data.get("id"))
+
+    def to_dict(self):
+        return {"id": self.leg_id, "from": self.start, "to": self.end, "mode": self.mode,
+                "distance": round(self.distance, 1), "duration": round(self.duration, 1),
+                "geometry": [[round(lat, 6), round(lon, 6)] for lat, lon in self.geometry]}

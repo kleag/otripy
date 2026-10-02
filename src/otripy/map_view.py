@@ -15,8 +15,10 @@ from folium.elements import JavascriptLink
 from PySide6.QtCore import QCoreApplication, QObject, Signal, Slot
 
 try:
+    from . import routing
     from .location import Location
 except ImportError:
+    import routing
     from location import Location
 
 logger = logging.getLogger(__name__)
@@ -24,7 +26,8 @@ logger = logging.getLogger(__name__)
 DEFAULT_CENTER = [48.8566, 2.3522]  # Paris
 DEFAULT_MARKER_ICON = "circle"
 DEFAULT_ZOOM = 12
-ROUTE_COLOR = "#3b6fd8"
+# Routes between two locations (issue #50): line color and dash pattern by mode
+LEG_STYLES = {"car": ("#3b6fd8", None), "bike": ("#2e9e4f", None), "foot": ("#e07b24", "6 8")}
 # Do not zoom closer than street level when fitting a few nearby locations
 FIT_MAX_ZOOM = 15
 DEFAULT_MARKER_COLOR = "blue"
@@ -36,6 +39,8 @@ class MapBridge(QObject):
     mapClicked = Signal(float, float)  # latitude, longitude
     markerClicked = Signal(str)  # location id
     markerHovered = Signal(str)  # location id, or "" when the mouse leaves the marker
+    markerShiftClicked = Signal(str)  # location id: route to it from the selected location
+    legAction = Signal(str, str)  # leg id, and a mode to switch to or "remove"
     viewChanged = Signal(float, float, int)  # center latitude, center longitude, zoom
 
     @Slot(float, float)
@@ -45,6 +50,14 @@ class MapBridge(QObject):
     @Slot(str)
     def on_marker_clicked(self, marker_id):
         self.markerClicked.emit(marker_id)
+
+    @Slot(str)
+    def on_marker_shift_clicked(self, marker_id):
+        self.markerShiftClicked.emit(marker_id)
+
+    @Slot(str, str)
+    def on_leg_action(self, leg_id, action):
+        self.legAction.emit(leg_id, action)
 
     @Slot(str)
     def on_marker_hovered(self, marker_id):
@@ -135,12 +148,49 @@ def fit_points_js(points) -> str:
     return f"fitPoints({points});"
 
 
-def build_map_html(locations: Iterable[Location], fit_all: bool = False, view=None, route=None) -> str:
+def leg_summary(leg) -> str:
+    """'Car: 208 km, 2 h 30' for a route."""
+    return QCoreApplication.translate("Map", "{mode}: {distance}, {duration}").format(
+        mode=routing.mode_label(leg.mode), distance=routing.format_distance(leg.distance),
+        duration=routing.format_duration(leg.duration))
+
+
+def leg_popup_html(leg, labels: dict) -> str:
+    """The popup of a route: its locations, summary, and buttons to change its mode or remove it."""
+    def button(text, action):
+        call = f"pywebchannel.objects.mapBridge.on_leg_action({js_string(leg.leg_id)}, {js_string(action)})"
+        return f'<button type="button" onclick="{html.escape(call)}">{html.escape(text)}</button>'
+
+    places = QCoreApplication.translate("Map", "{start} → {end}").format(
+        start=labels.get(leg.start, "?"), end=labels.get(leg.end, "?"))
+    switch = [button(routing.mode_label(mode), mode) for mode in routing.MODES if mode != leg.mode]
+    remove = button(QCoreApplication.translate("Map", "Remove"), "remove")
+    switch_label = QCoreApplication.translate("Map", "Switch to:")
+    return (f"<b>{html.escape(places)}</b><br>{html.escape(leg_summary(leg))}"
+            f"<div style=\"margin-top: 6px\">{html.escape(switch_label)} "
+            f"{' '.join(switch)}</div><div style=\"margin-top: 4px\">{remove}</div>")
+
+
+def leg_js(leg, labels: dict) -> str:
+    """JavaScript drawing a route between two locations, inside the page's map setup."""
+    if len(leg.geometry) < 2:
+        return ""
+    color, dash = LEG_STYLES.get(leg.mode, LEG_STYLES["car"])
+    points = [[float(lat), float(lon)] for lat, lon in leg.geometry]
+    options = f"{{color: {js_string(color)}, weight: 5, opacity: 0.75{', dashArray: ' + js_string(dash) if dash else ''}}}"
+    return f"""
+            L.polyline({points}, {options}).addTo(map)
+                .bindTooltip({js_string(html.escape(leg_summary(leg)))}, {{sticky: true}})
+                .bindPopup({js_string(leg_popup_html(leg, labels))});
+        """
+
+
+def build_map_html(locations: Iterable[Location], fit_all: bool = False, view=None, legs=()) -> str:
     """Return the full HTML page showing the locations.
 
     With fit_all, the map is zoomed to show all the locations. Otherwise it shows
     view, a (latitude, longitude, zoom) tuple, if given, else it is centered on
-    the last location. route is a list of (latitude, longitude) points drawn as a line.
+    the last location. legs are the routes between two locations to draw (issue #50).
     """
     locations = list(locations)
     if view is not None and not fit_all:
@@ -236,17 +286,23 @@ def build_map_html(locations: Iterable[Location], fit_all: bool = False, view=No
             marker.on("mouseout", function() {{
                 pywebchannel.objects.mapBridge.on_marker_hovered("");
             }});
-            marker.on("click", function() {{
-                pywebchannel.objects.mapBridge.on_marker_clicked({js_string(loc.lid)});
+            marker.on("click", function(event) {{
+                // Shift-click: route from the selected location to this one (issue #50)
+                if (event.originalEvent && event.originalEvent.shiftKey) {{
+                    pywebchannel.objects.mapBridge.on_marker_shift_clicked({js_string(loc.lid)});
+                }} else {{
+                    pywebchannel.objects.mapBridge.on_marker_clicked({js_string(loc.lid)});
+                }}
             }});
         """
+    labels = {loc.lid: loc.label() for loc in locations}
+    for leg in legs:
+        script += leg_js(leg, labels)
     script += """
         }
     });
     """
     m.get_root().script.add_child(Element(script))
-    if route:
-        folium.PolyLine([[float(lat), float(lon)] for lat, lon in route], color=ROUTE_COLOR, weight=5, opacity=0.7).add_to(m)
     m.add_child(folium.ClickForMarker(popup=QCoreApplication.translate("Map", "Click location")))
 
     data = io.BytesIO()
