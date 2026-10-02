@@ -4,6 +4,23 @@ Notable changes to Otripy. The format follows [Keep a Changelog](https://keepach
 
 ## Unreleased
 
+## 1.4.0 - 2026-10-02
+
+### Added
+
+- Groups: titled sections of the location list, such as the days of a trip, to which locations are dragged or added; groups can be reordered, collapsed, and shown on the map ([#18](https://github.com/kleag/otripy/issues/18)).
+- Trip notes, about the whole trip rather than one location, in the first entry of the list ([#19](https://github.com/kleag/otripy/issues/19)).
+
+### Changed
+
+- Trips with groups or trip notes are saved in file format 1.1.0, which Otripy 1.3 and earlier cannot open; other trips keep format 1.0.0.
+- Otripy now opens any file whose format it knows, whichever version saved it. Otripy 1.3 and earlier refuse files saved by a newer version.
+- *Delete Location* is now *Delete*, as it also deletes groups.
+
+### Fixed
+
+- Bold or struck-through note titles showed their markdown marks (`**`, `~~`) in the list and on the map.
+
 ## 1.3.1 - 2026-10-01
 
 ### Fixed

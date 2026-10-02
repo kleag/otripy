@@ -1,3 +1,5 @@
+import pytest
+
 from otripy.location import Location
 
 
@@ -57,3 +59,14 @@ def test_preview_is_shortened():
     loc = Location(note={"markdown": "T\n\n" + "word " * 100})
     assert len(loc.preview()) <= 200
     assert loc.preview().endswith("…")
+
+
+@pytest.mark.parametrize("markdown, label", [
+    ("**Day 3**", "Day 3"),
+    ("# Visit the **Louvre** and ~~Orsay~~", "Visit the Louvre and Orsay"),
+    ("__Bold__ start", "Bold start"),
+    (r"Price \*\*not bold\*\* 2*3", "Price **not bold** 2*3"),
+    ("my_file_name", "my_file_name"),
+])
+def test_label_removes_bold_and_strikethrough(markdown, label):
+    assert Location(note={"markdown": markdown}).label() == label

@@ -7,9 +7,26 @@
 * **Select a location** by clicking it in the list or its marker on the map: the map centers on it, and its note opens below the map.
 * **Hover** a location in the list to highlight its marker on the map, or a marker to highlight its entry in the list. Their tooltips show the title and the beginning of the note.
 * **Reorder** locations by dragging them in the list. Locations with a custom marker show its icon there.
-* **Delete** the selected location with *Delete Location*.
+* **Delete** the selected location with *Delete*.
 
 The map stays where you moved it while you edit, and shows all the locations when you open a trip. Drag the separators between the list, the map and the note to resize them; Otripy remembers their sizes.
+
+## Groups
+
+Groups are titled sections of the location list, for instance the days of the trip or the cities you visit.
+
+* **Create a group** with *New Group*: it appears at the end of the list, with its title selected in the note editor, ready to be typed over. Like a location, a group has a note: its first line is the group's title.
+* **Add locations to a group** by dragging them under its title, or by adding them while the group, or one of its locations, is selected: new locations then join that group.
+* **Reorder groups** by dragging their titles: their locations move with them. Locations outside of any group stay at the top of the list.
+* **Collapse or expand a group** by double-clicking its title; its title shows how many locations it has.
+* **Select a group** to see its locations on the map, and its note below the map.
+* **Delete a group** with *Delete*, after confirmation: its locations are kept, outside of any group.
+
+Routes go through the locations in the list's order, groups included.
+
+## Trip notes
+
+The first entry of the list, *Trip notes*, holds notes about the whole trip rather than one location: travel documents, budget, packing list… Select it to write them in the note editor, with the same formatting, images and links as other notes.
 
 ## Distances and routes
 

@@ -66,11 +66,11 @@ Feature requests and bugs are tracked as [GitHub issues](https://github.com/klea
 ### Notes
 - [x] #5 Clickable links in notes
 - [x] #20 Resizable images in notes
-- [ ] #19 General notes page not linked to a location (file format change)
+- [x] #19 General notes page not linked to a location (file format 1.1.0)
 
 ### Map and organization
 - [x] #22 Highlight marker on hover
-- [ ] #18 Group locations under a common title (file format change)
+- [x] #18 Group locations under a common title (file format 1.1.0)
 - [x] #6 Distance measurement tool
 - [x] #3 Route calculation between locations: car, bicycle, foot (FOSSGIS OSRM)
 - [ ] #3 Public transport routes and electric car charging stops (no free service found)

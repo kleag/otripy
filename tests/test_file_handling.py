@@ -1,3 +1,4 @@
+import re
 import json
 
 import nc_py_api
@@ -10,6 +11,9 @@ from otripy import main
 from otripy.journey import Journey
 from otripy.location import Location
 from otripy.main import MapApp
+
+# folium's fit_bounds call, with literal bounds (the page's fitPoints function calls fitBounds too)
+FIT_ALL = re.compile(r"\.fitBounds\(\s*\[\[")
 
 
 class Dialogs:
@@ -259,10 +263,10 @@ def test_opened_journey_is_framed(window, dialogs, fixture_text, tmp_path, monke
     dialogs.open_path = tmp_path / "trip.json"
     dialogs.open_path.write_text(fixture_text("journey-1.0.0.json"), encoding="utf-8")
     window.load_file()
-    assert "fitBounds" in pages[-1]
+    assert FIT_ALL.search(pages[-1])
     add_location(window)
     window.update_map()
-    assert "fitBounds" not in pages[-1], "editing must not move the map"
+    assert not FIT_ALL.search(pages[-1]), "editing must not move the map"
 
 
 def test_save_as_nextcloud(window, nextcloud):
@@ -449,13 +453,13 @@ def test_autosave_not_on_each_key(window, autosaved_trip, qtbot):
 
 
 def test_autosave_after_delete_and_reorder(window, autosaved_trip, qtbot):
-    window.list_widget.setCurrentIndex(window.list_widget.model.index(0, 0))
+    window.list_widget.setCurrentIndex(window.list_widget.model.index(1, 0))  # row 0: the trip's notes
     window.delete_item()
     qtbot.waitUntil(lambda: not window.dirty)
     assert len(saved_labels(autosaved_trip)) == 5
     model = window.list_widget.model
-    data = model.mimeData([model.index(0, 0)])
-    model.dropMimeData(data, Qt.MoveAction, 3, 0, QModelIndex())
+    data = model.mimeData([model.index(1, 0)])
+    model.dropMimeData(data, Qt.MoveAction, 4, 0, QModelIndex())
     qtbot.waitUntil(lambda: not window.dirty)
     assert saved_labels(autosaved_trip)[2] == "Musée du Louvre"
 
@@ -465,7 +469,7 @@ def test_autosave_off_by_default(window, dialogs, fixture_text, tmp_path, qtbot)
     trip.write_text(fixture_text("journey-1.0.0.json"), encoding="utf-8")
     dialogs.open_path = trip
     window.load_file()
-    window.list_widget.setCurrentIndex(window.list_widget.model.index(0, 0))
+    window.list_widget.setCurrentIndex(window.list_widget.model.index(1, 0))  # row 0: the trip's notes
     window.delete_item()
     qtbot.wait(50)
     assert window.dirty

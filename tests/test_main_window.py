@@ -58,7 +58,7 @@ def test_marker_click_selects_location(window):
     window.map_bridge.on_map_clicked(2.0, 2.0)
     first = window.list_widget.locations()[0]
     window.map_bridge.on_marker_clicked(first.lid)
-    assert window.list_widget.currentIndex().row() == 0
+    assert window.list_widget.current_entry() is first
     assert window.lat_input.text() == "1.0"
 
 
