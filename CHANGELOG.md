@@ -4,6 +4,8 @@ Notable changes to Otripy. The format follows [Keep a Changelog](https://keepach
 
 ## Unreleased
 
+## 1.5.0 - 2026-10-02
+
 ### Added
 
 - Routes between two places: select a place, then Shift-click another, in the list or on the map, and choose the travel mode. Each route has its own mode, is drawn in its mode's color, can be switched to another mode or removed from its popup on the map, and is saved with the trip, in file format 1.2.0. Phone exports include each route as a track ([#50](https://github.com/kleag/otripy/issues/50)).
