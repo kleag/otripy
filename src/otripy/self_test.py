@@ -70,6 +70,18 @@ def keyring_backends():
 
 
 @check
+def system_certificates():
+    """HTTPS checks certificates against the system's trust store (truststore)."""
+    import ssl
+
+    import truststore
+    from otripy.main import use_system_certificates
+
+    use_system_certificates()
+    assert isinstance(ssl.create_default_context(), truststore.SSLContext), "truststore not injected"
+
+
+@check
 def nextcloud_client():
     import nc_py_api
     assert nc_py_api.Nextcloud

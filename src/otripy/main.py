@@ -1234,7 +1234,23 @@ class MapApp(QMainWindow):
         self.add_location_at(location.latitude, location.longitude)
 
 
+def use_system_certificates():
+    """Verify HTTPS certificates (geocoding, routing) against the system's trust store.
+
+    requests and urllib otherwise use certifi's or OpenSSL's CA list, which
+    misses the root certificates of TLS-inspecting proxies and antiviruses,
+    installed in the macOS Keychain or the Windows certificate store, and
+    which a packaged Python may not find at all.
+    """
+    try:
+        import truststore
+        truststore.inject_into_ssl()
+    except Exception:
+        logger.exception("Cannot use the system's certificates, using Python's")
+
+
 def main():
+    use_system_certificates()
     if sys.argv[1:2] == ["--self-test"]:
         try:
             from .self_test import run

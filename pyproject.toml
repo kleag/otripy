@@ -16,6 +16,7 @@ dependencies = [
     "nc-py-api>=0.19.0",
     "packaging>=24.2",
     "pyside6>=6.8.2.1",
+    "truststore>=0.10.0",
     "typing-extensions>=4.12.2",
 ]
 authors = [{ name = "Gaël de Chalendar (aka Kleag)", email = "kleagg@gmail.com" }]
@@ -126,6 +127,7 @@ requires = [
     "nc-py-api",
     "packaging",
     "pyside6",
+    "truststore",
     "typing-extensions",
 ]
 
