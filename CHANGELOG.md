@@ -4,6 +4,8 @@ Notable changes to Otripy. The format follows [Keep a Changelog](https://keepach
 
 ## Unreleased
 
+## 1.5.1 - 2026-10-24
+
 ### Fixed
 
 - Places added on macOS were named "unknown" when the network inspects HTTPS traffic (antivirus, company proxy): searching places, naming them and computing routes now trust the system's certificates, as the map already did.
